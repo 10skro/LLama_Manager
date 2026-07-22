@@ -15,10 +15,10 @@ export function useToggleFavorite() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ buildNumber, backend }: { buildNumber: string; backend: string }) => {
-      return invoke<boolean>('toggle_favorite_build', { buildNumber, backend }) as Promise<boolean>;
+    mutationFn: async ({ downloadUrl, buildNumber, backend }: { downloadUrl: string; buildNumber: string; backend: string }) => {
+      return invoke<boolean>('toggle_favorite_build', { buildNumber, backend, downloadUrl }) as Promise<boolean>;
     },
-    onMutate: async ({ buildNumber, backend }) => {
+    onMutate: async ({ downloadUrl, buildNumber, backend }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['favorite-builds'] });
 
@@ -26,10 +26,10 @@ export function useToggleFavorite() {
       const previous = queryClient.getQueryData<FavoriteBuild[]>(['favorite-builds']) ?? [];
 
       // Optimistically update
-      const isFav = previous.some(f => f.build_number === buildNumber && f.backend === backend);
+      const isFav = previous.some(f => f.download_url === downloadUrl);
       const updated = isFav
-        ? previous.filter(f => !(f.build_number === buildNumber && f.backend === backend))
-        : [...previous, { id: 0, build_number: buildNumber, backend }];
+        ? previous.filter(f => f.download_url !== downloadUrl)
+        : [...previous, { id: 0, build_number: buildNumber, backend, download_url: downloadUrl }];
 
       queryClient.setQueryData<FavoriteBuild[]>(['favorite-builds'], updated);
 

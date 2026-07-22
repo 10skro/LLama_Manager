@@ -87,11 +87,17 @@ impl DbManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 build_number TEXT NOT NULL,
                 backend TEXT NOT NULL,
+                download_url TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                UNIQUE(build_number, backend)
+                UNIQUE(download_url)
             );
             ",
         )?;
+
+        // Migration: if old favorite_builds table exists without download_url column,
+        // recreate it with the new schema (old favorites without download_url will be lost)
+        migrate_favorite_builds_table(&conn)?;
+
         Ok(())
     }
 
@@ -100,4 +106,68 @@ impl DbManager {
     pub fn lock_conn(&self) -> Result<std::sync::MutexGuard<'_, Connection>, AppError> {
         self.inner.conn.lock().map_err(|e| AppError::Generic(format!("Mutex poisoned: {}", e)))
     }
+}
+
+/// Migrate favorite_builds table from old schema (UNIQUE build_number+backend)
+/// to new schema (UNIQUE download_url). Drops old entries since they can't be mapped.
+fn migrate_favorite_builds_table(conn: &Connection) -> Result<(), AppError> {
+    // Check if table exists
+    let table_exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='favorite_builds'",
+        [],
+        |row| row.get(0),
+    )?;
+
+    if !table_exists {
+        return Ok(());
+    }
+
+    // Check if download_url column exists
+    let has_download_url: bool = conn.query_row(
+        "PRAGMA table_info(favorite_builds)",
+        [],
+        |row| {
+            let name: String = row.get(1)?;
+            Ok(name == "download_url")
+        },
+    ).unwrap_or(false);
+
+    if has_download_url {
+        return Ok(());
+    }
+
+    // Recreate table with new schema, attempting to preserve existing favorites
+    // by matching against builds_cache to reconstruct download_url
+    conn.execute_batch(
+        "
+        CREATE TABLE favorite_builds_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            build_number TEXT NOT NULL,
+            backend TEXT NOT NULL,
+            download_url TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(download_url)
+        );
+        ",
+    )?;
+
+    // Try to migrate existing favorites by matching against builds_cache
+    // LEFT JOIN preserves favorites even when builds_cache is empty (download_url will be empty string)
+    conn.execute(
+        "INSERT OR IGNORE INTO favorite_builds_new (build_number, backend, download_url)
+         SELECT fb.build_number, fb.backend, COALESCE(bc.download_url, '')
+         FROM favorite_builds fb
+         LEFT JOIN builds_cache bc ON bc.build_number = fb.build_number AND bc.backend = fb.backend",
+        [],
+    )?;
+
+    // Drop old table and rename new one
+    conn.execute_batch(
+        "
+        DROP TABLE IF EXISTS favorite_builds;
+        ALTER TABLE favorite_builds_new RENAME TO favorite_builds;
+        ",
+    )?;
+
+    Ok(())
 }

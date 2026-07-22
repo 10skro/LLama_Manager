@@ -277,37 +277,38 @@ pub fn get_cached_builds(conn: &Connection) -> Result<Vec<Build>, AppError> {
 
 pub fn get_favorite_builds(conn: &Connection) -> Result<Vec<FavoriteBuild>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend FROM favorite_builds ORDER BY id DESC",
+        "SELECT id, build_number, backend, download_url FROM favorite_builds ORDER BY id DESC",
     )?;
     let builds = stmt.query_map([], |row| {
         Ok(FavoriteBuild {
             id: row.get(0)?,
             build_number: row.get(1)?,
             backend: row.get(2)?,
+            download_url: row.get(3)?,
         })
     })?;
     Ok(builds.collect::<Result<Vec<_>, rusqlite::Error>>()?)
 }
 
-pub fn toggle_favorite_build(conn: &Connection, build_number: &str, backend: &str) -> Result<bool, AppError> {
+pub fn toggle_favorite_build(conn: &Connection, build_number: &str, backend: &str, download_url: &str) -> Result<bool, AppError> {
     // Check if already favorite
     let mut stmt = conn.prepare(
-        "SELECT id FROM favorite_builds WHERE build_number = ?1 AND backend = ?2",
+        "SELECT id FROM favorite_builds WHERE download_url = ?1",
     )?;
-    let mut rows = stmt.query(params![build_number, backend])?;
+    let mut rows = stmt.query(params![download_url])?;
 
     if rows.next()?.is_some() {
         // Remove favorite
         conn.execute(
-            "DELETE FROM favorite_builds WHERE build_number = ?1 AND backend = ?2",
-            params![build_number, backend],
+            "DELETE FROM favorite_builds WHERE download_url = ?1",
+            params![download_url],
         )?;
         Ok(false) // was favorite, now removed
     } else {
         // Add favorite
         conn.execute(
-            "INSERT INTO favorite_builds (build_number, backend) VALUES (?1, ?2)",
-            params![build_number, backend],
+            "INSERT INTO favorite_builds (build_number, backend, download_url) VALUES (?1, ?2, ?3)",
+            params![build_number, backend, download_url],
         )?;
         Ok(true) // was not favorite, now added
     }

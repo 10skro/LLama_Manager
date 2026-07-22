@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useBuilds } from '@/hooks/useBuilds';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
@@ -21,6 +21,7 @@ import { ChangelogModal } from '@/components/ChangelogModal';
 import {
   RefreshCw, Search, Download, X,
   CheckCircle2, AlertCircle, Loader2, Star, Info,
+  ChevronDown,
 } from 'lucide-react';
 import type { Build } from '@/types';
 
@@ -58,7 +59,7 @@ export function CatalogPage() {
   const favoriteKeys = useMemo(() => {
     const keys = new Set<string>();
     favorites?.forEach(f => {
-      keys.add(getBuildIdentifier(f.build_number, f.backend));
+      keys.add(f.download_url);
     });
     return keys;
   }, [favorites]);
@@ -73,6 +74,21 @@ export function CatalogPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchState, setSearchState] = useState<{ tag: string | null; builds: Build[] | null }>({ tag: null, builds: null });
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Expanded/collapsed state for grouped builds
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
+
+  const toggleVersion = (buildNumber: string) => {
+    setExpandedVersions(prev => {
+      const next = new Set(prev);
+      if (next.has(buildNumber)) {
+        next.delete(buildNumber);
+      } else {
+        next.add(buildNumber);
+      }
+      return next;
+    });
+  };
 
   // Surface API errors to the user
   useEffect(() => {
@@ -134,7 +150,7 @@ export function CatalogPage() {
 
     // Favorites filter
     if (filters.favoritesOnly) {
-      result = result.filter(b => favoriteKeys.has(getBuildIdentifier(b.build_number, b.backend)));
+      result = result.filter(b => favoriteKeys.has(getBuildKey(b)));
     }
 
     // Sort (copy before sorting to avoid mutating source arrays)
@@ -159,6 +175,18 @@ export function CatalogPage() {
     const total = new Set((source || []).map(b => b.build_number)).size;
     return { shown, total };
   }, [filteredBuilds, builds, searchState.tag, searchState.builds]);
+
+  // Group filtered builds by build_number
+  const groupedBuilds = useMemo(() => {
+    const groups = new Map<string, Build[]>();
+    for (const build of filteredBuilds) {
+      if (!groups.has(build.build_number)) {
+        groups.set(build.build_number, []);
+      }
+      groups.get(build.build_number)!.push(build);
+    }
+    return groups;
+  }, [filteredBuilds]);
 
   const handleDownload = async (build: Build) => {
     const legacyKey = getBuildIdentifier(build.build_number, build.backend);
@@ -296,6 +324,17 @@ export function CatalogPage() {
       queryClient.invalidateQueries({ queryKey: ['builds'] });
     }
   }, [filters.search, searchState.tag, queryClient]);
+
+  // Auto-expand/collapse build groups based on backend filter
+  useEffect(() => {
+    if (filters.backend.length > 0) {
+      // Expand all build groups when backend filter is active
+      setExpandedVersions(new Set(groupedBuilds.keys()));
+    } else {
+      // Collapse all build groups when backend filter is cleared
+      setExpandedVersions(new Set());
+    }
+  }, [filters.backend]);
 
   // Available backend types from builds
   const availableBackends = useMemo(() => {
@@ -491,110 +530,202 @@ export function CatalogPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-border/50">
-                    <TableHead className="w-8"></TableHead>
-                    <TableHead>Build</TableHead>
-                    <TableHead>Backend</TableHead>
-                    <TableHead>Arch</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Size</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
+                  <TableHead className="text-center">Build</TableHead>
+                  <TableHead className="text-center">Arch</TableHead>
+                  <TableHead className="text-center">Backend</TableHead>
+                  <TableHead className="text-center">Date</TableHead>
+                  <TableHead className="text-center">Size</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBuilds.map((build) => {
-                  const rowKey = getBuildKey(build);
-                  const legacyKey = getBuildIdentifier(build.build_number, build.backend);
-                  const isInstalled = installedKeys.has(legacyKey);
-                  const isDownloading = downloading.has(legacyKey);
-                  const isFavorited = favoriteKeys.has(legacyKey);
+                {Array.from(groupedBuilds.entries()).map(([buildNumber, variants]) => {
+                  const isExpanded = expandedVersions.has(buildNumber);
+                  const firstVariant = variants[0];
+                  const variantCount = variants.length;
 
                   return (
-                    <TableRow key={rowKey} className="border-border/30 hover:bg-secondary/30">
-                      <TableCell>
-                        <button
-                          aria-pressed={isFavorited}
-                          aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-                          onClick={() => toggleFavorite.mutate({
-                            buildNumber: build.build_number,
-                            backend: build.backend,
-                          })}
-                          className="hover:opacity-80 transition-opacity"
-                          title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                    <Fragment key={buildNumber}>
+                        {/* Parent row - clickable to expand/collapse */}
+                        <TableRow
+                          aria-expanded={isExpanded}
+                          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${buildNumber} (${variantCount} variants)`}
+                          className="border-border/30 bg-secondary/20 hover:bg-secondary/40 cursor-pointer rounded"
+                          onClick={() => toggleVersion(buildNumber)}
                         >
-                          <Star
-                            className={`h-4 w-4 ${isFavorited ? 'fill-[hsl(var(--yellow))] text-[hsl(var(--yellow))]' : 'fill-none text-muted-foreground'}`}
-                          />
-                        </button>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-sm font-medium">
-                          {build.build_number}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`border ${getBackendColor(build.backend)}`}
-                        >
-                          {build.backend}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {build.architecture}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(build.published_at)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground text-sm">
-                        {formatSize(build.file_size)}
-                      </TableCell>
-                      <TableCell>
-                        {isInstalled ? (
-                          <div className="flex items-center gap-1.5 text-emerald-400">
-                            <CheckCircle2 className="h-4 w-4" />
-                            <span className="text-xs">Installed</span>
-                          </div>
-                        ) : isDownloading ? (
-                          <div className="flex items-center gap-1.5 text-blue-400">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-xs">Downloading</span>
-                          </div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setChangelogModal({ open: true, tag: build.tag_name, build: build.build_number })}
-                            className="h-8 w-8 p-0"
-                            title="View changelog"
-                          >
-                            <Info className="h-4 w-4" />
-                          </Button>
-                          {isInstalled ? (
-                            <Button variant="secondary" size="sm" disabled>
-                              Installed
-                            </Button>
-                          ) : isDownloading ? (
-                            <Button variant="outline" size="sm" disabled>
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              Downloading
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => handleDownload(build)}
-                              className="gap-2"
-                            >
-                              <Download className="h-4 w-4" />
-                              Download
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                          {/* Col 1: Build */}
+                          <TableCell className="!py-3 text-center">
+                            <div className="flex items-center justify-center gap-3">
+                              <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <span className="font-mono text-sm font-bold">{buildNumber}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {variantCount} variant{variantCount > 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          {/* Col 2: Arch (empty on parent) */}
+                          <TableCell className="text-center text-muted-foreground text-sm">—</TableCell>
+                          {/* Col 3: Backend */}
+                          <TableCell className="text-center">
+                            <div className="flex flex-wrap items-center justify-center gap-1.5">
+                              {Array.from(new Set(variants.map(v => v.backend))).map((backend) => (
+                                <Badge
+                                  key={backend}
+                                  variant="outline"
+                                  className={`text-xs border ${getBackendColor(backend)}`}
+                                >
+                                  {backend}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          {/* Col 4: Date */}
+                          <TableCell className="text-center text-muted-foreground text-sm">
+                            {formatDate(firstVariant.published_at)}
+                          </TableCell>
+                           {/* Col 5: Size (empty on parent - shown per-variant on children) */}
+                           <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
+                          {/* Col 6: Status */}
+                          <TableCell className="text-center">
+                            {variants.some(v => installedKeys.has(getBuildIdentifier(v.build_number, v.backend))) ? (
+                              <div className="flex items-center justify-center gap-1.5 text-emerald-400">
+                                <CheckCircle2 className="h-4 w-4" />
+                                <span className="text-xs">Installed</span>
+                              </div>
+                            ) : variants.some(v => downloading.has(getBuildIdentifier(v.build_number, v.backend))) ? (
+                              <div className="flex items-center justify-center gap-1.5 text-blue-400">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-xs">Downloading</span>
+                              </div>
+                            ) : null}
+                          </TableCell>
+                           {/* Col 7: Actions (empty on parent - actions moved to child rows) */}
+                           <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
+                        </TableRow>
+
+                      {/* Child rows - only shown when expanded */}
+                      {isExpanded && variants.map((build, idx) => {
+                        const rowKey = getBuildKey(build);
+                        const legacyKey = getBuildIdentifier(build.build_number, build.backend);
+                        const isInstalled = installedKeys.has(legacyKey);
+                        const isDownloading = downloading.has(legacyKey);
+                        const isFavorited = favoriteKeys.has(rowKey);
+                        const isLast = idx === variants.length - 1;
+                        const connector = isLast ? '└─ ' : '│  ';
+
+                        return (
+                           <TableRow key={rowKey} className="border-border/30 hover:bg-secondary/30">
+                              {/* Col 1: Build with tree connector */}
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="font-mono text-sm text-muted-foreground">{connector}</span>
+                                  <span className="font-mono text-sm font-medium">
+                                    {build.build_number}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              {/* Col 2: Arch */}
+                              <TableCell className="text-center text-muted-foreground text-sm">
+                                {build.architecture}
+                              </TableCell>
+                              {/* Col 3: Backend */}
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center">
+                                  <Badge
+                                    variant="outline"
+                                    className={`border ${getBackendColor(build.backend)}`}
+                                  >
+                                    {build.backend}
+                                  </Badge>
+                                </div>
+                              </TableCell>
+                              {/* Col 4: Date */}
+                              <TableCell className="text-center text-muted-foreground text-sm">
+                                {formatDate(build.published_at)}
+                              </TableCell>
+                              {/* Col 5: Size */}
+                              <TableCell className="text-center text-muted-foreground text-sm">
+                                {formatSize(build.file_size)}
+                              </TableCell>
+                              {/* Col 6: Status */}
+                              <TableCell className="text-center">
+                                {isInstalled ? (
+                                  <div className="flex items-center justify-center gap-1.5 text-emerald-400">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    <span className="text-xs">Installed</span>
+                                  </div>
+                                ) : isDownloading ? (
+                                  <div className="flex items-center justify-center gap-1.5 text-blue-400">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span className="text-xs">Downloading</span>
+                                  </div>
+                                ) : null}
+                              </TableCell>
+                              {/* Col 7: Actions */}
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                     aria-pressed={isFavorited}
+                                     aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                                     disabled={!build.download_url}
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       toggleFavorite.mutate({
+                                         downloadUrl: build.download_url,
+                                         buildNumber: build.build_number,
+                                         backend: build.backend,
+                                       });
+                                     }}
+                                     className={`hover:opacity-80 transition-opacity p-1 rounded hover:bg-secondary ${!build.download_url ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                     title={!build.download_url ? 'Cannot favorite: no download URL' : (isFavorited ? 'Remove from favorites' : 'Add to favorites')}
+                                   >
+                                     <Star
+                                       className={`h-4 w-4 ${isFavorited ? 'fill-[hsl(var(--yellow))] text-[hsl(var(--yellow))]' : 'fill-none text-muted-foreground'}`}
+                                     />
+                                   </button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setChangelogModal({ open: true, tag: build.tag_name, build: build.build_number });
+                                    }}
+                                    className="h-8 w-8 p-0"
+                                    title="View changelog"
+                                  >
+                                    <Info className="h-4 w-4" />
+                                  </Button>
+                                  {isInstalled ? (
+                                      <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
+                                      Installed
+                                    </Button>
+                                  ) : isDownloading ? (
+                                     <Button variant="outline" size="sm" disabled className="w-[80px] justify-center">
+                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      Downloading
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDownload(build);
+                                      }}
+                                       className="gap-2 w-[80px] justify-center"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                      Download
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                           </TableRow>
+                        );
+                      })}
+                    </Fragment>
                   );
                 })}
               </TableBody>

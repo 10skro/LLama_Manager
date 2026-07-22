@@ -62,6 +62,7 @@ export interface FavoriteBuild {
   id: number;
   build_number: string;
   backend: string;
+  download_url: string;
 }
 
 // Filter state for catalog

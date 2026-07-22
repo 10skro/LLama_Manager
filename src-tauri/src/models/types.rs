@@ -82,6 +82,7 @@ pub struct FavoriteBuild {
     pub id: i64,
     pub build_number: String,
     pub backend: String,
+    pub download_url: String,
 }
 
 /// Application error type

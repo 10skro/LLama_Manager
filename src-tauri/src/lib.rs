@@ -346,9 +346,10 @@ fn toggle_favorite_build(
     state: tauri::State<'_, DbManager>,
     build_number: String,
     backend: String,
+    download_url: String,
 ) -> Result<bool, String> {
     let conn = state.lock_conn().map_err(|e| e.to_string())?;
-    repo::toggle_favorite_build(&conn, &build_number, &backend).map_err(|e| e.to_string())
+    repo::toggle_favorite_build(&conn, &build_number, &backend, &download_url).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
