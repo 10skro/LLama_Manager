@@ -1,6 +1,6 @@
 [package]
 name = "llamacpp-manager"
-version = "0.2.7"
+version = "0.2.72"
 description = "A manager for llama.cpp versions"
 authors = ["openfox"]
 edition = "2021"

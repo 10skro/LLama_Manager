@@ -1,6 +1,6 @@
 {
   "productName": "LlamaCpp Manager",
-  "version": "0.2.7",
+  "version": "0.2.72",
   "identifier": "com.openfox.llamacpp-manager",
   "build": {
     "beforeDevCommand": "npm run dev",
