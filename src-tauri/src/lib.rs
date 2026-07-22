@@ -6,6 +6,7 @@ mod download;
 mod file;
 mod github;
 mod models;
+mod utils;
 mod version;
 
 use std::path::PathBuf;
@@ -86,8 +87,31 @@ fn uninstall_version(
 }
 
 #[tauri::command]
-fn open_folder(path: String) -> Result<(), String> {
-    VersionManager::open_folder(&path).map_err(|e| e.to_string())
+fn open_folder(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    let storage_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?
+        .join("storage");
+
+    // Canonicalize both paths to resolve .. and symlinks
+    let canonical_storage = storage_dir.canonicalize()
+        .map_err(|e| format!("Storage directory not found: {}", e))?;
+    let path_buf = std::path::PathBuf::from(&path);
+    let canonical_path = path_buf.canonicalize()
+        .map_err(|e| format!("Path not found: {}", e))?;
+
+    // Check that the canonical path starts with the canonical storage dir
+    if !canonical_path.starts_with(&canonical_storage) {
+        return Err("Access denied: path is outside the storage directory".to_string());
+    }
+
+    std::process::Command::new("explorer")
+        .arg(&path)
+        .spawn()
+        .map_err(|e| format!("Failed to open folder: {}", e))?;
+
+    Ok("Folder opened".to_string())
 }
 
 #[tauri::command]
@@ -327,6 +351,39 @@ fn toggle_favorite_build(
     repo::toggle_favorite_build(&conn, &build_number, &backend).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn save_github_token(
+    state_github: tauri::State<'_, GithubClient>,
+    token: String,
+) -> Result<(), String> {
+    if token.is_empty() {
+        crate::config::credential::CredentialManager::delete_github_token()
+            .map_err(|e| e.to_string())?;
+        state_github.set_token(None);
+    } else {
+        crate::config::credential::CredentialManager::save_github_token(&token)
+            .map_err(|e| e.to_string())?;
+        state_github.set_token(Some(token));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn has_github_token() -> Result<bool, String> {
+    crate::config::credential::CredentialManager::has_github_token()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_github_token(
+    state_github: tauri::State<'_, GithubClient>,
+) -> Result<(), String> {
+    crate::config::credential::CredentialManager::delete_github_token()
+        .map_err(|e| e.to_string())?;
+    state_github.set_token(None);
+    Ok(())
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -352,9 +409,9 @@ pub fn run_tauri_app() {
             // Initialize default settings
             SettingsManager::init_defaults(&db).map_err(|e| e.to_string())?;
 
-            // Load settings to get GitHub token
-            let settings = SettingsManager::get_settings(&db).map_err(|e| e.to_string())?;
-            let github_token = settings.github_token;
+            // Load GitHub token from secure keyring (not from settings DB)
+            let github_token = crate::config::credential::CredentialManager::get_github_token()
+                .map_err(|e| e.to_string())?;
 
             // Register state
             app.manage(db);
@@ -381,6 +438,9 @@ pub fn run_tauri_app() {
             fetch_release_changelog,
             get_favorite_builds,
             toggle_favorite_build,
+            save_github_token,
+            has_github_token,
+            delete_github_token,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

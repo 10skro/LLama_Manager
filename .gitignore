@@ -38,3 +38,6 @@ Thumbs.db
 
 # Vite cache
 .vite/
+
+# Database files
+*.db

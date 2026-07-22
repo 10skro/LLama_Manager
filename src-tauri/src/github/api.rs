@@ -33,7 +33,7 @@ static BUILD_NAME_RE: OnceLock<Regex> = OnceLock::new();
 /// This singleton avoids creating a new reqwest::Client for every request.
 pub struct GithubClient {
     client: reqwest::Client,
-    github_token: Option<String>,
+    github_token: Mutex<Option<String>>,
     /// Cached ETag for conditional requests (If-None-Match)
     etag: Mutex<Option<String>>,
 }
@@ -46,9 +46,15 @@ impl GithubClient {
                 .timeout(std::time::Duration::from_secs(30))
                 .build()
                 .expect("Failed to create HTTP client"),
-            github_token,
+            github_token: Mutex::new(github_token),
             etag: Mutex::new(None),
         }
+    }
+
+    /// Update the token at runtime (no restart needed).
+    pub fn set_token(&self, token: Option<String>) {
+        let mut gt = self.github_token.lock().unwrap();
+        *gt = token;
     }
 
     /// Build a request with auth header if token is configured.
@@ -59,8 +65,9 @@ impl GithubClient {
             .header("Accept", "application/vnd.github.v3+json");
 
         // Add Authorization header if token is present
-        if let Some(ref token) = self.github_token {
-            builder = builder.header("Authorization", format!("Bearer {}", token));
+        let token = self.github_token.lock().unwrap().clone();
+        if let Some(ref t) = token {
+            builder = builder.header("Authorization", format!("Bearer {}", t));
         }
 
         // Add If-None-Match header if we have a cached ETag (skip for search)

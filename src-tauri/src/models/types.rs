@@ -61,8 +61,6 @@ pub struct AppSettings {
     pub last_fetch: Option<String>,
     pub auto_check_updates: bool,
     #[serde(default)]
-    pub github_token: Option<String>,
-    #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
     pub toast_duration: Option<i64>, // milliseconds, default 5000

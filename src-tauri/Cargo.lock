@@ -2021,6 +2021,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "keyring"
+version = "3.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eebcc3aff044e5944a8fbaf69eb277d11986064cba30c468730e8b9909fb551c"
+dependencies = [
+ "byteorder",
+ "log",
+ "windows-sys 0.60.2",
+ "zeroize",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2115,11 +2127,12 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
 name = "llamacpp-manager"
-version = "0.2.7"
+version = "0.2.72"
 dependencies = [
  "chrono",
  "flate2",
  "futures",
+ "keyring",
  "log",
  "regex",
  "reqwest 0.11.27",
@@ -2135,6 +2148,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing-subscriber",
+ "url",
  "uuid",
  "walkdir",
  "zip",

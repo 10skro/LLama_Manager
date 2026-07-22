@@ -53,7 +53,6 @@ export interface AppSettings {
   theme: string; // Was: 'dark' | 'light' | 'system' - now flexible for named themes
   last_fetch?: string;
   auto_check_updates: boolean;
-  github_token?: string;
   toast_duration?: number; // milliseconds, default 5000
   fontFamily?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
 }

@@ -45,12 +45,12 @@ impl FileManager {
 
         // Ensure target directory exists
         fs::create_dir_all(target).map_err(|e| {
-            AppError::Extraction(format!("Failed to create target directory: {}", e))
+            AppError::Extraction(format!("Failed to create target directory {}: {}", crate::utils::mask_path(target.to_string_lossy().as_ref()), e))
         })?;
 
         // Read file contents
         let data = fs::read(zip_path).map_err(|e| {
-            AppError::Extraction(format!("Failed to read archive: {}", e))
+            AppError::Extraction(format!("Failed to read archive {}: {}", crate::utils::mask_path(zip_path.to_string_lossy().as_ref()), e))
         })?;
 
         // Try to find ZIP signature
@@ -100,17 +100,17 @@ impl FileManager {
             // Create parent directories
             if let Some(parent) = full_path.parent() {
                 fs::create_dir_all(parent).map_err(|e| {
-                    AppError::Extraction(format!("Failed to create parent dir: {}", e))
+                    AppError::Extraction(format!("Failed to create parent dir {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
                 })?;
             }
 
             // Extract file
             let mut outfile = fs::File::create(&full_path).map_err(|e| {
-                AppError::Extraction(format!("Failed to create file: {}", e))
+                AppError::Extraction(format!("Failed to create file {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
             })?;
 
             std::io::copy(&mut file, &mut outfile).map_err(|e| {
-                AppError::Extraction(format!("Failed to write file: {}", e))
+                AppError::Extraction(format!("Failed to write file {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
             })?;
 
             // Preserve permissions if available

@@ -3,7 +3,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use tokio::sync::{mpsc, Mutex};
 
@@ -169,6 +169,24 @@ impl Default for DownloadManager {
     }
 }
 
+/// Validate that the download URL points to github.com only.
+fn validate_download_url(url: &str) -> Result<(), String> {
+    let parsed = url::Url::parse(url)
+        .map_err(|e| format!("Invalid download URL: {}", e))?;
+
+    // Enforce HTTP(S) scheme only
+    if !["http", "https"].contains(&parsed.scheme()) {
+        return Err("Only HTTP(S) download URLs are allowed".to_string());
+    }
+
+    // Enforce github.com host
+    if parsed.host_str() != Some("github.com") {
+        return Err("Downloads are restricted to github.com only".to_string());
+    }
+
+    Ok(())
+}
+
 /// Internal: perform the actual HTTP download with progress tracking.
 async fn run_download(
     _download_id: i64,
@@ -179,8 +197,11 @@ async fn run_download(
     progress_tx: &mpsc::Sender<DownloadProgress>,
     cancel_rx: &mut mpsc::Receiver<DownloadCommand>,
 ) -> Result<(), AppError> {
+    // Validate URL before making any request
+    validate_download_url(url).map_err(AppError::Generic)?;
     let client = reqwest::Client::builder()
         .user_agent("LlamaCpp-Manager/1.0")
+        .timeout(Duration::from_secs(300))
         .build()
         .map_err(|e| AppError::Generic(format!("Failed to create HTTP client: {}", e)))?;
 
@@ -195,7 +216,7 @@ async fn run_download(
     // Ensure parent directory exists
     if let Some(parent) = Path::new(file_path).parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|e| AppError::Generic(format!("Failed to create directory: {}", e)))?;
+            .map_err(|e| AppError::Generic(format!("Failed to create directory {}: {}", crate::utils::mask_path(file_path), e)))?;
     }
 
     // Open file for writing
@@ -204,7 +225,7 @@ async fn run_download(
         .create(true)
         .truncate(true)
         .open(file_path)
-        .map_err(|e| AppError::Generic(format!("Failed to open file: {}", e)))?;
+        .map_err(|e| AppError::Generic(format!("Failed to open file {}: {}", crate::utils::mask_path(file_path), e)))?;
     let mut writer = std::io::BufWriter::new(file);
 
     let mut stream = response.bytes_stream();

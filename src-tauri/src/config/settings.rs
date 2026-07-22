@@ -26,8 +26,6 @@ impl SettingsManager {
             .unwrap_or_else(|| "true".to_string());
         let auto_check_updates = auto_check_str == "true";
 
-        let github_token = map.remove("github_token");
-
         let font_family = map.remove("font_family");
 
         let toast_duration_str = map.remove("toast_duration");
@@ -40,7 +38,6 @@ impl SettingsManager {
             theme,
             last_fetch,
             auto_check_updates,
-            github_token,
             font_family,
             toast_duration,
         })
@@ -61,16 +58,6 @@ impl SettingsManager {
             "auto_check_updates",
             &settings.auto_check_updates.to_string(),
         )?;
-        // Save github_token (empty string means "not set")
-        match &settings.github_token {
-            Some(token) if !token.is_empty() => {
-                repo::set_setting(&conn, "github_token", token)?;
-            }
-            _ => {
-                // Remove the token if it's empty/None
-                let _ = repo::delete_setting(&conn, "github_token");
-            }
-        }
         // Save font_family
         match &settings.font_family {
             Some(family) if !family.is_empty() => {
@@ -117,10 +104,33 @@ impl SettingsManager {
     }
 
     /// Get the configured storage path, falling back to the app data directory.
+    /// Ensures the path exists on disk, creating it if necessary.
     pub fn get_storage_path(db: &DbManager, fallback: &str) -> String {
-        match Self::get_settings(db) {
+        let mut path = match Self::get_settings(db) {
             Ok(settings) if !settings.storage_path.is_empty() => settings.storage_path,
             _ => fallback.to_string(),
+        };
+
+        // Reject system directories
+        let path_buf = std::path::PathBuf::from(&path);
+        let resolved = path_buf.canonicalize().unwrap_or(path_buf.clone());
+        let path_str = resolved.to_string_lossy().to_string();
+        let system_dirs = vec![
+            "C:\\Windows",
+            "C:\\Program Files",
+            "C:\\Program Files (x86)",
+            "C:\\ProgramData",
+        ];
+        if system_dirs.iter().any(|sd| path_str.starts_with(sd)) {
+            log::warn!("Storage path {} is in a system directory, using fallback", path_str);
+            path = fallback.to_string();
         }
+
+        // Ensure the storage directory exists
+        if let Err(e) = std::fs::create_dir_all(&path) {
+            log::warn!("Failed to create storage directory {}: {}", path, e);
+        }
+
+        path
     }
 }

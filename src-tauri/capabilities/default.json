@@ -5,7 +5,6 @@
   "permissions": [
     "core:default",
     "core:event:allow-listen",
-    "core:webview:allow-internal-toggle-devtools",
     "shell:allow-open",
     "fs:default",
     "dialog:default",
