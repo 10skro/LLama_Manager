@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES, getThemeById } from '@/themes';
+import { AVAILABLE_FONTS } from '@/fonts';
 
 const TOAST_DURATIONS = [
   { label: '2s', value: 2000 },
@@ -202,9 +203,53 @@ export function SettingsPage() {
                         description: `Applied ${theme.name}`,
                       });
                     }}
-                  >
+                   >
                     {isActive && <Check className="h-3.5 w-3.5 mr-1.5" />}
                     {theme.name}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          <Separator className="border-border/50" />
+
+          {/* Font selector */}
+          <div className="space-y-2">
+            <Label>Font</Label>
+            <div className="flex gap-2 flex-wrap">
+              {AVAILABLE_FONTS.map((font) => {
+                const isActive = settings?.fontFamily === font.cssFamily;
+                return (
+                  <Button
+                    key={font.id}
+                    variant={isActive ? 'default' : 'outline'}
+                    size="sm"
+                    className={isActive ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''}
+                    style={{ fontFamily: font.cssFamily }}
+                    onClick={() => {
+                      updateSetting('fontFamily', font.cssFamily);
+                      // Apply font instantly
+                      document.documentElement.style.setProperty('--custom-font', font.cssFamily);
+                      // Auto-save font choice (fire-and-forget)
+                      if (settings) {
+                        saveSettings({ ...settings, fontFamily: font.cssFamily }).catch(err => {
+                          console.error('Failed to auto-save font:', err);
+                          toast({
+                            title: 'Save failed',
+                            description: 'Could not persist font. Click Save Changes to retry.',
+                            variant: 'destructive',
+                          });
+                        });
+                      }
+                      toast({
+                        title: 'Font changed',
+                        description: `Applied ${font.name}`,
+                      });
+                    }}
+                  >
+                    {isActive && <Check className="h-3.5 w-3.5 mr-1.5" />}
+                    {font.name}
                   </Button>
                 );
               })}

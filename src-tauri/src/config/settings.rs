@@ -28,12 +28,15 @@ impl SettingsManager {
 
         let github_token = map.remove("github_token");
 
+        let font_family = map.remove("font_family");
+
         Ok(AppSettings {
             storage_path,
             theme,
             last_fetch,
             auto_check_updates,
             github_token,
+            font_family,
         })
     }
 
@@ -62,6 +65,15 @@ impl SettingsManager {
                 let _ = repo::delete_setting(&conn, "github_token");
             }
         }
+        // Save font_family
+        match &settings.font_family {
+            Some(family) if !family.is_empty() => {
+                repo::set_setting(&conn, "font_family", family)?;
+            }
+            _ => {
+                let _ = repo::delete_setting(&conn, "font_family");
+            }
+        }
         Ok(())
     }
 
@@ -78,6 +90,9 @@ impl SettingsManager {
         }
         if repo::get_setting(&conn, "auto_check_updates").ok().flatten().is_none() {
             repo::set_setting(&conn, "auto_check_updates", "true")?;
+        }
+        if repo::get_setting(&conn, "font_family").ok().flatten().is_none() {
+            repo::set_setting(&conn, "font_family", "Instrument Sans")?;
         }
 
         Ok(())

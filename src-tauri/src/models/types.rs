@@ -62,6 +62,8 @@ pub struct AppSettings {
     pub auto_check_updates: bool,
     #[serde(default)]
     pub github_token: Option<String>,
+    #[serde(default)]
+    pub font_family: Option<String>,
 }
 
 /// Version info detected from an installed directory

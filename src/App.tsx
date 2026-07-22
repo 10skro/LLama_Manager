@@ -10,6 +10,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { fetchBuilds } from './services/github';
 import { getSettings } from './services/settings';
 import { getThemeById } from './themes';
+import { DEFAULT_FONT_FAMILY } from './fonts';
 import { useAppStore } from './store/useAppStore';
 import { useTheme } from './hooks/useTheme';
 
@@ -30,6 +31,10 @@ function App() {
             useAppStore.getState().setActiveTheme(settings.theme);
           }
         }
+
+        // Apply saved font on startup
+        const fontFamily = settings.fontFamily ?? DEFAULT_FONT_FAMILY;
+        document.documentElement.style.setProperty('--custom-font', fontFamily);
       } catch (err) {
         console.error('Failed to load settings on startup:', err);
       }

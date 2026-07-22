@@ -66,6 +66,9 @@ export default {
           2: 'hsl(var(--overlay-2))',
         },
       },
+      fontFamily: {
+        sans: ['var(--custom-font)', 'ui-sans-serif', 'system-ui', '-apple-system'],
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
