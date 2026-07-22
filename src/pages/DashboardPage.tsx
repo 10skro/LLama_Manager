@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useCheckNewBuilds } from '@/hooks/useBuilds';
 import { useToast } from '@/hooks/use-toast';
+import { useRefreshCooldown } from '@/hooks/useRefreshCooldown';
 import { uninstallVersion, openFolder } from '@/services/version';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate } from '@/utils/format';
@@ -33,7 +34,12 @@ export function DashboardPage() {
   const { data: newBuildsData, refetch: checkUpdates } = useCheckNewBuilds();
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
+  const { canRefresh: canCheck, isRefreshing: isCheckingCooldown, secondsLeft, refresh: checkRefresh, forceRefresh: forceCheckRefresh } = useRefreshCooldown(
+    async () => {
+      return await checkUpdates();
+    },
+    { cooldownMs: 30_000 }
+  );
 
   const handleOpenFolder = async (path: string) => {
     try {
@@ -70,24 +76,50 @@ export function DashboardPage() {
     }
   };
 
-  const handleCheckUpdates = async () => {
-    setIsChecking(true);
-    try {
-      await checkUpdates();
-      toast({
-        title: 'Update check complete',
-        description: newBuildsData?.newBuilds?.length
-          ? `${newBuildsData.newBuilds.length} new build(s) available.`
-          : 'No new builds available.',
-      });
-    } catch (err) {
-      console.error('Failed to check updates:', err);
-      toast({
-        title: 'Check failed',
-        description: 'Could not check for updates.',
-      });
-    } finally {
-      setIsChecking(false);
+  const handleCheckUpdatesClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (e.shiftKey) {
+      (async () => {
+        try {
+          const result = await forceCheckRefresh();
+          const newCount = result?.data?.newBuilds?.length ?? 0;
+          toast({
+            title: 'Force refresh',
+            description: newCount
+              ? `${newCount} new build(s) available. (cooldown bypassed)`
+              : 'No new builds available. (cooldown bypassed)',
+          });
+        } catch (err) {
+          console.error('Failed to check updates:', err);
+          toast({
+            title: 'Check failed',
+            description: 'Could not check for updates.',
+          });
+        }
+      })();
+    } else {
+      if (!canCheck) {
+        toast({ title: 'Cooldown active', description: `Please wait ${secondsLeft}s before checking, or hold Shift to force.` });
+        return;
+      }
+      (async () => {
+        try {
+          const result = await checkRefresh();
+          const newCount = result?.data?.newBuilds?.length ?? 0;
+          toast({
+            title: 'Update check complete',
+            description: newCount
+              ? `${newCount} new build(s) available.`
+              : 'No new builds available.',
+          });
+        } catch (err) {
+          console.error('Failed to check updates:', err);
+          toast({
+            title: 'Check failed',
+            description: 'Could not check for updates.',
+          });
+        }
+      })();
     }
   };
 
@@ -104,12 +136,13 @@ export function DashboardPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={handleCheckUpdates}
-          disabled={isChecking}
+          onClick={handleCheckUpdatesClick}
+          disabled={isCheckingCooldown}
           className="gap-2"
+          title={canCheck ? "Check for updates (hold Shift to force)" : `Check available in ${secondsLeft}s (hold Shift to force)`}
         >
-          <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-          Check Updates
+          <RefreshCw className={`h-4 w-4 ${isCheckingCooldown ? 'animate-spin' : ''}`} />
+          {isCheckingCooldown ? 'Checking...' : (!canCheck ? `${secondsLeft}s` : 'Check Updates')}
         </Button>
       </div>
 

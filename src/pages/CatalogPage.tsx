@@ -4,6 +4,7 @@ import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
+import { useRefreshCooldown } from '@/hooks/useRefreshCooldown';
 import { useQueryClient } from '@tanstack/react-query';
 import { installVersion } from '@/services/download';
 import { fetchBuilds, fetchReleaseByTag, searchBuilds, getCatalogLastFetched } from '@/services/github';
@@ -237,25 +238,58 @@ export function CatalogPage() {
     }
   };
 
-  const handleRefresh = async () => {
-    setError(null);
-    try {
+  const { canRefresh, isRefreshing, secondsLeft, refresh, forceRefresh } = useRefreshCooldown(
+    async () => {
+      setError(null);
       // Force refresh: bypass cache TTL, always check ETag with GitHub
       const freshBuilds = await fetchBuilds({ forceRefresh: true });
       queryClient.setQueryData(['builds', undefined], freshBuilds);
       // Update last fetched timestamp
       const ts = await getCatalogLastFetched();
       setLastFetched(ts);
-      toast({
-        title: 'Catalog updated',
-        description: 'Build list has been updated.',
-      });
-    } catch (err: any) {
-      setError(err.message || 'Failed to update');
-      toast({
-        title: 'Update failed',
-        description: err.message || 'Could not update the build list.',
-      });
+      return freshBuilds.length;
+    },
+    { cooldownMs: 30_000 }
+  );
+
+  const handleRefreshClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (e.shiftKey) {
+      (async () => {
+        try {
+          const result = await forceRefresh();
+          const count = result ?? 0;
+          toast({
+            title: 'Force refresh',
+            description: count > 0
+              ? `${count} build(s) in catalog. (cooldown bypassed)`
+              : 'Catalog is already up to date. (cooldown bypassed)',
+          });
+        } catch (err: any) {
+          setError(err.message || 'Failed to update');
+          toast({ title: 'Update failed', description: err.message });
+        }
+      })();
+    } else {
+      if (!canRefresh) {
+        toast({ title: 'Cooldown active', description: `Please wait ${secondsLeft}s before refreshing, or hold Shift to force.` });
+        return;
+      }
+      (async () => {
+        try {
+          const result = await refresh();
+          const count = result ?? 0;
+          toast({
+            title: count > 0 ? 'Catalog updated' : 'No updates',
+            description: count > 0
+              ? `${count} build(s) in catalog.`
+              : 'Catalog is already up to date.',
+          });
+        } catch (err: any) {
+          setError(err.message || 'Failed to update');
+          toast({ title: 'Update failed', description: err.message });
+        }
+      })();
     }
   };
 
@@ -406,12 +440,13 @@ export function CatalogPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefresh}
-            disabled={isLoading}
+            onClick={handleRefreshClick}
+            disabled={isRefreshing}
             className="gap-2"
+            title={canRefresh ? "Refresh build list (hold Shift to force)" : `Refresh available in ${secondsLeft}s (hold Shift to force)`}
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Update
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : (!canRefresh ? `${secondsLeft}s` : 'Update')}
           </Button>
         </div>
       </div>
