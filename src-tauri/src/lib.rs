@@ -384,6 +384,11 @@ fn delete_github_token(
     Ok(())
 }
 
+#[tauri::command]
+fn get_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -441,6 +446,7 @@ pub fn run_tauri_app() {
             save_github_token,
             has_github_token,
             delete_github_token,
+            get_app_version,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/hooks/use-toast';
@@ -43,10 +44,16 @@ export function SettingsPage() {
   const [hasToken, setHasToken] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>('...');
 
   // Check if token exists on mount
   useEffect(() => {
     hasGithubToken().then(setHasToken).catch(() => {});
+  }, []);
+
+  // Load app version on mount
+  useEffect(() => {
+    invoke<string>('get_app_version').then(v => setAppVersion(v)).catch(() => {});
   }, []);
 
   // Handle save token
@@ -503,7 +510,7 @@ export function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p><strong className="text-foreground">LlamaCpp Manager</strong> v0.1.0</p>
+          <p><strong className="text-foreground">LlamaCpp Manager</strong> {appVersion ? `v${appVersion}` : '...'}</p>
           <p>A modern Windows application for managing llama.cpp builds.</p>
           <p>Built with Tauri, React, and Rust.</p>
         </CardContent>

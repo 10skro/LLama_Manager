@@ -123,8 +123,6 @@ LlamaCpp Manager ships with several built-in themes:
 
 | Theme            | Mode  |
 |------------------|-------|
-| Default Dark     | Dark  |
-| Default Light    | Light |
 | Catppuccin Mocha | Dark  |
 | Rosé Pine Dawn   | Light |
 | Rosé Pine Moon   | Dark  |
