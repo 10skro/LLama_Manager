@@ -18,7 +18,7 @@ use crate::config::settings::SettingsManager;
 use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::download::manager::DownloadManager;
-use crate::github::api::GithubClient;
+use crate::github::api::{FetchMode, GithubClient};
 use crate::models::types::{
     AppError, AppSettings, Build, DownloadProgress, DownloadRecord, FavoriteBuild, InstalledVersion,
 };
@@ -34,9 +34,15 @@ async fn fetch_builds(
     state_github: tauri::State<'_, GithubClient>,
     state_db: tauri::State<'_, DbManager>,
     limit: Option<usize>,
+    force_refresh: Option<bool>,
 ) -> Result<Vec<Build>, String> {
     let release_limit = limit.unwrap_or(DEFAULT_RELEASE_LIMIT);
-    github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, release_limit)
+    let mode = if force_refresh == Some(true) {
+        FetchMode::ForceRefresh
+    } else {
+        FetchMode::Smart
+    };
+    github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, release_limit, mode)
         .await
         .map_err(|e| e.to_string())
 }
@@ -47,7 +53,7 @@ async fn check_new_builds(
     state_db: tauri::State<'_, DbManager>,
 ) -> Result<Vec<Build>, String> {
     let installed = VersionManager::list_installed(&state_db).map_err(|e| e.to_string())?;
-    let available = github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, DEFAULT_RELEASE_LIMIT)
+    let available = github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, DEFAULT_RELEASE_LIMIT, FetchMode::Smart)
         .await
         .map_err(|e| e.to_string())?;
     Ok(github::api::check_for_new_builds(&installed, &available))
@@ -386,6 +392,13 @@ fn delete_github_token(
 }
 
 #[tauri::command]
+fn get_catalog_last_fetched(
+    state_db: tauri::State<'_, DbManager>,
+) -> Result<Option<String>, String> {
+    Ok(github::api::get_catalog_last_fetched(&state_db))
+}
+
+#[tauri::command]
 fn get_app_version(app: tauri::AppHandle) -> String {
     app.package_info().version.to_string()
 }
@@ -419,10 +432,16 @@ pub fn run_tauri_app() {
             let github_token = crate::config::credential::CredentialManager::get_github_token()
                 .map_err(|e| e.to_string())?;
 
+            // Load persisted ETag from DB for conditional requests on startup
+            let persisted_etag = {
+                let conn = db.lock_conn().map_err(|e| e.to_string())?;
+                repo::get_setting(&conn, "github_etag").map_err(|e| e.to_string())?
+            };
+
             // Register state
             app.manage(db);
             app.manage(DownloadManager::new());
-            app.manage(GithubClient::new(github_token));
+            app.manage(GithubClient::new(github_token, persisted_etag));
 
             Ok(())
         })
@@ -447,6 +466,7 @@ pub fn run_tauri_app() {
             save_github_token,
             has_github_token,
             delete_github_token,
+            get_catalog_last_fetched,
             get_app_version,
         ])
         .run(tauri::generate_context!())

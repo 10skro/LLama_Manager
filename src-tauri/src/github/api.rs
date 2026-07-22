@@ -5,10 +5,29 @@ use std::sync::OnceLock;
 use chrono::Local;
 use regex::Regex;
 
-use crate::db::repo::{cache_builds, get_cached_builds};
+use crate::db::repo::{cache_builds, get_cached_builds, get_setting, set_setting};
 use crate::models::types::{AppError, Build, InstalledVersion};
 
 const GITHUB_RELEASES_URL: &str = "https://api.github.com/repos/ggml-org/llama.cpp/releases";
+
+/// Default cache TTL in minutes (1 hour).
+const DEFAULT_CACHE_TTL_MINUTES: u64 = 60;
+
+/// Settings keys for catalog cache metadata.
+const SETTING_GITHUB_ETAG: &str = "github_etag";
+const SETTING_CATALOG_LAST_FETCHED: &str = "catalog_last_fetched_at";
+const SETTING_CATALOG_CACHE_TTL: &str = "catalog_cache_ttl_minutes";
+
+/// Fetch mode controlling cache behavior for catalog requests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FetchMode {
+    /// Return cached DB data if fresh (< TTL). Fallback to ETag check if stale.
+    CacheOnly,
+    /// Default: if cache fresh → DB; if stale → ETag check → fetch if needed.
+    Smart,
+    /// Bypass TTL, always check ETag with GitHub.
+    ForceRefresh,
+}
 
 /// Allowed (backend, architecture) pairs for Windows builds.
 const ALLOWED_VARIANTS: [(&str, &str); 5] = [
@@ -39,7 +58,10 @@ pub struct GithubClient {
 }
 
 impl GithubClient {
-    pub fn new(github_token: Option<String>) -> Self {
+    /// Create a new GithubClient.
+    /// If `persisted_etag` is provided, it initializes the in-memory ETag cache
+    /// so that the first request can use a conditional request (If-None-Match).
+    pub fn new(github_token: Option<String>, persisted_etag: Option<String>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("LlamaCpp-Manager/0.1.0")
@@ -47,7 +69,7 @@ impl GithubClient {
                 .build()
                 .expect("Failed to create HTTP client"),
             github_token: Mutex::new(github_token),
-            etag: Mutex::new(None),
+            etag: Mutex::new(persisted_etag),
         }
     }
 
@@ -80,6 +102,64 @@ impl GithubClient {
 
         builder
     }
+}
+
+/// Load the persisted ETag from the settings table.
+/// Returns None if no ETag is stored or on any DB error.
+fn load_persisted_etag(db: &crate::db::connection::DbManager) -> Option<String> {
+    let conn = db.lock_conn().ok()?;
+    get_setting(&conn, SETTING_GITHUB_ETAG).ok()?.clone()
+}
+
+/// Load the last fetched timestamp from the settings table.
+/// Returns None if not set or on any DB error.
+fn load_last_fetched_at(db: &crate::db::connection::DbManager) -> Option<String> {
+    let conn = db.lock_conn().ok()?;
+    get_setting(&conn, SETTING_CATALOG_LAST_FETCHED).ok()?.clone()
+}
+
+/// Save the ETag to the settings table.
+fn save_etag_to_db(db: &crate::db::connection::DbManager, etag: &str) {
+    if let Ok(mut conn) = db.lock_conn() {
+        let _ = set_setting(&mut conn, SETTING_GITHUB_ETAG, etag);
+    }
+}
+
+/// Save the current timestamp to the settings table.
+fn save_last_fetched_at(db: &crate::db::connection::DbManager) {
+    let now = Local::now().to_rfc3339();
+    if let Ok(mut conn) = db.lock_conn() {
+        let _ = set_setting(&mut conn, SETTING_CATALOG_LAST_FETCHED, &now);
+    }
+}
+
+/// Read the configured cache TTL in minutes from settings (fallback to default).
+fn get_cache_ttl_minutes(db: &crate::db::connection::DbManager) -> u64 {
+    let conn = match db.lock_conn() {
+        Ok(c) => c,
+        Err(_) => return DEFAULT_CACHE_TTL_MINUTES,
+    };
+    match get_setting(&conn, SETTING_CATALOG_CACHE_TTL) {
+        Ok(Some(val)) => val.parse::<u64>().ok().unwrap_or(DEFAULT_CACHE_TTL_MINUTES),
+        _ => DEFAULT_CACHE_TTL_MINUTES,
+    }
+}
+
+/// Check whether the cached builds are still fresh (within TTL).
+/// Returns true if `catalog_last_fetched_at` exists and is less than TTL minutes old.
+fn is_cache_fresh(db: &crate::db::connection::DbManager) -> bool {
+    let ttl_minutes = get_cache_ttl_minutes(db);
+    let last_fetched = match load_last_fetched_at(db) {
+        Some(ts) => ts,
+        None => return false,
+    };
+    let fetched_datetime = match chrono::DateTime::parse_from_rfc3339(&last_fetched) {
+        Ok(dt) => dt,
+        Err(_) => return false,
+    };
+    let now = chrono::DateTime::<chrono::Local>::from(Local::now());
+    let fetched_local = chrono::DateTime::<chrono::Local>::from(fetched_datetime);
+    now.signed_duration_since(fetched_local).num_minutes() < ttl_minutes as i64
 }
 
 /// GitHub Release asset structure
@@ -230,28 +310,69 @@ pub async fn fetch_latest_builds(
 
 /// Fetch builds from API, cache them, and fall back to cache on failure.
 ///
+/// The `mode` parameter controls cache behavior:
+/// - `CacheOnly`: Return cached DB data if fresh (< TTL). Fallback to ETag check if stale.
+/// - `Smart` (default): If cache fresh → DB; if stale → ETag check → fetch if needed.
+/// - `ForceRefresh`: Bypass TTL, always check ETag with GitHub.
+///
 /// This function takes the connection lock briefly for caching, then releases it
 /// before the async API call to avoid holding the lock across .await.
 pub async fn fetch_builds_from_cache_or_api(
     github_client: &GithubClient,
     db: &crate::db::connection::DbManager,
     release_limit: usize,
+    mode: FetchMode,
 ) -> Result<Vec<Build>, AppError> {
-    // Try API first (no DB lock needed)
+    // For CacheOnly and Smart modes, check if DB cache is fresh
+    if mode != FetchMode::ForceRefresh {
+        if is_cache_fresh(db) {
+            log::info!("Cache is fresh (within TTL), returning cached builds from database.");
+            let conn = db.lock_conn()?;
+            match get_cached_builds(&conn) {
+                Ok(cached) if !cached.is_empty() => {
+                    log::info!("Returned {} cached builds (cache fresh).", cached.len());
+                    return Ok(cached);
+                }
+                Ok(_) => {
+                    log::warn!("Cache timestamp is fresh but no builds found in cache.");
+                }
+                Err(e) => {
+                    log::warn!("Failed to read cached builds: {}", e);
+                }
+            }
+        } else {
+            log::info!("Cache is stale or missing, will check with GitHub API.");
+        }
+    }
+
+    // Cache is stale/missing or ForceRefresh mode: do ETag check via API
     match fetch_latest_builds(github_client, release_limit).await {
         Ok(FetchResult::Fresh(builds)) => {
-            // Cache the results (brief DB lock, no await after)
+            // 200 OK with fresh data - update cache and persist metadata
             log::info!("Caching {} builds to database.", builds.len());
+
+            // Persist ETag and timestamp to DB (brief lock, no await after)
+            let current_etag = github_client.etag.lock().unwrap().clone();
+            if let Some(ref etag) = current_etag {
+                save_etag_to_db(db, etag);
+            }
+            save_last_fetched_at(db);
+
+            // Cache the builds
             let mut conn = db.lock_conn()?;
             let _ = cache_builds(&mut conn, &builds);
             Ok(builds)
         }
         Ok(FetchResult::CacheHit) => {
             // 304 Not Modified - use cached builds
-            log::info!("Using cached builds from database (304 Not Modified).");
+            log::info!("GitHub API returned 304 Not Modified, using cached builds.");
             let conn = db.lock_conn()?;
             match get_cached_builds(&conn) {
-                Ok(cached) if !cached.is_empty() => Ok(cached),
+                Ok(cached) if !cached.is_empty() => {
+                    // Update last_fetched_at timestamp since we verified freshness with GitHub
+                    save_last_fetched_at(db);
+                    Ok(cached)
+                }
                 Ok(_) => Err(AppError::Generic("No cached builds available".to_string())),
                 Err(cache_err) => {
                     log::error!("Cache fetch failed after 304: {}", cache_err);
@@ -276,6 +397,12 @@ pub async fn fetch_builds_from_cache_or_api(
             }
         }
     }
+}
+
+/// Get the last fetched timestamp from settings.
+/// Returns None if no timestamp is stored.
+pub fn get_catalog_last_fetched(db: &crate::db::connection::DbManager) -> Option<String> {
+    load_last_fetched_at(db)
 }
 
 /// Fetch builds for a specific release tag from GitHub.

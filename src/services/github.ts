@@ -1,8 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Build } from '@/types';
 
-export async function fetchBuilds(limit?: number): Promise<Build[]> {
-  return invoke<Build[]>('fetch_builds', { limit }) as Promise<Build[]>;
+export interface FetchBuildsOptions {
+  limit?: number;
+  forceRefresh?: boolean;
+}
+
+export async function fetchBuilds(options?: FetchBuildsOptions): Promise<Build[]> {
+  return invoke<Build[]>('fetch_builds', {
+    limit: options?.limit,
+    forceRefresh: options?.forceRefresh,
+  }) as Promise<Build[]>;
 }
 
 export async function checkNewBuilds(): Promise<Build[]> {
@@ -19,4 +27,8 @@ export async function searchBuilds(query: string): Promise<Build[]> {
 
 export async function fetchReleaseChangelog(tag: string): Promise<string | null> {
   return invoke<string | null>('fetch_release_changelog', { tag }) as Promise<string | null>;
+}
+
+export async function getCatalogLastFetched(): Promise<string | null> {
+  return invoke<string | null>('get_catalog_last_fetched') as Promise<string | null>;
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment, useCallback } from 'react';
 import { useBuilds } from '@/hooks/useBuilds';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
@@ -6,7 +6,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { installVersion } from '@/services/download';
-import { fetchReleaseByTag, searchBuilds } from '@/services/github';
+import { fetchBuilds, fetchReleaseByTag, searchBuilds, getCatalogLastFetched } from '@/services/github';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ import { ChangelogModal } from '@/components/ChangelogModal';
 import {
   RefreshCw, Search, Download, X,
   CheckCircle2, AlertCircle, Loader2, Star, Info,
-  ChevronDown,
+  ChevronDown, Clock,
 } from 'lucide-react';
 import type { Build } from '@/types';
 
@@ -48,7 +48,7 @@ export function CatalogPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { filters, setFilters } = useAppStore();
-  const { data: builds = [], isLoading, refetch, isError: queryIsError, error: queryError } = useBuilds();
+  const { data: builds = [], isLoading, isError: queryIsError, error: queryError } = useBuilds();
   const { data: installed } = useInstalledVersions();
   const [downloading, setDownloading] = useState<Map<string, number>>(new Map()); // key -> downloadId
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +63,34 @@ export function CatalogPage() {
     });
     return keys;
   }, [favorites]);
+
+  // Last fetched timestamp
+  const [lastFetched, setLastFetched] = useState<string | null>(null);
+
+  // Format relative time (e.g., "5 min ago", "2 hours ago")
+  const formatRelativeTime = useCallback((isoString: string): string => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 60) return 'just now';
+    if (diffMin < 60) return `${diffMin} min ago`;
+    if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+    return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+  }, []);
+
+  // Load last fetched timestamp
+  useEffect(() => {
+    let cancelled = false;
+    getCatalogLastFetched().then(ts => {
+      if (!cancelled) setLastFetched(ts);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Changelog modal state
   const [changelogModal, setChangelogModal] = useState<{ open: boolean; tag: string; build: string }>({
@@ -212,7 +240,12 @@ export function CatalogPage() {
   const handleRefresh = async () => {
     setError(null);
     try {
-      await refetch();
+      // Force refresh: bypass cache TTL, always check ETag with GitHub
+      const freshBuilds = await fetchBuilds({ forceRefresh: true });
+      queryClient.setQueryData(['builds', undefined], freshBuilds);
+      // Update last fetched timestamp
+      const ts = await getCatalogLastFetched();
+      setLastFetched(ts);
       toast({
         title: 'Catalog updated',
         description: 'Build list has been updated.',
@@ -364,6 +397,12 @@ export function CatalogPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {lastFetched && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Last updated: {formatRelativeTime(lastFetched)}
+            </span>
+          )}
           <Button
             variant="outline"
             size="sm"

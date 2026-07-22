@@ -46,8 +46,8 @@ function App() {
   // Prefetch builds on app startup so the catalog page has data ready
   useEffect(() => {
     queryClient.prefetchQuery({
-      queryKey: ['builds', 10], // Match default buildLimit from CatalogPage
-      queryFn: () => fetchBuilds(10),
+      queryKey: ['builds', undefined], // Match useBuilds() default (no limit)
+      queryFn: () => fetchBuilds({ limit: undefined, forceRefresh: false }),
       staleTime: Infinity,
     }).catch(() => {
       // Silently fail — catalog page will handle errors on its own

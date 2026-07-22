@@ -5,7 +5,7 @@ import type { Build } from '@/types';
 export function useBuilds(limit?: number) {
   return useQuery<Build[], Error>({
     queryKey: ['builds', limit],
-    queryFn: () => fetchBuilds(limit),
+    queryFn: () => fetchBuilds({ limit }),
     staleTime: Infinity, // Cache for entire session — only refresh on explicit refetch
     retry: 2,
   });
@@ -21,7 +21,7 @@ export function useCheckNewBuilds(limit?: number) {
     queryKey: ['new-builds', limit],
     queryFn: async () => {
       const [builds, newBuilds] = await Promise.all([
-        fetchBuilds(limit),
+        fetchBuilds({ limit }),
         checkNewBuilds(),
       ]);
       return { builds, newBuilds };
