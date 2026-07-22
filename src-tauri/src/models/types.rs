@@ -64,6 +64,8 @@ pub struct AppSettings {
     pub github_token: Option<String>,
     #[serde(default)]
     pub font_family: Option<String>,
+    #[serde(default)]
+    pub toast_duration: Option<i64>, // milliseconds, default 5000
 }
 
 /// Version info detected from an installed directory

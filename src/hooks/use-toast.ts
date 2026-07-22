@@ -1,14 +1,15 @@
 import * as React from 'react';
 import type { ToastActionElement, ToastProps } from '@/components/ui/toast';
+import { useAppStore } from '@/store/useAppStore';
 
 const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 500;
 
 type ToasterToast = ToastProps & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  duration?: number;
 };
 
 const actionTypes = {
@@ -51,8 +52,13 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-const addToRemoveQueue = (toastId: string) => {
+const addToRemoveQueue = (toastId: string, delay: number) => {
   if (toastTimeouts.has(toastId)) {
+    return;
+  }
+
+  // Permanent toasts (duration 0) are not auto-removed
+  if (delay === 0) {
     return;
   }
 
@@ -62,7 +68,7 @@ const addToRemoveQueue = (toastId: string) => {
       type: 'REMOVE_TOAST',
       toastId: toastId,
     });
-  }, TOAST_REMOVE_DELAY);
+  }, delay);
 
   toastTimeouts.set(toastId, timeout);
 };
@@ -87,10 +93,13 @@ export const reducer = (state: State, action: Action): State => {
       const { toastId } = action;
 
       if (toastId) {
-        addToRemoveQueue(toastId);
+        const toast = state.toasts.find((t) => t.id === toastId);
+        const duration = toast?.duration ?? 5000;
+        addToRemoveQueue(toastId, duration);
       } else {
         state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id);
+          const duration = toast.duration ?? 5000;
+          addToRemoveQueue(toast.id, duration);
         });
       }
 
@@ -136,6 +145,10 @@ type Toast = Omit<ToasterToast, 'id'>;
 function toast({ ...props }: Toast) {
   const id = genId();
 
+  // Read toast duration from settings
+  const settings = useAppStore.getState().settings;
+  const duration = settings?.toast_duration ?? 5000;
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: 'UPDATE_TOAST',
@@ -153,6 +166,7 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
+      duration,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss();

@@ -30,6 +30,11 @@ impl SettingsManager {
 
         let font_family = map.remove("font_family");
 
+        let toast_duration_str = map.remove("toast_duration");
+        let toast_duration = toast_duration_str
+            .and_then(|s| s.parse::<i64>().ok())
+            .or(Some(5000)); // default 5000ms
+
         Ok(AppSettings {
             storage_path,
             theme,
@@ -37,6 +42,7 @@ impl SettingsManager {
             auto_check_updates,
             github_token,
             font_family,
+            toast_duration,
         })
     }
 
@@ -74,6 +80,15 @@ impl SettingsManager {
                 let _ = repo::delete_setting(&conn, "font_family");
             }
         }
+        // Save toast_duration
+        match settings.toast_duration {
+            Some(duration) => {
+                repo::set_setting(&conn, "toast_duration", &duration.to_string())?;
+            }
+            None => {
+                let _ = repo::delete_setting(&conn, "toast_duration");
+            }
+        }
         Ok(())
     }
 
@@ -93,6 +108,9 @@ impl SettingsManager {
         }
         if repo::get_setting(&conn, "font_family").ok().flatten().is_none() {
             repo::set_setting(&conn, "font_family", "Instrument Sans")?;
+        }
+        if repo::get_setting(&conn, "toast_duration").ok().flatten().is_none() {
+            repo::set_setting(&conn, "toast_duration", "5000")?;
         }
 
         Ok(())
