@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  :root {
+    --background: 240 24% 15%;
+    --foreground: 226 64% 88%;
+    --card: 240 23% 13%;
+    --card-foreground: 227 35% 80%;
+    --primary: 217 92% 76%;
+    --primary-foreground: 0 0% 15%;
+    --secondary: 234 13% 31%;
+    --secondary-foreground: 226 64% 88%;
+    --muted: 234 13% 31%;
+    --muted-foreground: 231 11% 47%;
+    --accent: 267 84% 81%;
+    --accent-foreground: 0 0% 15%;
+    --destructive: 343 81% 75%;
+    --destructive-foreground: 0 0% 15%;
+    --border: 240 23% 9%;
+    --input: 240 23% 9%;
+    --ring: 217 92% 76%;
+    --sidebar: 240 23% 11%;
+    --radius: 0.75rem;
+    --rosewater: 10 56% 91%;
+    --flamingo: 0 59% 88%;
+    --pink: 316 72% 86%;
+    --mauve: 267 84% 81%;
+    --red: 343 81% 75%;
+    --maroon: 350 65% 77%;
+    --peach: 23 92% 75%;
+    --yellow: 41 86% 83%;
+    --green: 115 54% 76%;
+    --teal: 170 57% 73%;
+    --sky: 189 71% 73%;
+    --sapphire: 199 76% 69%;
+    --blue: 217 92% 76%;
+    --lavender: 232 97% 85%;
+    --surface: 234 13% 31%;
+    --surface-0: 237 16% 23%;
+    --surface-1: 234 13% 31%;
+    --surface-2: 233 12% 39%;
+    --overlay: 231 11% 47%;
+    --overlay-0: 231 11% 47%;
+    --overlay-1: 230 13% 55%;
+    --overlay-2: 228 17% 64%;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+}
