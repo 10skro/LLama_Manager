@@ -73,6 +73,7 @@ Montrer le changelog généré et demander :
 2. Confirmer ou modifier le changelog
 
 ### 6. Exécuter la release (après confirmation)
+
 ```bash
 # Mettre à jour les 3 fichiers de version
 # (package.json, Cargo.toml, tauri.conf.json)
@@ -84,13 +85,69 @@ git commit -m "bump: version NEW_VERSION"
 # Créer le tag annoté
 git tag -a vNEW_VERSION -m "Release vNEW_VERSION"
 
-# Push
+# Push commits + tag
 git push origin main
 git push origin vNEW_VERSION
 ```
 
-### 7. Fournir le body de release GitHub
-Générer le contenu Markdown final que l'utilisateur pourra copier-coller sur GitHub → Releases → Edit release.
+### 7. Créer la release GitHub automatiquement
+
+**Vérifier d'abord si `gh` est installé :**
+```bash
+gh --version
+```
+
+**Si `gh` est disponible → créer la release directement :**
+
+```bash
+gh release create vNEW_VERSION \
+  --repo 10skro/LLamaCpp_Manager \
+  --title "vNEW_VERSION" \
+  --generate-notes
+```
+
+Puis mettre à jour la description de la release avec le changelog généré :
+
+```bash
+# Écrire le changelog dans un fichier temporaire
+echo "## Changements
+
+[CONTENU DU CHANGELOG ICI]" > /tmp/release_body.md
+
+# Mettre à jour la release
+gh release edit vNEW_VERSION \
+  --repo 10skro/LLamaCpp_Manager \
+  --notes-file /tmp/release_body.md
+```
+
+**Si `gh` n'est PAS disponible → fallback API curl :**
+
+```bash
+# Écrire le changelog dans un fichier
+echo 'CHANGELOG_JSON_ESCAPED' > /tmp/release_body.json
+
+curl -s -X POST \
+  -H "Authorization: Bearer ${GITHUB_TOKEN:?Erreur: GITHUB_TOKEN non défini}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "Content-Type: application/json" \
+  "https://api.github.com/repos/10skro/LLamaCpp_Manager/releases" \
+  -d "{
+    \"tag_name\": \"vNEW_VERSION\",
+    \"target_commitish\": \"main\",
+    \"name\": \"vNEW_VERSION\",
+    \"body\": \"CHANGELOG_MD_CONTENT\",
+    \"draft\": false,
+    \"prerelease\": false
+  }"
+```
+
+**Si les deux méthodes échouent → fournir le body prêt à copier-coller** et indiquer à l'utilisateur de créer la release manuellement sur GitHub.
+
+### 8. Confirmation finale
+Afficher le lien de la release :
+```
+✅ Release créée : https://github.com/10skro/LLamaCpp_Manager/releases/tag/vNEW_VERSION
+```
 
 ## Règles importantes
 - **Jamais** inclure de code dans le changelog
