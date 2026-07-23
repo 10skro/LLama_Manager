@@ -8,6 +8,11 @@ interface ActiveDownloadInfo {
   status: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled';
 }
 
+// Helper to create composite key
+function makeKey(buildNumber: string, backend: string): string {
+  return `${buildNumber}|${backend}`;
+}
+
 interface AppState {
   // Sidebar
   activeRoute: string;
@@ -18,10 +23,11 @@ interface AppState {
   setFilters: (filters: Partial<BuildFilters>) => void;
 
   // Downloads
-  activeDownloads: Map<string, ActiveDownloadInfo>; // build_number -> {id, progress}
-  updateDownloadProgress: (build: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
-  clearDownload: (build: string) => void;
-  getDownloadId: (build: string) => number | undefined;
+  activeDownloads: Map<string, ActiveDownloadInfo>; // composite key "build_number|backend" -> {id, progress, status}
+  updateDownloadProgress: (buildNumber: string, backend: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
+  clearDownload: (buildNumber: string, backend: string) => void;
+  clearDownloadByBuildNumber: (buildNumber: string) => void;
+  getDownloadId: (buildNumber: string, backend: string) => number | undefined;
 
   // Settings
   settings: AppSettings | null;
@@ -63,25 +69,39 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Downloads
   activeDownloads: new Map(),
-  updateDownloadProgress: (build, progress, downloadId, status) =>
+  updateDownloadProgress: (buildNumber, backend, progress, downloadId, status) =>
     set((state) => {
+      const key = makeKey(buildNumber, backend);
       const next = new Map(state.activeDownloads);
-      const existing = next.get(build);
-      next.set(build, {
+      const existing = next.get(key);
+      next.set(key, {
         id: downloadId ?? existing?.id ?? 0,
         progress,
         status: status ?? existing?.status ?? 'downloading',
       });
       return { activeDownloads: next };
     }),
-  clearDownload: (build) =>
+  clearDownload: (buildNumber, backend) =>
     set((state) => {
+      const key = makeKey(buildNumber, backend);
       const next = new Map(state.activeDownloads);
-      next.delete(build);
+      next.delete(key);
       return { activeDownloads: next };
     }),
-  getDownloadId: (build) => {
-    return get().activeDownloads.get(build)?.id;
+  clearDownloadByBuildNumber: (buildNumber) =>
+    set((state) => {
+      const next = new Map(state.activeDownloads);
+      for (const [key] of next.entries()) {
+        if (key.startsWith(buildNumber + '|')) {
+          next.delete(key);
+          break;
+        }
+      }
+      return { activeDownloads: next };
+    }),
+  getDownloadId: (buildNumber, backend) => {
+    const key = makeKey(buildNumber, backend);
+    return get().activeDownloads.get(key)?.id;
   },
 
   // Settings
@@ -98,7 +118,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Theme
   activeTheme: DEFAULT_THEME_ID,
-  setActiveTheme: (themeId) => set({ activeTheme: themeId }),
+  setActiveTheme: (themeId: string) => set({ activeTheme: themeId }),
 
   // UI
   sidebarCollapsed: false,

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useDownloadQueue } from '@/store/useDownloadQueue';
 import { listen } from '@tauri-apps/api/event';
@@ -13,12 +13,45 @@ import type { DownloadProgress as DownloadProgressType } from '@/types';
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
 
+// Helper to parse composite key "build_number|backend"
+function parseDownloadKey(key: string): { buildNumber: string; backend: string } {
+  const idx = key.indexOf('|');
+  if (idx < 0) return { buildNumber: key, backend: '' };
+  return { buildNumber: key.slice(0, idx), backend: key.slice(idx + 1) };
+}
+
 export function DownloadPanel() {
   const activeDownloads = useAppStore((state) => state.activeDownloads);
-  const clearDownload = useAppStore((state) => state.clearDownload);
+  const updateDownloadProgress = useAppStore((state) => state.updateDownloadProgress);
+  const clearDownloadByBuildNumber = useAppStore((state) => state.clearDownloadByBuildNumber);
   const queue = useDownloadQueue((state) => state.queue);
   const completeActive = useDownloadQueue((state) => state.completeActive);
   const removeFromQueue = useDownloadQueue((state) => state.removeFromQueue);
+
+  // FIX: Wrap in useCallback to prevent stale closure issues
+  const startQueuedDownload = useCallback(async (next: { build: any; addedAt: number }) => {
+    setTimeout(async () => {
+      try {
+        // FIX: Set active BEFORE starting download to eliminate race condition
+        useDownloadQueue.setState({ active: next.build });
+        const downloadId = await installVersion(next.build);
+        // Register in activeDownloads immediately
+        const store = useAppStore.getState();
+        store.updateDownloadProgress(next.build.build_number, next.build.backend, 0, downloadId, 'downloading');
+      } catch (err) {
+        console.error('Failed to start queued download:', err);
+        // Reset active since it failed
+        useDownloadQueue.setState({ active: null });
+        // Try next in queue
+        const queueState = useDownloadQueue.getState();
+        if (queueState.queue.length > 0) {
+          const retryNext = { build: queueState.queue[0].build, addedAt: queueState.queue[0].addedAt };
+          useDownloadQueue.setState({ queue: queueState.queue.slice(1) });
+          await startQueuedDownload(retryNext);
+        }
+      }
+    }, 1000);
+  }, []);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -31,12 +64,13 @@ export function DownloadPanel() {
         // Clean up stale entries from the store on mount
         const store = useAppStore.getState();
         const currentDownloads = store.activeDownloads;
-        for (const [build, info] of currentDownloads.entries()) {
+        for (const [key, info] of currentDownloads.entries()) {
           if (info.status === 'downloading') {
             try {
               const status = await getDownloadStatus(info.id);
               if (status && !['downloading', 'pending', 'extracting'].includes(status.status)) {
-                store.clearDownload(build);
+                const { buildNumber, backend } = parseDownloadKey(key);
+                store.clearDownload(buildNumber, backend);
               }
             } catch (e) {
               console.debug('Download status check failed (keeping entry):', e);
@@ -48,9 +82,31 @@ export function DownloadPanel() {
           if (destroyed) return;
           const p = event.payload;
           const store = useAppStore.getState();
-          store.updateDownloadProgress(p.build_number, p.percentage, p.download_id, p.status);
+
+          // FIX: Find backend from activeDownloads, fallback to queue.active
+          let backend = '';
+          for (const [key] of store.activeDownloads.entries()) {
+            const { buildNumber } = parseDownloadKey(key);
+            if (buildNumber === p.build_number) {
+              const parsed = parseDownloadKey(key);
+              backend = parsed.backend;
+              break;
+            }
+          }
+          // Fallback: check queue's active build
+          if (!backend) {
+            const queueState = useDownloadQueue.getState();
+            if (queueState.active?.build_number === p.build_number) {
+              backend = queueState.active.backend;
+            }
+          }
+
+          if (backend) {
+            store.updateDownloadProgress(p.build_number, backend, p.percentage, p.download_id, p.status);
+          }
+
           if (TERMINAL_STATUSES.has(p.status)) {
-            store.clearDownload(p.build_number);
+            clearDownloadByBuildNumber(p.build_number);
             const next = completeActive();
             if (next) startQueuedDownload(next);
           }
@@ -63,20 +119,22 @@ export function DownloadPanel() {
             polling = true;
             try {
               const store = useAppStore.getState();
-              for (const [build, info] of store.activeDownloads.entries()) {
+              for (const [key, info] of store.activeDownloads.entries()) {
                 if (destroyed) return;
                 if (info.status === 'downloading') {
                   try {
                     const status = await getDownloadStatus(info.id);
                     if (status) {
                       const dbStatus = status.status;
-                        if (dbStatus === 'completed' || dbStatus === 'failed' || dbStatus === 'cancelled') {
-                        store.clearDownload(build);
+                      if (dbStatus === 'completed' || dbStatus === 'failed' || dbStatus === 'cancelled') {
+                        const { buildNumber, backend } = parseDownloadKey(key);
+                        store.clearDownload(buildNumber, backend);
                         const next = completeActive();
                         if (next) startQueuedDownload(next);
                       }
                       if (dbStatus === 'extracting') {
-                        store.updateDownloadProgress(build, 100, info.id, 'extracting');
+                        const { buildNumber, backend } = parseDownloadKey(key);
+                        store.updateDownloadProgress(buildNumber, backend, 100, info.id, 'extracting');
                       }
                     }
                   } catch (e) {
@@ -101,41 +159,25 @@ export function DownloadPanel() {
       if (pollInterval) clearInterval(pollInterval);
       if (unlisten) unlisten();
     };
-  }, []);
+  }, [clearDownloadByBuildNumber, completeActive, startQueuedDownload]);
 
-  // Shared function to start the next queued download
-  const startQueuedDownload = async (next: { build: any; addedAt: number }) => {
-    setTimeout(async () => {
-      try {
-        const downloadId = await installVersion(next.build);
-        const store = useAppStore.getState();
-        store.updateDownloadProgress(next.build.build_number, 0, downloadId, 'downloading');
-        useDownloadQueue.setState({ active: next.build });
-      } catch (err) {
-        console.error('Failed to start queued download:', err);
-        // Direct queue access — doesn't depend on active being set
-        const queueState = useDownloadQueue.getState();
-        if (queueState.queue.length > 0) {
-          const retryNext = { build: queueState.queue[0].build, addedAt: queueState.queue[0].addedAt };
-          useDownloadQueue.setState({ queue: queueState.queue.slice(1) });
-          await startQueuedDownload(retryNext);
-        }
-      }
-    }, 1000);
-  };
-
-  const handleCancel = async (build: string, downloadId: number) => {
+  // FIX: Cancel updates status to 'cancelled' instead of clearing immediately
+  // This keeps the entry visible until the backend event confirms cancellation
+  const handleCancelActive = async (buildNumber: string, backend: string, downloadId: number) => {
     try {
       await cancelDownload(downloadId);
     } catch (err) {
       console.error('Failed to cancel download:', err);
     } finally {
-      clearDownload(build);
-      const next = completeActive();
-      if (next) {
-        startQueuedDownload(next);
-      }
+      // Update status to cancelled (keep entry visible)
+      updateDownloadProgress(buildNumber, backend, 0, downloadId, 'cancelled');
+      // The event listener will call clearDownloadByBuildNumber + completeActive when 'cancelled' event arrives
     }
+  };
+
+  // Cancel a queued download (just remove from queue, do not touch active download)
+  const handleCancelQueued = (buildNumber: string, backend: string) => {
+    removeFromQueue(buildNumber, backend);
   };
 
   // Status label helper
@@ -144,6 +186,9 @@ export function DownloadPanel() {
       case 'extracting': return 'Extracting...';
       case 'downloading': return 'Downloading...';
       case 'pending': return 'Waiting...';
+      case 'cancelled': return 'Cancelled';
+      case 'failed': return 'Failed';
+      case 'completed': return 'Completed';
       default: return status;
     }
   };
@@ -165,35 +210,45 @@ export function DownloadPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Active downloads */}
-          {activeEntries.map(([build, info]) => (
-            <div key={build} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-sm font-medium">{build}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{Math.round(info.progress)}%</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => handleCancel(build, info.id)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+          {activeEntries.map(([key, info]) => {
+            const { buildNumber, backend } = parseDownloadKey(key);
+            return (
+              <div key={key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-medium">{buildNumber}</span>
+                    <span className="text-xs text-muted-foreground">({backend})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{Math.round(info.progress)}%</span>
+                    {info.status === 'downloading' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleCancelActive(buildNumber, backend, info.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Progress value={info.progress} className="h-2" />
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    {info.status === 'extracting' ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : info.status === 'cancelled' || info.status === 'failed' ? (
+                      <X className="h-3 w-3" />
+                    ) : (
+                      <Download className="h-3 w-3" />
+                    )}
+                    <span>{getStatusLabel(info.status)}</span>
+                  </div>
                 </div>
               </div>
-              <Progress value={info.progress} className="h-2" />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  {info.status === 'extracting' ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Download className="h-3 w-3" />
-                  )}
-                  <span>{getStatusLabel(info.status)}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Queued downloads */}
           {queue.length > 0 && (
@@ -214,7 +269,7 @@ export function DownloadPanel() {
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5"
-                    onClick={() => removeFromQueue(item.build.build_number, item.build.backend)}
+                    onClick={() => handleCancelQueued(item.build.build_number, item.build.backend)}
                   >
                     <X className="h-2.5 w-2.5" />
                   </Button>

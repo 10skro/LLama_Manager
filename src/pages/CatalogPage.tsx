@@ -247,12 +247,21 @@ export function CatalogPage() {
     enqueueDownload(build);
 
     // If this build becomes active immediately, start the download
+    // FIX: Use value comparison instead of reference equality
     const queueState = useDownloadQueue.getState();
-    if (queueState.active === build) {
+    const isActive = queueState.active?.build_number === build.build_number &&
+                     queueState.active?.backend === build.backend;
+
+    if (isActive) {
       const compositeKey = getBuildId(build.build_number, build.backend);
       try {
         const downloadId = await installVersion(build);
         setDownloading(prev => new Map(prev).set(compositeKey, downloadId));
+
+        // FIX: Register in activeDownloads so DownloadPanel event listener can track it
+        const appStore = useAppStore.getState();
+        appStore.updateDownloadProgress(build.build_number, build.backend, 0, downloadId, 'downloading');
+
         queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
         toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend})...` });
       } catch (err: any) {
@@ -260,6 +269,9 @@ export function CatalogPage() {
         toast({ title: 'Download failed', description: err.message || 'Could not start download.' });
         // Remove from active since it failed
         useDownloadQueue.setState({ active: null });
+        // Also clean up activeDownloads
+        const appStore = useAppStore.getState();
+        appStore.clearDownload(build.build_number, build.backend);
       }
     } else {
       toast({ title: 'Added to queue', description: `${build.build_number} (${build.backend}) will download after current ones.` });
