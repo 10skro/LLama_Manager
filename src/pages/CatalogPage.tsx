@@ -24,7 +24,7 @@ import {
 import { ChangelogModal } from '@/components/ChangelogModal';
 import { BuildStatusBadge } from '@/components/BuildStatusBadge';
 import {
-  RefreshCw, Search, Download, X,
+  RefreshCw, Search, X,
   AlertCircle, Loader2, Star, Info,
   ChevronDown, Clock, HardDrive,
 } from 'lucide-react';
@@ -776,17 +776,16 @@ export function CatalogPage() {
                                        Downloading
                                      </Button>
                                    ) : (
-                                     <Button
-                                       size="sm"
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         handleDownload(build);
-                                       }}
-                                        className="gap-2 w-[80px] justify-center"
-                                     >
-                                       <Download className="h-4 w-4" />
-                                       Download
-                                     </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDownload(build);
+                                        }}
+                                         className="w-[80px] justify-center"
+                                      >
+                                        Download
+                                      </Button>
                                    )}
                                  </div>
                                </TableCell>
