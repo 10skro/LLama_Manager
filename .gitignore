@@ -41,3 +41,8 @@ Thumbs.db
 
 # Database files
 *.db
+
+# OpenCode AI assistant config
+opencode.json
+opencode.jsonc
+.opencode/
