@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   FolderOpen, Save, HardDrive, Palette, Bell,
-  Info, Loader2, CheckCircle2, Eye, EyeOff,
+  Info, Loader2, Eye, EyeOff,
   AlertCircle, X, Check, ChevronDown, ChevronUp, Settings2,
 } from 'lucide-react';
 import type { AppSettings } from '@/types';
@@ -33,8 +33,6 @@ export function SettingsPage() {
   const { settings, setSettings } = useAppStore();
   const { setActiveTheme } = useTheme();
   const { toast } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [isBrowsing, setIsBrowsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,22 +98,6 @@ export function SettingsPage() {
     } catch (err) {
       console.error('Failed to load settings:', err);
       setError('Failed to load settings. Please try again.');
-    }
-  };
-
-  const handleSave = async () => {
-    if (!settings) return;
-    setError(null);
-    setIsSaving(true);
-    try {
-      await saveSettings(settings);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
-    } catch (err) {
-      console.error('Failed to save settings:', err);
-      setError('Failed to save settings. Please try again.');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -330,7 +312,21 @@ export function SettingsPage() {
             <Button
               variant={settings?.auto_check_updates ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('auto_check_updates', !settings?.auto_check_updates)}
+              onClick={() => {
+                const newValue = !settings?.auto_check_updates;
+                updateSetting('auto_check_updates', newValue);
+                // Auto-save (fire-and-forget)
+                if (settings) {
+                  saveSettings({ ...settings, auto_check_updates: newValue }).catch(err => {
+                    console.error('Failed to auto-save auto_check_updates:', err);
+                    toast({
+                      title: 'Save failed',
+                      description: 'Could not persist setting. Changes will be lost on restart.',
+                      variant: 'destructive',
+                    });
+                  });
+                }
+              }}
             >
               {settings?.auto_check_updates ? 'On' : 'Off'}
             </Button>
@@ -482,28 +478,6 @@ export function SettingsPage() {
           </CardContent>
         )}
       </Card>
-
-      {/* Save Button */}
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || saveSuccess}>
-          {isSaving ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Saving...
-            </>
-          ) : saveSuccess ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Saved!
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </>
-          )}
-        </Button>
-      </div>
 
       {/* About */}
       <Card className="border-border/50 bg-card/50">
