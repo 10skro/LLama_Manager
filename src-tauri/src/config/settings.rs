@@ -111,9 +111,20 @@ impl SettingsManager {
             _ => fallback.to_string(),
         };
 
+        // Ensure the storage directory exists BEFORE canonicalize
+        if let Err(e) = std::fs::create_dir_all(&path) {
+            log::warn!("Failed to create storage directory {}: {}", path, e);
+        }
+
         // Reject system directories
         let path_buf = std::path::PathBuf::from(&path);
-        let resolved = path_buf.canonicalize().unwrap_or(path_buf.clone());
+        let resolved = match path_buf.canonicalize() {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!("Failed to canonicalize storage path {}: {}", path, e);
+                path_buf.clone()
+            }
+        };
         let path_str = resolved.to_string_lossy().to_string();
         let system_dirs = vec![
             "C:\\Windows",
@@ -124,11 +135,6 @@ impl SettingsManager {
         if system_dirs.iter().any(|sd| path_str.starts_with(sd)) {
             log::warn!("Storage path {} is in a system directory, using fallback", path_str);
             path = fallback.to_string();
-        }
-
-        // Ensure the storage directory exists
-        if let Err(e) = std::fs::create_dir_all(&path) {
-            log::warn!("Failed to create storage directory {}: {}", path, e);
         }
 
         path
