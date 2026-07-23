@@ -54,7 +54,9 @@ export function CatalogPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { filters, setFilters } = useAppStore();
-  const activeDownloads = useAppStore((s) => s.activeDownloads);
+  // Only re-renders when download start/stop changes the set of downloading keys,
+  // NOT on every progress tick (which would cause ~800 re-renders/sec)
+  const downloadingKeys = useAppStore((s) => s.downloadingKeys);
   const { data: builds = [], isLoading, isError: queryIsError, error: queryError } = useBuilds();
   const { data: installed } = useInstalledVersions();
   // Downloading state is now derived from the global activeDownloads store
@@ -219,7 +221,7 @@ export function CatalogPage() {
     setError(null);
 
     // Check if already downloading (any download in progress)
-    const hasActiveDownload = activeDownloads.size > 0;
+    const hasActiveDownload = downloadingKeys.size > 0;
     if (hasActiveDownload) {
       toast({ title: 'Already downloading', description: 'Only one download at a time is allowed.' });
       return;
@@ -670,10 +672,10 @@ export function CatalogPage() {
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                           {/* Col 6: Status */}
                            <TableCell className="text-center">
-                              <BuildStatusBadge
-                                installed={variants.some(v => installedKeys.has(getBuildId(v.build_number, v.backend)))}
-                                 downloading={variants.some(v => activeDownloads.has(makeKey(v.build_number, v.backend)))}
-                              />
+                               <BuildStatusBadge
+                                 installed={variants.some(v => installedKeys.has(getBuildId(v.build_number, v.backend)))}
+                                  downloading={variants.some(v => downloadingKeys.has(makeKey(v.build_number, v.backend)))}
+                               />
                            </TableCell>
                            {/* Col 7: Actions (empty on parent - actions moved to child rows) */}
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
@@ -684,7 +686,7 @@ export function CatalogPage() {
                           const rowKey = getBuildRowKey(build);
                           const compositeKey = getBuildId(build.build_number, build.backend);
                           const isInstalled = installedKeys.has(compositeKey);
-                           const isDownloading = activeDownloads.has(makeKey(build.build_number, build.backend));
+                           const isDownloading = downloadingKeys.has(makeKey(build.build_number, build.backend));
                           const isFavorited = favoriteKeys.has(rowKey);
                           const isLast = idx === variants.length - 1;
                           const connector = isLast ? '└─ ' : '│  ';

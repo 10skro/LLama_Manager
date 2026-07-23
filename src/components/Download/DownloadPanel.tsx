@@ -40,11 +40,13 @@ export function DownloadPanel() {
           // Strategy 1: Match by download_id (exact match)
           let matchedBuildNumber = '';
           let matchedBackend = '';
+          let matchedKey = '';
           for (const [key, info] of store.activeDownloads.entries()) {
             if (info.id === p.download_id) {
               const parsed = parseDownloadKey(key);
               matchedBuildNumber = parsed.buildNumber;
               matchedBackend = parsed.backend;
+              matchedKey = key;
               break;
             }
           }
@@ -56,6 +58,7 @@ export function DownloadPanel() {
               if (parsed.buildNumber === p.build_number) {
                 matchedBuildNumber = parsed.buildNumber;
                 matchedBackend = parsed.backend;
+                matchedKey = key;
                 // Update the download_id and progress in a single call
                 store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
                 break;
@@ -64,7 +67,14 @@ export function DownloadPanel() {
           }
 
           if (matchedBuildNumber) {
-            store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
+            // Defensive: during extraction, never allow progress to go backwards
+            if (p.status === 'extracting' && matchedKey) {
+              const existingProgress = store.activeDownloads.get(matchedKey)?.progress ?? 0;
+              const safePercentage = Math.max(p.percentage, existingProgress);
+              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, safePercentage, p.download_id, p.status);
+            } else {
+              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
+            }
           }
 
           const isTerminal = ['completed', 'failed', 'cancelled'].includes(p.status);

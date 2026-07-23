@@ -10,6 +10,7 @@ mod utils;
 mod version;
 
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
@@ -42,10 +43,22 @@ fn spawn_progress_forwarder(
     tokio::spawn(async move {
         let mut update_counter: u32 = 0;
         const DB_WRITE_INTERVAL: u32 = 5;
+        // Throttle frontend event emission to max ~5 events/sec (200ms interval)
+        let mut last_emit = Instant::now();
+        const EMIT_INTERVAL: Duration = Duration::from_millis(200);
+
         while let Some(progress) = rx.recv().await {
-            let _ = app.emit("download-progress", &progress);
             update_counter += 1;
             let is_terminal = ["completed", "failed", "cancelled", "downloaded"].contains(&progress.status.as_str());
+
+            // THROTTLED emit: only emit if enough time has passed OR it's a terminal event
+            let now = Instant::now();
+            if is_terminal || now.duration_since(last_emit) >= EMIT_INTERVAL {
+                let _ = app.emit("download-progress", &progress);
+                last_emit = now;
+            }
+
+            // DB write throttling (every 5 events or terminal) - keep existing logic
             if is_terminal || update_counter % DB_WRITE_INTERVAL == 0 {
                 let id = download_id.unwrap_or(progress.download_id);
                 if let Ok(conn) = db.lock_conn() {

@@ -166,24 +166,37 @@ impl VersionManager {
             }
         }
 
-        // 2. Emit extracting status
-        {
+        // 2. Get total_size from DB and update status to extracting
+        let total_size = {
             let conn = db.lock_conn()?;
-            repo::update_download_progress(&conn, download_id, 0, "extracting")?;
-        }
+            let rec = repo::get_download(&conn, download_id)?
+                .ok_or_else(|| AppError::Generic("Download record not found".to_string()))?;
+            // Update status to extracting, keeping downloaded_size at total (download is complete)
+            repo::update_download_progress(&conn, download_id, rec.total_size, "extracting")?;
+            rec.total_size
+        };
+
+        // 3. Emit extracting status starting at 90% (download was 0-100%, extraction is 90-99%)
         let _ = progress_tx.send(DownloadProgress {
             download_id,
             build_number: paths.build_number.clone(),
             downloaded: 0,
-            total: 0,
+            total: total_size,
             speed: 0.0,
-            percentage: 0.0,
+            percentage: 90.0,
             eta_seconds: 0.0,
             status: "extracting".to_string(),
         }).await;
 
-        // 3. Extract to install directory
-        FileManager::extract_zip(&paths.download_path, &paths.install_path)?;
+        // 4. Extract to install directory with progress reporting
+        FileManager::extract_zip(
+            &paths.download_path,
+            &paths.install_path,
+            download_id,
+            &paths.build_number,
+            total_size,
+            Some(progress_tx.clone()),
+        ).await?;
 
         // 4. Validate installation
         let valid = FileManager::validate_installation(&paths.install_path)?;

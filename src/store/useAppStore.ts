@@ -24,6 +24,7 @@ interface AppState {
 
   // Downloads
   activeDownloads: Map<string, ActiveDownloadInfo>; // composite key "build_number|backend" -> {id, progress, status}
+  downloadingKeys: Set<string>; // only keys with status 'downloading' or 'extracting' (stable reference during progress ticks)
   updateDownloadProgress: (buildNumber: string, backend: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
   clearDownload: (buildNumber: string, backend: string) => void;
   getDownloadId: (buildNumber: string, backend: string) => number | undefined;
@@ -68,24 +69,47 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Downloads
   activeDownloads: new Map(),
+  downloadingKeys: new Set(),
   updateDownloadProgress: (buildNumber, backend, progress, downloadId, status) =>
     set((state) => {
       const key = makeKey(buildNumber, backend);
+      const existing = state.activeDownloads.get(key);
+      const newStatus = status ?? existing?.status ?? 'downloading';
+
+      // Skip if progress and status are identical (prevents unnecessary re-renders)
+      if (existing && existing.progress === progress && existing.status === newStatus) {
+        return {};
+      }
+
+      const wasDownloading = existing?.status === 'downloading' || existing?.status === 'extracting';
+      const isNowDownloading = newStatus === 'downloading' || newStatus === 'extracting';
+
+      // Only update downloadingKeys if the downloading state changed
+      let newDownloadingKeys = state.downloadingKeys;
+      if (isNowDownloading && !wasDownloading) {
+        newDownloadingKeys = new Set(state.downloadingKeys);
+        newDownloadingKeys.add(key);
+      } else if (!isNowDownloading && wasDownloading) {
+        newDownloadingKeys = new Set(state.downloadingKeys);
+        newDownloadingKeys.delete(key);
+      }
+
       const next = new Map(state.activeDownloads);
-      const existing = next.get(key);
       next.set(key, {
         id: downloadId ?? existing?.id ?? 0,
         progress,
-        status: status ?? existing?.status ?? 'downloading',
+        status: newStatus,
       });
-      return { activeDownloads: next };
+      return { activeDownloads: next, downloadingKeys: newDownloadingKeys };
     }),
   clearDownload: (buildNumber, backend) =>
     set((state) => {
       const key = makeKey(buildNumber, backend);
       const next = new Map(state.activeDownloads);
       next.delete(key);
-      return { activeDownloads: next };
+      const newDownloadingKeys = new Set(state.downloadingKeys);
+      newDownloadingKeys.delete(key);
+      return { activeDownloads: next, downloadingKeys: newDownloadingKeys };
     }),
   // Used by DownloadPanel for progress matching
   getDownloadId: (buildNumber, backend) => {

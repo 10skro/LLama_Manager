@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::models::types::{AppError, VersionInfo};
+use tokio::sync::mpsc;
+
+use crate::models::types::{AppError, DownloadProgress, VersionInfo};
 
 /// File operations: ZIP extraction, validation, cleanup.
 pub struct FileManager;
@@ -39,7 +41,16 @@ impl FileManager {
     /// llama.cpp releases are SFX executables. They contain a ZIP archive after a small
     /// stub header. We try to locate the ZIP local file header signature (`PK\x03\x04`)
     /// and open from there.
-    pub fn extract_zip(zip_path: &str, target_dir: &str) -> Result<(), AppError> {
+    ///
+    /// Progress is reported via `progress_tx` during extraction (90% → 99%).
+    pub async fn extract_zip(
+        zip_path: &str,
+        target_dir: &str,
+        download_id: i64,
+        build_number: &str,
+        total_size: u64,
+        progress_tx: Option<mpsc::Sender<DownloadProgress>>,
+    ) -> Result<(), AppError> {
         let zip_path = Path::new(zip_path);
         let target = Path::new(target_dir);
 
@@ -48,82 +59,126 @@ impl FileManager {
             AppError::Extraction(format!("Failed to create target directory {}: {}", crate::utils::mask_path(target.to_string_lossy().as_ref()), e))
         })?;
 
-        // Read file contents
+        // Read file contents (async context)
         let data = fs::read(zip_path).map_err(|e| {
             AppError::Extraction(format!("Failed to read archive {}: {}", crate::utils::mask_path(zip_path.to_string_lossy().as_ref()), e))
         })?;
 
-        // Try to find ZIP signature
+        // Try to find ZIP signature (async context)
         let zip_offset = find_zip_offset(&data);
 
         let zip_data = if zip_offset > 0 {
-            &data[zip_offset..]
+            data[zip_offset..].to_vec()
         } else {
-            &data[..]
+            data
         };
 
-        // Open as ZIP archive
-        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip_data)).map_err(|e| {
-            AppError::Extraction(format!("Failed to open ZIP archive: {}", e))
-        })?;
+        // Channel for progress reporting from the blocking task (extracted_count, total_entries)
+        let (progress_tx_inner, mut progress_rx_inner) = mpsc::channel::<(usize, usize)>(32);
 
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).map_err(|e| {
-                AppError::Extraction(format!("Failed to read entry {}: {}", i, e))
+        let target_dir_owned = target_dir.to_string();
+        let build_number_owned = build_number.to_string();
+
+        // Run heavy file I/O in a blocking task
+        let result = tokio::task::spawn_blocking(move || {
+            let target = Path::new(&target_dir_owned);
+
+            // Open as ZIP archive
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip_data)).map_err(|e| {
+                AppError::Extraction(format!("Failed to open ZIP archive: {}", e))
             })?;
 
-            let outpath_name = file.mangled_name();
-            let outpath = outpath_name.as_path();
+            let total_entries = archive.len();
 
-            // Skip directory entries (they'll be created automatically)
-            if file.is_dir() {
-                let full_path = target.join(&outpath);
-                // ZIP SLIP prevention: validate path is within target directory
-                if !is_path_safe(target, &outpath) {
-                    log::warn!("Skipping unsafe ZIP entry (ZIP SLIP): {:?}", outpath);
+            for i in 0..total_entries {
+                let mut file = archive.by_index(i).map_err(|e| {
+                    AppError::Extraction(format!("Failed to read entry {}: {}", i, e))
+                })?;
+
+                let outpath_name = file.mangled_name();
+                let outpath = outpath_name.as_path();
+
+                // Skip directory entries (they'll be created automatically)
+                if file.is_dir() {
+                    let full_path = target.join(&outpath);
+                    // ZIP SLIP prevention: validate path is within target directory
+                    if !is_path_safe(target, &outpath) {
+                        log::warn!("Skipping unsafe ZIP entry (ZIP SLIP): {:?}", outpath);
+                        continue;
+                    }
+                    let _ = fs::create_dir_all(&full_path);
                     continue;
                 }
-                let _ = fs::create_dir_all(&full_path);
-                continue;
-            }
 
-            let full_path = target.join(&outpath);
+                let full_path = target.join(&outpath);
 
-            // ZIP SLIP prevention: validate path is within target directory
-            if !is_path_safe(target, &outpath) {
-                return Err(AppError::Extraction(format!(
-                    "Unsafe ZIP entry detected (ZIP SLIP prevention): {:?}",
-                    outpath
-                )));
-            }
+                // ZIP SLIP prevention: validate path is within target directory
+                if !is_path_safe(target, &outpath) {
+                    return Err(AppError::Extraction(format!(
+                        "Unsafe ZIP entry detected (ZIP SLIP prevention): {:?}",
+                        outpath
+                    )));
+                }
 
-            // Create parent directories
-            if let Some(parent) = full_path.parent() {
-                fs::create_dir_all(parent).map_err(|e| {
-                    AppError::Extraction(format!("Failed to create parent dir {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
+                // Create parent directories
+                if let Some(parent) = full_path.parent() {
+                    fs::create_dir_all(parent).map_err(|e| {
+                        AppError::Extraction(format!("Failed to create parent dir {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
+                    })?;
+                }
+
+                // Extract file
+                let mut outfile = fs::File::create(&full_path).map_err(|e| {
+                    AppError::Extraction(format!("Failed to create file {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
                 })?;
+
+                std::io::copy(&mut file, &mut outfile).map_err(|e| {
+                    AppError::Extraction(format!("Failed to write file {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
+                })?;
+
+                // Preserve permissions if available
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Some(mode) = file.unix_mode() {
+                        let _ = fs::set_permissions(&full_path, fs::Permissions::from_mode(mode));
+                    }
+                }
+
+                // Report progress for each file extracted
+                let _ = progress_tx_inner.try_send((i + 1, total_entries));
             }
 
-            // Extract file
-            let mut outfile = fs::File::create(&full_path).map_err(|e| {
-                AppError::Extraction(format!("Failed to create file {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
-            })?;
+            Ok(())
+        }).await;
 
-            std::io::copy(&mut file, &mut outfile).map_err(|e| {
-                AppError::Extraction(format!("Failed to write file {}: {}", crate::utils::mask_path(full_path.to_string_lossy().as_ref()), e))
-            })?;
+        // Handle the result from the blocking task
+        let extraction_result = match result {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(e)) => Err(e),
+            Err(join_err) => Err(AppError::Extraction(format!("Extraction task panicked: {}", join_err))),
+        };
 
-            // Preserve permissions if available
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                if let Some(mode) = file.unix_mode() {
-                    let _ = fs::set_permissions(&full_path, fs::Permissions::from_mode(mode));
+        // Listen for progress updates from the blocking task (non-blocking drain)
+        while let Ok((extracted_count, total_entries)) = progress_rx_inner.try_recv() {
+            if total_entries > 0 {
+                if let Some(ref tx) = progress_tx {
+                    let progress_pct = 90.0 + (99.0 - 90.0) * (extracted_count as f64 / total_entries as f64);
+                    let _ = tx.send(DownloadProgress {
+                        download_id,
+                        build_number: build_number_owned.clone(),
+                        downloaded: 0,
+                        total: total_size,
+                        speed: 0.0,
+                        percentage: progress_pct,
+                        eta_seconds: 0.0,
+                        status: "extracting".to_string(),
+                    }).await;
                 }
             }
         }
 
-        Ok(())
+        extraction_result
     }
 
     /// Validate that an installation directory contains the expected files.
