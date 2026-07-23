@@ -21,7 +21,7 @@ export interface InstalledVersion {
   status: 'installed' | 'corrupt' | 'pending';
 }
 
-// Download tracking
+// Download tracking — kept for backend compatibility (DownloadRecord)
 export interface Download {
   id: number;
   build_number: string;

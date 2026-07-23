@@ -3,7 +3,6 @@ import { useBuilds } from '@/hooks/useBuilds';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
 import { useAppStore } from '@/store/useAppStore';
-import { useDownloadQueue } from '@/store/useDownloadQueue';
 import { useToast } from '@/hooks/use-toast';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { useRefreshStore, startCountdown } from '@/store/useRefreshStore';
@@ -55,6 +54,7 @@ export function CatalogPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { filters, setFilters } = useAppStore();
+  const activeDownloads = useAppStore((s) => s.activeDownloads);
   const { data: builds = [], isLoading, isError: queryIsError, error: queryError } = useBuilds();
   const { data: installed } = useInstalledVersions();
   const [downloading, setDownloading] = useState<Map<string, number>>(new Map()); // key -> downloadId
@@ -70,11 +70,6 @@ export function CatalogPage() {
     });
     return keys;
   }, [favorites]);
-
-  // Download queue
-  const enqueueDownload = useDownloadQueue((state) => state.enqueue);
-  const isBusy = useDownloadQueue((state) => state.isBusy);
-  const getQueuePosition = useDownloadQueue((state) => state.getQueuePosition);
 
   // Format relative time (e.g., "5 min ago", "2 hours ago")
   const formatRelativeTime = useCallback((isoString: string): string => {
@@ -223,14 +218,10 @@ export function CatalogPage() {
   const handleDownload = async (build: Build) => {
     setError(null);
 
-    // Check if already busy (downloading or queued)
-    if (isBusy(build.build_number, build.backend)) {
-      const position = getQueuePosition(build.build_number, build.backend);
-      if (position === 0) {
-        toast({ title: 'Already downloading', description: `${build.build_number} (${build.backend}) is currently downloading.` });
-      } else {
-        toast({ title: 'Already in queue', description: `${build.build_number} (${build.backend}) is #${position} in queue.` });
-      }
+    // Check if already downloading (any download in progress)
+    const hasActiveDownload = activeDownloads.size > 0;
+    if (hasActiveDownload) {
+      toast({ title: 'Already downloading', description: 'Only one download at a time is allowed.' });
       return;
     }
 
@@ -243,38 +234,18 @@ export function CatalogPage() {
       return;
     }
 
-    // Use the queue system — it will start immediately if idle, or queue if busy
-    enqueueDownload(build);
-
-    // If this build becomes active immediately, start the download
-    // FIX: Use value comparison instead of reference equality
-    const queueState = useDownloadQueue.getState();
-    const isActive = queueState.active?.build_number === build.build_number &&
-                     queueState.active?.backend === build.backend;
-
-    if (isActive) {
-      const compositeKey = getBuildId(build.build_number, build.backend);
-      try {
-        const downloadId = await installVersion(build);
-        setDownloading(prev => new Map(prev).set(compositeKey, downloadId));
-
-        // FIX: Register in activeDownloads so DownloadPanel event listener can track it
-        const appStore = useAppStore.getState();
-        appStore.updateDownloadProgress(build.build_number, build.backend, 0, downloadId, 'downloading');
-
-        queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
-        toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend})...` });
-      } catch (err: any) {
-        setError(err.message || 'Download failed');
-        toast({ title: 'Download failed', description: err.message || 'Could not start download.' });
-        // Remove from active since it failed
-        useDownloadQueue.setState({ active: null });
-        // Also clean up activeDownloads
-        const appStore = useAppStore.getState();
-        appStore.clearDownload(build.build_number, build.backend);
-      }
-    } else {
-      toast({ title: 'Added to queue', description: `${build.build_number} (${build.backend}) will download after current ones.` });
+    const compositeKey = getBuildId(build.build_number, build.backend);
+    try {
+      const downloadId = await installVersion(build);
+      setDownloading(prev => new Map(prev).set(compositeKey, downloadId));
+      const store = useAppStore.getState();
+      store.updateDownloadProgress(build.build_number, build.backend, 0, downloadId, 'downloading');
+      queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+      toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend})...` });
+    } catch (err: any) {
+      toast({ title: 'Download failed', description: err.message || 'Could not start download.' });
+      const store = useAppStore.getState();
+      store.clearDownload(build.build_number, build.backend);
     }
   };
 
@@ -799,44 +770,28 @@ export function CatalogPage() {
                                    >
                                      <Info className="h-4 w-4" />
                                    </Button>
-                                    {isInstalled ? (
-                                        <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
-                                        Installed
-                                      </Button>
-                                    ) : (() => {
-                                        const queuePos = getQueuePosition(build.build_number, build.backend);
-                                        if (queuePos === 0) {
-                                          // Actively downloading
-                                          return (
-                                            <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
-                                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                              Downloading
-                                            </Button>
-                                          );
-                                        } else if (queuePos > 0) {
-                                          // In queue
-                                          return (
-                                            <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center" title={`Position #${queuePos} in queue`}>
-                                              <Clock className="h-3 w-3 mr-1" />
-                                              <span className="text-xs">#{queuePos}</span>
-                                            </Button>
-                                          );
-                                        }
-                                        // Normal download button
-                                        return (
-                                          <Button
-                                            size="sm"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDownload(build);
-                                            }}
-                                            className="w-[80px] justify-center"
-                                          >
-                                            <Download className="h-3 w-3 mr-1" />
-                                            Download
-                                          </Button>
-                                        );
-                                      })()}
+                                     {isInstalled ? (
+                                         <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
+                                         Installed
+                                       </Button>
+                                     ) : isDownloading ? (
+                                         <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
+                                           <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                           Downloading
+                                         </Button>
+                                       ) : (
+                                         <Button
+                                           size="sm"
+                                           onClick={(e) => {
+                                             e.stopPropagation();
+                                             handleDownload(build);
+                                           }}
+                                           className="w-[80px] justify-center"
+                                         >
+                                           <Download className="h-3 w-3 mr-1" />
+                                           Download
+                                         </Button>
+                                       )}
                                  </div>
                                </TableCell>
                             </TableRow>

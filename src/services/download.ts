@@ -1,13 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { Build, Download } from '@/types';
+import type { Build } from '@/types';
 
 export async function cancelDownload(id: number): Promise<boolean> {
   return invoke<boolean>('cancel_download', { id }) as Promise<boolean>;
-}
-
-export async function getDownloadStatus(id: number): Promise<Download | null> {
-  const result = await invoke<any>('get_download_status', { id });
-  return result as Download | null;
 }
 
 export async function installVersion(build: Build): Promise<number> {

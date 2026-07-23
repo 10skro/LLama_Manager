@@ -26,7 +26,6 @@ interface AppState {
   activeDownloads: Map<string, ActiveDownloadInfo>; // composite key "build_number|backend" -> {id, progress, status}
   updateDownloadProgress: (buildNumber: string, backend: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
   clearDownload: (buildNumber: string, backend: string) => void;
-  clearDownloadByBuildNumber: (buildNumber: string) => void;
   getDownloadId: (buildNumber: string, backend: string) => number | undefined;
 
   // Settings
@@ -88,17 +87,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       next.delete(key);
       return { activeDownloads: next };
     }),
-  clearDownloadByBuildNumber: (buildNumber) =>
-    set((state) => {
-      const next = new Map(state.activeDownloads);
-      for (const [key] of next.entries()) {
-        if (key.startsWith(buildNumber + '|')) {
-          next.delete(key);
-          // NOTE: No break here - deletes ALL variants with this build_number
-        }
-      }
-      return { activeDownloads: next };
-    }),
+  // Used by DownloadPanel for progress matching
   getDownloadId: (buildNumber, backend) => {
     const key = makeKey(buildNumber, backend);
     return get().activeDownloads.get(key)?.id;
