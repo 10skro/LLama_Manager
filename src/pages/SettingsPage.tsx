@@ -14,11 +14,12 @@ import { Badge } from '@/components/ui/badge';
 import {
   FolderOpen, Save, HardDrive, Palette, Bell,
   Info, Loader2, Eye, EyeOff,
-  AlertCircle, X, Check, ChevronDown, ChevronUp, Settings2,
+  AlertCircle, X, Check, ChevronDown, Settings2,
 } from 'lucide-react';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES, getThemeById } from '@/themes';
 import { AVAILABLE_FONTS } from '@/fonts';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const TOAST_DURATIONS = [
   { label: '2s', value: 2000 },
@@ -400,89 +401,100 @@ export function SettingsPage() {
               Advanced
               <Badge variant="outline" className="text-[10px] font-normal">Power Users</Badge>
             </span>
-            {advancedOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
+            <motion.div
+              animate={{ rotate: advancedOpen ? 180 : 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+            >
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
+            </motion.div>
           </CardTitle>
           <CardDescription>
             Advanced configuration for power users. API tokens and rate limiting options.
           </CardDescription>
         </CardHeader>
-        {advancedOpen && (
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>GitHub API</Label>
-              <p className="text-xs text-muted-foreground">
-                Optional: Add a personal access token to increase the GitHub API rate limit from 60 to 5000 requests per hour.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>GitHub Personal Access Token</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    type={showToken ? 'text' : 'password'}
-                    value={githubToken}
-                    onChange={e => setGithubToken(e.target.value)}
-                    placeholder={hasToken ? 'Token is configured (edit to update)' : 'ghp_...'}
-                    className="bg-background/50 font-mono text-sm pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowToken(v => !v)}
-                  >
-                    {showToken ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
+        <AnimatePresence>
+          {advancedOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              style={{ overflow: 'hidden' }}
+            >
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>GitHub API</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Optional: Add a personal access token to increase the GitHub API rate limit from 60 to 5000 requests per hour.
+                  </p>
                 </div>
-                {hasToken && githubToken.length === 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearToken}
-                  >
-                    Clear
-                  </Button>
-                )}
-                {githubToken.length > 0 && (
-                  <Button
-                    size="sm"
-                    onClick={handleSaveToken}
-                    disabled={isSavingToken}
-                  >
-                    {isSavingToken ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
+
+                <div className="space-y-2">
+                  <Label>GitHub Personal Access Token</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showToken ? 'text' : 'password'}
+                        value={githubToken}
+                        onChange={e => setGithubToken(e.target.value)}
+                        placeholder={hasToken ? 'Token is configured (edit to update)' : 'ghp_...'}
+                        className="bg-background/50 font-mono text-sm pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowToken(v => !v)}
+                      >
+                        {showToken ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    {hasToken && githubToken.length === 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClearToken}
+                      >
+                        Clear
+                      </Button>
                     )}
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Your token is stored securely in the Windows Credential Manager and only used for GitHub API requests.
-                Create a token at{' '}
-                <a
-                  href="https://github.com/settings/tokens"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  github.com/settings/tokens
-                </a>
-                . No scopes are required.
-              </p>
-            </div>
-          </CardContent>
-        )}
+                    {githubToken.length > 0 && (
+                      <Button
+                        size="sm"
+                        onClick={handleSaveToken}
+                        disabled={isSavingToken}
+                      >
+                        {isSavingToken ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your token is stored securely in the Windows Credential Manager and only used for GitHub API requests.
+                    Create a token at{' '}
+                    <a
+                      href="https://github.com/settings/tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      github.com/settings/tokens
+                    </a>
+                    . No scopes are required.
+                  </p>
+                </div>
+              </CardContent>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Card>
 
       {/* About */}
