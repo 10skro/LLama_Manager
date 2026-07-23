@@ -30,7 +30,7 @@ const TOAST_DURATIONS = [
 
 export function SettingsPage() {
   const { settings, setSettings } = useAppStore();
-  const { setActiveTheme } = useTheme();
+  const { activeTheme, setActiveTheme } = useTheme();
   const { toast } = useToast();
   const [showToken, setShowToken] = useState(false);
   const [isBrowsing, setIsBrowsing] = useState(false);
@@ -208,7 +208,7 @@ export function SettingsPage() {
             <Label>Theme</Label>
             <div className="flex gap-2 flex-wrap">
               {AVAILABLE_THEMES.map((theme) => {
-                const isActive = settings?.theme === theme.id;
+                const isActive = activeTheme === theme.id;
                 return (
                   <Button
                     key={theme.id}

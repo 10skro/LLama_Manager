@@ -88,7 +88,7 @@ impl SettingsManager {
             repo::set_setting(&conn, "storage_path", "")?;
         }
         if repo::get_setting(&conn, "theme").ok().flatten().is_none() {
-            repo::set_setting(&conn, "theme", "dark")?;
+            repo::set_setting(&conn, "theme", "catppuccin-mocha")?;
         }
         if repo::get_setting(&conn, "auto_check_updates").ok().flatten().is_none() {
             repo::set_setting(&conn, "auto_check_updates", "true")?;
