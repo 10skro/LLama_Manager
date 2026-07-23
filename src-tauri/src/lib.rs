@@ -27,6 +27,34 @@ use crate::version::manager::VersionManager;
 const DEFAULT_RELEASE_LIMIT: usize = 50;
 const SEARCH_MAX_RELEASES: usize = 100;
 
+// ─── Helpers ────────────────────────────────────────────────────────────
+
+/// Spawn a background task that forwards download progress events to the frontend
+/// and writes to the DB with throttling (every 5 events or on terminal status).
+/// When `download_id` is `None`, the ID is taken from each progress message.
+fn spawn_progress_forwarder(
+    app: tauri::AppHandle,
+    db: DbManager,
+    mut rx: tokio::sync::mpsc::Receiver<DownloadProgress>,
+    download_id: Option<i64>,
+) {
+    tokio::spawn(async move {
+        let mut update_counter: u32 = 0;
+        const DB_WRITE_INTERVAL: u32 = 5;
+        while let Some(progress) = rx.recv().await {
+            let _ = app.emit("download-progress", &progress);
+            update_counter += 1;
+            let is_terminal = ["completed", "failed", "cancelled"].contains(&progress.status.as_str());
+            if is_terminal || update_counter % DB_WRITE_INTERVAL == 0 {
+                let id = download_id.unwrap_or(progress.download_id);
+                if let Ok(conn) = db.lock_conn() {
+                    let _ = repo::update_download_progress(&conn, id, progress.downloaded, &progress.status);
+                }
+            }
+        }
+    });
+}
+
 // ─── Tauri Commands ─────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -173,36 +201,9 @@ async fn start_download(
         repo::insert_download(&conn, &download).map_err(|e| e.to_string())?
     };
 
-    // Create progress channel that emits Tauri events
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
-
-    let app_clone = app.clone();
-    let db_clone = (*state_db).clone();
-    let download_id_clone = download_id;
-
-    // Spawn task to forward progress events to frontend
-    // DB writes are throttled: only update every 5th progress event or on terminal status
-    tokio::spawn(async move {
-        let mut update_counter: u32 = 0;
-        const DB_WRITE_INTERVAL: u32 = 5; // Write to DB every 5th progress event
-        while let Some(progress) = rx.recv().await {
-            let _ = app_clone.emit("download-progress", &progress);
-
-            // Throttle DB writes: only update every N events or on terminal status
-            update_counter += 1;
-            let is_terminal = ["completed", "failed", "cancelled"].contains(&progress.status.as_str());
-            if is_terminal || update_counter % DB_WRITE_INTERVAL == 0 {
-                let conn = match db_clone.lock_conn() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        log::warn!("Failed to lock DB for progress update: {}", e);
-                        continue;
-                    }
-                };
-                let _ = repo::update_download_progress(&conn, download_id_clone, progress.downloaded, &progress.status);
-            }
-        }
-    });
+    // Create progress channel and spawn forwarder task
+    let (tx, rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
+    spawn_progress_forwarder(app.clone(), (*state_db).clone(), rx, Some(download_id));
 
     // Start the actual download
     state_download
@@ -295,26 +296,9 @@ async fn install_version(
         checksum: None,
     };
 
-    // Create progress channel that emits Tauri events
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
-    let app_clone = app.clone();
-    let db_clone = (*state_db).clone();
-
-    // Spawn task to forward progress events to frontend AND write to DB
-    tokio::spawn(async move {
-        let mut update_counter: u32 = 0;
-        const DB_WRITE_INTERVAL: u32 = 5;
-        while let Some(progress) = rx.recv().await {
-            let _ = app_clone.emit("download-progress", &progress);
-            update_counter += 1;
-            let is_terminal = ["completed", "failed", "cancelled"].contains(&progress.status.as_str());
-            if is_terminal || update_counter % DB_WRITE_INTERVAL == 0 {
-                if let Ok(conn) = db_clone.lock_conn() {
-                    let _ = repo::update_download_progress(&conn, progress.download_id, progress.downloaded, &progress.status);
-                }
-            }
-        }
-    });
+    // Create progress channel and spawn forwarder task
+    let (tx, rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
+    spawn_progress_forwarder(app.clone(), (*state_db).clone(), rx, None);
 
     // Run the full install pipeline: download -> extract -> validate -> register
     let result = VersionManager::install_version(
