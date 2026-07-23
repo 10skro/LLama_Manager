@@ -7,12 +7,14 @@ import { Toaster } from './components/ui/toaster';
 import { DashboardPage } from './pages/DashboardPage';
 import { CatalogPage } from './pages/CatalogPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { fetchBuilds } from './services/github';
+import { fetchBuilds, getCatalogLastFetched } from './services/github';
 import { getSettings } from './services/settings';
 import { getThemeById } from './themes';
 import { DEFAULT_FONT_FAMILY } from './fonts';
 import { useAppStore } from './store/useAppStore';
+import { useRefreshStore } from './store/useRefreshStore';
 import { useTheme } from './hooks/useTheme';
+import type { Build } from './types';
 
 function App() {
   const queryClient = useQueryClient();
@@ -43,15 +45,19 @@ function App() {
     loadSettingsAndTheme();
   }, []);
 
-  // Prefetch builds on app startup so the catalog page has data ready
+  // Intelligent startup check: always verify with GitHub via ETag
   useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: ['builds', undefined], // Match useBuilds() default (no limit)
-      queryFn: () => fetchBuilds({ limit: undefined, forceRefresh: false }),
-      staleTime: Infinity,
-    }).catch(() => {
-      // Silently fail — catalog page will handle errors on its own
-    });
+    const checkAndLoad = async () => {
+      try {
+        const builds = await fetchBuilds({ forceRefresh: false });
+        queryClient.setQueryData<Build[]>(['builds', undefined], builds);
+        const ts = await getCatalogLastFetched();
+        useRefreshStore.setState({ lastFetched: ts });
+      } catch (err) {
+        console.error('Failed to check builds on startup:', err);
+      }
+    };
+    checkAndLoad();
   }, [queryClient]);
 
   return (

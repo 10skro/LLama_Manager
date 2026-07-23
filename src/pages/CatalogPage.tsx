@@ -4,10 +4,11 @@ import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
-import { useRefreshCooldown } from '@/hooks/useRefreshCooldown';
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
+import { useRefreshStore, startCountdown } from '@/store/useRefreshStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { installVersion } from '@/services/download';
-import { fetchBuilds, fetchReleaseByTag, searchBuilds, getCatalogLastFetched } from '@/services/github';
+import { fetchBuilds, checkNewBuilds, fetchReleaseByTag, searchBuilds } from '@/services/github';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
@@ -65,9 +66,6 @@ export function CatalogPage() {
     return keys;
   }, [favorites]);
 
-  // Last fetched timestamp
-  const [lastFetched, setLastFetched] = useState<string | null>(null);
-
   // Format relative time (e.g., "5 min ago", "2 hours ago")
   const formatRelativeTime = useCallback((isoString: string): string => {
     const date = new Date(isoString);
@@ -82,15 +80,6 @@ export function CatalogPage() {
     if (diffMin < 60) return `${diffMin} min ago`;
     if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
     return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-  }, []);
-
-  // Load last fetched timestamp
-  useEffect(() => {
-    let cancelled = false;
-    getCatalogLastFetched().then(ts => {
-      if (!cancelled) setLastFetched(ts);
-    }).catch(() => {});
-    return () => { cancelled = true; };
   }, []);
 
   // Changelog modal state
@@ -238,58 +227,45 @@ export function CatalogPage() {
     }
   };
 
-  const { canRefresh, isRefreshing, secondsLeft, refresh, forceRefresh } = useRefreshCooldown(
-    async () => {
-      setError(null);
-      // Force refresh: bypass cache TTL, always check ETag with GitHub
-      const freshBuilds = await fetchBuilds({ forceRefresh: true });
-      queryClient.setQueryData(['builds', undefined], freshBuilds);
-      // Update last fetched timestamp
-      const ts = await getCatalogLastFetched();
-      setLastFetched(ts);
-      return freshBuilds.length;
-    },
-    { cooldownMs: 30_000 }
-  );
+  const { canRefresh, isRefreshing, secondsLeft } = useGlobalRefresh();
+  const storeLastFetched = useRefreshStore((s) => s.lastFetched);
+  const begin = useRefreshStore((s) => s.begin);
+  const end = useRefreshStore((s) => s.end);
+  const setLastFetched = useRefreshStore((s) => s.setLastFetched);
 
-  const handleRefreshClick = (e: React.MouseEvent) => {
+  const handleRefreshClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (e.shiftKey) {
-      (async () => {
-        try {
-          const result = await forceRefresh();
-          const count = result ?? 0;
-          toast({
-            title: 'Force refresh',
-            description: count > 0
-              ? `${count} build(s) in catalog. (cooldown bypassed)`
-              : 'Catalog is already up to date. (cooldown bypassed)',
-          });
-        } catch (err: any) {
-          setError(err.message || 'Failed to update');
-          toast({ title: 'Update failed', description: err.message });
-        }
-      })();
-    } else {
-      if (!canRefresh) {
-        toast({ title: 'Cooldown active', description: `Please wait ${secondsLeft}s before refreshing, or hold Shift to force.` });
-        return;
+    if (!canRefresh) {
+      toast({ title: 'Cooldown active', description: `Please wait ${secondsLeft}s before refreshing.` });
+      return;
+    }
+    try {
+      begin(); // Disable button immediately before the async check
+
+      // Step 1: Lightweight check using FetchMode::Smart (ETag-cached, fast 304 if nothing changed)
+      // If new builds are found, Step 2 does a full ForceRefresh fetch to update the local cache.
+      // The double HTTP call is acceptable because ETag conditional requests make the first call
+      // nearly instantaneous when the catalog hasn't changed on GitHub's side.
+      const newBuilds = await checkNewBuilds();
+
+      if (newBuilds.length > 0) {
+        // Step 2: New builds found - fetch full catalog and update cache
+        const builds = await fetchBuilds({ forceRefresh: true });
+        queryClient.setQueryData(['builds', undefined], builds);
+        const ts = await (await import('@/services/github')).getCatalogLastFetched();
+        setLastFetched(ts);
+        end(true); // Success -> trigger cooldown
+        startCountdown();
+        toast({ title: 'Update found', description: `${newBuilds.length} build(s) not yet installed.` });
+      } else {
+        // No new builds - no fetch, no cooldown
+        end(false);
+        toast({ title: 'No updates', description: 'Catalog is already up to date.' });
       }
-      (async () => {
-        try {
-          const result = await refresh();
-          const count = result ?? 0;
-          toast({
-            title: count > 0 ? 'Catalog updated' : 'No updates',
-            description: count > 0
-              ? `${count} build(s) in catalog.`
-              : 'Catalog is already up to date.',
-          });
-        } catch (err: any) {
-          setError(err.message || 'Failed to update');
-          toast({ title: 'Update failed', description: err.message });
-        }
-      })();
+    } catch (err: any) {
+      end(false); // No cooldown on error
+      setError(err.message || 'Failed to update');
+      toast({ title: 'Update failed', description: err.message });
     }
   };
 
@@ -431,10 +407,10 @@ export function CatalogPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {lastFetched && (
+          {storeLastFetched && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Last updated: {formatRelativeTime(lastFetched)}
+              Last updated: {formatRelativeTime(storeLastFetched)}
             </span>
           )}
           <Button
@@ -443,7 +419,7 @@ export function CatalogPage() {
             onClick={handleRefreshClick}
             disabled={isRefreshing}
             className="gap-2"
-            title={canRefresh ? "Refresh build list (hold Shift to force)" : `Refresh available in ${secondsLeft}s (hold Shift to force)`}
+            title={canRefresh ? "Refresh build list" : `Refresh available in ${secondsLeft}s`}
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Refreshing...' : (!canRefresh ? `${secondsLeft}s` : 'Update')}

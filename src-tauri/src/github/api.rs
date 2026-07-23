@@ -21,8 +21,6 @@ const SETTING_CATALOG_CACHE_TTL: &str = "catalog_cache_ttl_minutes";
 /// Fetch mode controlling cache behavior for catalog requests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FetchMode {
-    /// Return cached DB data if fresh (< TTL). Fallback to ETag check if stale.
-    CacheOnly,
     /// Default: if cache fresh → DB; if stale → ETag check → fetch if needed.
     Smart,
     /// Bypass TTL, always check ETag with GitHub.
@@ -311,7 +309,6 @@ pub async fn fetch_latest_builds(
 /// Fetch builds from API, cache them, and fall back to cache on failure.
 ///
 /// The `mode` parameter controls cache behavior:
-/// - `CacheOnly`: Return cached DB data if fresh (< TTL). Fallback to ETag check if stale.
 /// - `Smart` (default): If cache fresh → DB; if stale → ETag check → fetch if needed.
 /// - `ForceRefresh`: Bypass TTL, always check ETag with GitHub.
 ///
@@ -323,7 +320,7 @@ pub async fn fetch_builds_from_cache_or_api(
     release_limit: usize,
     mode: FetchMode,
 ) -> Result<Vec<Build>, AppError> {
-    // For CacheOnly and Smart modes, check if DB cache is fresh
+    // For Smart mode, check if DB cache is fresh
     if mode != FetchMode::ForceRefresh {
         if is_cache_fresh(db) {
             log::info!("Cache is fresh (within TTL), returning cached builds from database.");
@@ -364,13 +361,11 @@ pub async fn fetch_builds_from_cache_or_api(
             Ok(builds)
         }
         Ok(FetchResult::CacheHit) => {
-            // 304 Not Modified - use cached builds
+            // 304 Not Modified - use cached builds without updating timestamp
             log::info!("GitHub API returned 304 Not Modified, using cached builds.");
             let conn = db.lock_conn()?;
             match get_cached_builds(&conn) {
                 Ok(cached) if !cached.is_empty() => {
-                    // Update last_fetched_at timestamp since we verified freshness with GitHub
-                    save_last_fetched_at(db);
                     Ok(cached)
                 }
                 Ok(_) => Err(AppError::Generic("No cached builds available".to_string())),
