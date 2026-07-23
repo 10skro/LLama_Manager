@@ -29,7 +29,7 @@ export interface Download {
   file_path?: string;
   total_size: number;
   downloaded_size: number;
-  status: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
   error_message?: string;
   created_at: string;
   updated_at: string;
@@ -44,7 +44,7 @@ export interface DownloadProgress {
   speed: number;           // bytes/sec
   percentage: number;
   eta_seconds: number;
-  status: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
 }
 
 // App settings

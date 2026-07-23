@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { DownloadProgress as DownloadProgressType } from '@/types';
 
-const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
+
 
 // Helper to parse composite key "build_number|backend"
 function parseDownloadKey(key: string): { buildNumber: string; backend: string } {
@@ -37,7 +37,7 @@ export function DownloadPanel() {
           const p = event.payload;
           const store = useAppStore.getState();
 
-          // Match by download_id
+          // Strategy 1: Match by download_id (exact match)
           let matchedBuildNumber = '';
           let matchedBackend = '';
           for (const [key, info] of store.activeDownloads.entries()) {
@@ -49,15 +49,48 @@ export function DownloadPanel() {
             }
           }
 
-          if (matchedBuildNumber && matchedBackend) {
+          // Strategy 2: Fallback — find first entry with matching build_number (ignoring download_id)
+          if (!matchedBuildNumber) {
+            for (const [key, _info] of store.activeDownloads.entries()) {
+              const parsed = parseDownloadKey(key);
+              if (parsed.buildNumber === p.build_number) {
+                matchedBuildNumber = parsed.buildNumber;
+                matchedBackend = parsed.backend;
+                // Update the download_id and progress in a single call
+                store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
+                break;
+              }
+            }
+          }
+
+          if (matchedBuildNumber) {
             store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
           }
 
-          if (TERMINAL_STATUSES.has(p.status)) {
-            if (matchedBuildNumber && matchedBackend) {
-              store.clearDownload(matchedBuildNumber, matchedBackend);
-              queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+          const isTerminal = ['completed', 'failed', 'cancelled'].includes(p.status);
+          if (isTerminal) {
+            // Clean up: find and clear the entry matching this download
+            // Try by download_id first
+            let cleared = false;
+            for (const [key, info] of store.activeDownloads.entries()) {
+              if (info.id === p.download_id) {
+                const parsed = parseDownloadKey(key);
+                store.clearDownload(parsed.buildNumber, parsed.backend);
+                cleared = true;
+                break;
+              }
             }
+            // Fallback: find by build_number
+            if (!cleared) {
+              for (const [key, _info] of store.activeDownloads.entries()) {
+                const parsed = parseDownloadKey(key);
+                if (parsed.buildNumber === p.build_number) {
+                  store.clearDownload(parsed.buildNumber, parsed.backend);
+                  break;
+                }
+              }
+            }
+            queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
           }
         });
         if (!destroyed) unlisten = cleanup;
@@ -87,6 +120,7 @@ export function DownloadPanel() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case 'downloaded': return 'Download complete...';
       case 'extracting': return 'Extracting...';
       case 'downloading': return 'Downloading...';
       case 'pending': return 'Waiting...';

@@ -14,15 +14,25 @@ use crate::models::types::{
 /// Orchestrates version installation, uninstallation, and listing.
 pub struct VersionManager;
 
+/// Holds paths and metadata needed for post-download installation steps.
+pub struct InstallPaths {
+    download_path: String,
+    install_path: String,
+    build_number: String,
+    backend: String,
+}
+
 impl VersionManager {
-    /// Full install pipeline: download → extract → validate → register.
-    pub async fn install_version(
+    /// Starts the download pipeline and returns the download_id immediately.
+    /// Does NOT wait for download completion. Extraction/validation runs
+    /// asynchronously via `post_download_tasks`.
+    pub async fn start_install(
         db: &DbManager,
         download_mgr: &DownloadManager,
         build: &Build,
         storage_base: PathBuf,
         progress_tx: mpsc::Sender<DownloadProgress>,
-    ) -> Result<InstalledVersion, AppError> {
+    ) -> Result<(i64, InstallPaths), AppError> {
         // 1. Check if already installed
         {
             let conn = db.lock_conn()?;
@@ -89,15 +99,26 @@ impl VersionManager {
             )
             .await?;
 
-        // Wait for download completion signal via a separate channel
-        let (_done_tx, _done_rx) = mpsc::channel::<Result<(), AppError>>(1);
-        let download_id_clone = download_id;
+        let paths = InstallPaths {
+            download_path: download_path_str,
+            install_path: install_path_str,
+            build_number: build.build_number.clone(),
+            backend: build.backend.clone(),
+        };
 
-        // We need to monitor the download status. For now, we'll poll the DB.
-        // In a production app, you'd use a more sophisticated event system.
+        Ok((download_id, paths))
+    }
 
-        // 5. Poll until download completes or fails
-        let max_wait_seconds = 3600; // 1 hour max
+    /// Waits for download completion, then extracts, validates, and registers.
+    /// Emits progress events through `progress_tx` for extracting/completed/failed.
+    pub async fn post_download_tasks(
+        db: &DbManager,
+        download_id: i64,
+        paths: InstallPaths,
+        progress_tx: mpsc::Sender<DownloadProgress>,
+    ) -> Result<InstalledVersion, AppError> {
+        // 1. Poll until download completes or fails
+        let max_wait_seconds = 3600;
         let mut waited = 0;
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -105,7 +126,7 @@ impl VersionManager {
 
             let status = {
                 let conn = db.lock_conn().map_err(|_| AppError::Generic("DB lock failed".to_string()))?;
-                if let Some(rec) = repo::get_download(&conn, download_id_clone).map_err(|_| AppError::Generic("DB query failed".to_string()))? {
+                if let Some(rec) = repo::get_download(&conn, download_id).map_err(|_| AppError::Generic("DB query failed".to_string()))? {
                     rec.status
                 } else {
                     "unknown".to_string()
@@ -115,37 +136,65 @@ impl VersionManager {
             match status.as_str() {
                 "completed" => break,
                 "failed" | "cancelled" => {
-                    return Err(AppError::Generic(format!(
-                        "Download was {}",
-                        status
-                    )));
+                    let _ = progress_tx.send(DownloadProgress {
+                        download_id,
+                        build_number: paths.build_number.clone(),
+                        downloaded: 0,
+                        total: 0,
+                        speed: 0.0,
+                        percentage: 0.0,
+                        eta_seconds: 0.0,
+                        status: status.clone(),
+                    }).await;
+                    return Err(AppError::Generic(format!("Download was {}", status)));
                 }
                 _ => {}
             }
 
             if waited >= max_wait_seconds {
+                let _ = progress_tx.send(DownloadProgress {
+                    download_id,
+                    build_number: paths.build_number.clone(),
+                    downloaded: 0,
+                    total: 0,
+                    speed: 0.0,
+                    percentage: 0.0,
+                    eta_seconds: 0.0,
+                    status: "failed".to_string(),
+                }).await;
                 return Err(AppError::Generic("Download timed out".to_string()));
             }
         }
 
-        // 6. Extract to install directory
+        // 2. Emit extracting status
         {
             let conn = db.lock_conn()?;
             repo::update_download_progress(&conn, download_id, 0, "extracting")?;
         }
+        let _ = progress_tx.send(DownloadProgress {
+            download_id,
+            build_number: paths.build_number.clone(),
+            downloaded: 0,
+            total: 0,
+            speed: 0.0,
+            percentage: 0.0,
+            eta_seconds: 0.0,
+            status: "extracting".to_string(),
+        }).await;
 
-        FileManager::extract_zip(&download_path_str, &install_path_str)?;
+        // 3. Extract to install directory
+        FileManager::extract_zip(&paths.download_path, &paths.install_path)?;
 
-        // 7. Validate installation
-        let valid = FileManager::validate_installation(&install_path_str)?;
+        // 4. Validate installation
+        let valid = FileManager::validate_installation(&paths.install_path)?;
         let status = if valid { "installed" } else { "corrupt" };
 
-        // 8. Register in installed_versions table
+        // 5. Register in installed_versions table
         let version = InstalledVersion {
             id: 0,
-            build_number: build.build_number.clone(),
-            backend: build.backend.clone(),
-            install_path: install_path_str,
+            build_number: paths.build_number.clone(),
+            backend: paths.backend.clone(),
+            install_path: paths.install_path.clone(),
             installed_at: Local::now().to_rfc3339(),
             status: status.to_string(),
         };
@@ -157,8 +206,20 @@ impl VersionManager {
             id
         };
 
-        // Clean up downloaded file
-        let _ = std::fs::remove_file(&download_path_str);
+        // 6. Emit completed status
+        let _ = progress_tx.send(DownloadProgress {
+            download_id,
+            build_number: paths.build_number.clone(),
+            downloaded: 0,
+            total: 0,
+            speed: 0.0,
+            percentage: 100.0,
+            eta_seconds: 0.0,
+            status: "completed".to_string(),
+        }).await;
+
+        // 7. Clean up downloaded file
+        let _ = std::fs::remove_file(&paths.download_path);
 
         Ok(InstalledVersion { id: version_id, ..version })
     }

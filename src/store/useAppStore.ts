@@ -5,11 +5,11 @@ import { DEFAULT_THEME_ID } from '@/themes';
 interface ActiveDownloadInfo {
   id: number;
   progress: number;
-  status: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
 }
 
 // Helper to create composite key
-function makeKey(buildNumber: string, backend: string): string {
+export function makeKey(buildNumber: string, backend: string): string {
   return `${buildNumber}|${backend}`;
 }
 
@@ -24,7 +24,7 @@ interface AppState {
 
   // Downloads
   activeDownloads: Map<string, ActiveDownloadInfo>; // composite key "build_number|backend" -> {id, progress, status}
-  updateDownloadProgress: (buildNumber: string, backend: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
+  updateDownloadProgress: (buildNumber: string, backend: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
   clearDownload: (buildNumber: string, backend: string) => void;
   getDownloadId: (buildNumber: string, backend: string) => number | undefined;
 

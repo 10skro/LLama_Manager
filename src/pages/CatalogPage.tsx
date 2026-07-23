@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, Fragment, useCallback } from 'rea
 import { useBuilds } from '@/hooks/useBuilds';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
-import { useAppStore } from '@/store/useAppStore';
+import { useAppStore, makeKey } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { useRefreshStore, startCountdown } from '@/store/useRefreshStore';
@@ -57,7 +57,7 @@ export function CatalogPage() {
   const activeDownloads = useAppStore((s) => s.activeDownloads);
   const { data: builds = [], isLoading, isError: queryIsError, error: queryError } = useBuilds();
   const { data: installed } = useInstalledVersions();
-  const [downloading, setDownloading] = useState<Map<string, number>>(new Map()); // key -> downloadId
+  // Downloading state is now derived from the global activeDownloads store
   const [error, setError] = useState<string | null>(null);
 
   // Favorites
@@ -234,13 +234,10 @@ export function CatalogPage() {
       return;
     }
 
-    const compositeKey = getBuildId(build.build_number, build.backend);
     try {
       const downloadId = await installVersion(build);
-      setDownloading(prev => new Map(prev).set(compositeKey, downloadId));
       const store = useAppStore.getState();
       store.updateDownloadProgress(build.build_number, build.backend, 0, downloadId, 'downloading');
-      queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
       toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend})...` });
     } catch (err: any) {
       toast({ title: 'Download failed', description: err.message || 'Could not start download.' });
@@ -675,7 +672,7 @@ export function CatalogPage() {
                            <TableCell className="text-center">
                               <BuildStatusBadge
                                 installed={variants.some(v => installedKeys.has(getBuildId(v.build_number, v.backend)))}
-                                downloading={variants.some(v => downloading.has(getBuildId(v.build_number, v.backend)))}
+                                 downloading={variants.some(v => activeDownloads.has(makeKey(v.build_number, v.backend)))}
                               />
                            </TableCell>
                            {/* Col 7: Actions (empty on parent - actions moved to child rows) */}
@@ -687,7 +684,7 @@ export function CatalogPage() {
                           const rowKey = getBuildRowKey(build);
                           const compositeKey = getBuildId(build.build_number, build.backend);
                           const isInstalled = installedKeys.has(compositeKey);
-                          const isDownloading = downloading.has(compositeKey);
+                           const isDownloading = activeDownloads.has(makeKey(build.build_number, build.backend));
                           const isFavorited = favoriteKeys.has(rowKey);
                           const isLast = idx === variants.length - 1;
                           const connector = isLast ? '└─ ' : '│  ';

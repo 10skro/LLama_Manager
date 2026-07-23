@@ -110,7 +110,7 @@ impl DownloadManager {
                     speed: 0.0,
                     percentage: 100.0,
                     eta_seconds: 0.0,
-                    status: "completed".to_string(),
+                    status: "downloaded".to_string(),
                 },
                 Err(AppError::Cancelled) => DownloadProgress {
                     download_id,
@@ -122,7 +122,7 @@ impl DownloadManager {
                     eta_seconds: 0.0,
                     status: "cancelled".to_string(),
                 },
-                Err(e) => DownloadProgress {
+                Err(_e) => DownloadProgress {
                     download_id,
                     build_number: build_number.clone(),
                     downloaded: 0,
@@ -130,7 +130,7 @@ impl DownloadManager {
                     speed: 0.0,
                     percentage: 0.0,
                     eta_seconds: 0.0,
-                    status: format!("failed: {}", e),
+                    status: "failed".to_string(),
                 },
             };
             let _ = progress_tx.send(final_status).await;

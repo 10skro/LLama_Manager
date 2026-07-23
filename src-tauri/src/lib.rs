@@ -45,11 +45,13 @@ fn spawn_progress_forwarder(
         while let Some(progress) = rx.recv().await {
             let _ = app.emit("download-progress", &progress);
             update_counter += 1;
-            let is_terminal = ["completed", "failed", "cancelled"].contains(&progress.status.as_str());
+            let is_terminal = ["completed", "failed", "cancelled", "downloaded"].contains(&progress.status.as_str());
             if is_terminal || update_counter % DB_WRITE_INTERVAL == 0 {
                 let id = download_id.unwrap_or(progress.download_id);
                 if let Ok(conn) = db.lock_conn() {
-                    let _ = repo::update_download_progress(&conn, id, progress.downloaded, &progress.status);
+                    // Map "downloaded" -> "completed" for DB writes so post_download_tasks can proceed
+                    let db_status = if progress.status == "downloaded" { "completed" } else { &progress.status };
+                    let _ = repo::update_download_progress(&conn, id, progress.downloaded, db_status);
                 }
             }
         }
@@ -212,13 +214,11 @@ async fn install_version(
     url: String,
     total_size: u64,
 ) -> Result<i64, String> {
-    // Get storage base path from settings
     let fallback_path = app.path().app_local_data_dir()
         .map_err(|e| e.to_string())?
         .to_string_lossy().to_string();
     let storage_base = PathBuf::from(SettingsManager::get_storage_path(&state_db, &fallback_path));
 
-    // Build the Build struct for VersionManager
     let build = Build {
         build_number,
         backend,
@@ -231,23 +231,31 @@ async fn install_version(
         checksum: None,
     };
 
-    // Create progress channel and spawn forwarder task
     let (tx, rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
     spawn_progress_forwarder(app.clone(), (*state_db).clone(), rx, None);
 
-    // Run the full install pipeline: download -> extract -> validate -> register
-    let result = VersionManager::install_version(
+    // Start install and get download_id immediately (non-blocking)
+    let (download_id, paths) = VersionManager::start_install(
         &state_db,
         &state_download,
         &build,
         storage_base,
-        tx,
-    ).await;
+        tx.clone(),
+    ).await.map_err(|e| e.to_string())?;
 
-    match result {
-        Ok(version) => Ok(version.id),
-        Err(e) => Err(e.to_string()),
-    }
+    // Spawn post-download tasks (extract, validate, register) in background
+    let db_clone = (*state_db).clone();
+    tokio::spawn(async move {
+        let result = VersionManager::post_download_tasks(&db_clone, download_id, paths, tx).await;
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                log::error!("Post-download tasks failed: {}", e);
+            }
+        }
+    });
+
+    Ok(download_id)
 }
 
 #[tauri::command]
