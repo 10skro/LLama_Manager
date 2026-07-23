@@ -121,12 +121,19 @@ fn uninstall_version(
 }
 
 #[tauri::command]
-fn open_folder(app: tauri::AppHandle, path: String) -> Result<String, String> {
-    let storage_dir = app
+fn open_folder(
+    app: tauri::AppHandle,
+    state_db: tauri::State<'_, DbManager>,
+    path: String,
+) -> Result<String, String> {
+    // Get the actual storage base (respects user-configured custom path)
+    let fallback_path = app
         .path()
-        .app_data_dir()
+        .app_local_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {}", e))?
-        .join("storage");
+        .to_string_lossy()
+        .to_string();
+    let storage_dir = std::path::PathBuf::from(SettingsManager::get_storage_path(&state_db, &fallback_path));
 
     // Canonicalize both paths to resolve .. and symlinks
     let canonical_storage = storage_dir.canonicalize()

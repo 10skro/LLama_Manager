@@ -171,7 +171,7 @@ export function SettingsPage() {
               <Input
                 value={settings?.storage_path || ''}
                 onChange={e => updateSetting('storage_path', e.target.value)}
-                placeholder="Default: %APPDATA%\LlamaCppManager"
+                placeholder="Default: %LOCALAPPDATA%\com.openfox.llamacpp-manager"
                 className="bg-background/50 font-mono text-sm"
               />
               <Button
