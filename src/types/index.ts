@@ -16,6 +16,7 @@ export interface InstalledVersion {
   id: number;
   build_number: string;
   backend: string;
+  architecture: string;
   install_path: string;
   installed_at: string;
   status: 'installed' | 'corrupt' | 'pending';

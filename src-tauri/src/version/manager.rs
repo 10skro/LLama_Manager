@@ -20,6 +20,7 @@ pub struct InstallPaths {
     install_path: String,
     build_number: String,
     backend: String,
+    architecture: String,
 }
 
 impl VersionManager {
@@ -36,11 +37,11 @@ impl VersionManager {
         // 1. Check if already installed
         {
             let conn = db.lock_conn()?;
-            if let Some(existing) = repo::get_version_by_build(&conn, &build.build_number, &build.backend)? {
+            if let Some(existing) = repo::get_version_by_build(&conn, &build.build_number, &build.backend, &build.architecture)? {
                 if existing.status == "installed" {
                     return Err(AppError::AlreadyInstalled(format!(
-                        "{} ({})",
-                        build.build_number, build.backend
+                        "{} ({} {})",
+                        build.build_number, build.backend, build.architecture
                     )));
                 }
             }
@@ -57,6 +58,7 @@ impl VersionManager {
             &storage_base,
             &build.build_number,
             &build.backend,
+            &build.architecture,
         );
 
         let download_path_str = download_path.to_string_lossy().to_string();
@@ -104,6 +106,7 @@ impl VersionManager {
             install_path: install_path_str,
             build_number: build.build_number.clone(),
             backend: build.backend.clone(),
+            architecture: build.architecture.clone(),
         };
 
         Ok((download_id, paths))
@@ -207,6 +210,7 @@ impl VersionManager {
             id: 0,
             build_number: paths.build_number.clone(),
             backend: paths.backend.clone(),
+            architecture: paths.architecture.clone(),
             install_path: paths.install_path.clone(),
             installed_at: Local::now().to_rfc3339(),
             status: status.to_string(),

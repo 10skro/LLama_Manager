@@ -138,22 +138,27 @@ export function DashboardPage() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                      <Package className="h-5 w-5 text-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-mono font-semibold text-lg">
-                        {version.build_number}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className={`border ${getBackendColor(version.backend)}`}
-                      >
-                        {version.backend}
-                      </Badge>
-                    </div>
-                  </div>
+                   <div className="flex items-center gap-3">
+                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                       <Package className="h-5 w-5 text-foreground" />
+                     </div>
+                     <div>
+                       <p className="font-mono font-semibold text-lg">
+                         {version.build_number}
+                       </p>
+                       <div className="flex items-center gap-1.5">
+                         <Badge
+                           variant="outline"
+                           className={`border ${getBackendColor(version.backend)}`}
+                         >
+                           {version.backend}
+                         </Badge>
+                         <Badge variant="outline" className="border text-muted-foreground text-xs">
+                           {version.architecture}
+                         </Badge>
+                       </div>
+                     </div>
+                   </div>
                   {version.status === 'installed' ? (
                     <CheckCircle2 className="h-5 w-5 text-green" />
                   ) : (

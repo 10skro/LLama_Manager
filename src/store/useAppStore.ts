@@ -9,8 +9,8 @@ interface ActiveDownloadInfo {
 }
 
 // Helper to create composite key
-export function makeKey(buildNumber: string, backend: string): string {
-  return `${buildNumber}|${backend}`;
+export function makeKey(buildNumber: string, backend: string, architecture: string): string {
+  return `${buildNumber}|${backend}|${architecture}`;
 }
 
 interface AppState {
@@ -23,11 +23,11 @@ interface AppState {
   setFilters: (filters: Partial<BuildFilters>) => void;
 
   // Downloads
-  activeDownloads: Map<string, ActiveDownloadInfo>; // composite key "build_number|backend" -> {id, progress, status}
+  activeDownloads: Map<string, ActiveDownloadInfo>; // composite key "build_number|backend|architecture" -> {id, progress, status}
   downloadingKeys: Set<string>; // only keys with status 'downloading' or 'extracting' (stable reference during progress ticks)
-  updateDownloadProgress: (buildNumber: string, backend: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
-  clearDownload: (buildNumber: string, backend: string) => void;
-  getDownloadId: (buildNumber: string, backend: string) => number | undefined;
+  updateDownloadProgress: (buildNumber: string, backend: string, architecture: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
+  clearDownload: (buildNumber: string, backend: string, architecture: string) => void;
+  getDownloadId: (buildNumber: string, backend: string, architecture: string) => number | undefined;
 
   // Settings
   settings: AppSettings | null;
@@ -70,9 +70,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Downloads
   activeDownloads: new Map(),
   downloadingKeys: new Set(),
-  updateDownloadProgress: (buildNumber, backend, progress, downloadId, status) =>
+  updateDownloadProgress: (buildNumber, backend, architecture, progress, downloadId, status) =>
     set((state) => {
-      const key = makeKey(buildNumber, backend);
+      const key = makeKey(buildNumber, backend, architecture);
       const existing = state.activeDownloads.get(key);
       const newStatus = status ?? existing?.status ?? 'downloading';
 
@@ -102,9 +102,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
       return { activeDownloads: next, downloadingKeys: newDownloadingKeys };
     }),
-  clearDownload: (buildNumber, backend) =>
+  clearDownload: (buildNumber, backend, architecture) =>
     set((state) => {
-      const key = makeKey(buildNumber, backend);
+      const key = makeKey(buildNumber, backend, architecture);
       const next = new Map(state.activeDownloads);
       next.delete(key);
       const newDownloadingKeys = new Set(state.downloadingKeys);
@@ -112,8 +112,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { activeDownloads: next, downloadingKeys: newDownloadingKeys };
     }),
   // Used by DownloadPanel for progress matching
-  getDownloadId: (buildNumber, backend) => {
-    const key = makeKey(buildNumber, backend);
+  getDownloadId: (buildNumber, backend, architecture) => {
+    const key = makeKey(buildNumber, backend, architecture);
     return get().activeDownloads.get(key)?.id;
   },
 

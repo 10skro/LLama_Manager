@@ -44,10 +44,11 @@ impl DbManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 build_number TEXT NOT NULL,
                 backend TEXT NOT NULL,
+                architecture TEXT NOT NULL DEFAULT 'x64',
                 install_path TEXT NOT NULL,
                 installed_at TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'installed',
-                UNIQUE(build_number, backend)
+                UNIQUE(build_number, backend, architecture)
             );
 
             CREATE TABLE IF NOT EXISTS downloads (
@@ -98,6 +99,10 @@ impl DbManager {
         // recreate it with the new schema (old favorites without download_url will be lost)
         migrate_favorite_builds_table(&conn)?;
 
+        // Migration: if old installed_versions table exists without architecture column,
+        // recreate it with the new schema (existing records default to 'x64')
+        migrate_installed_versions_table(&conn)?;
+
         Ok(())
     }
 
@@ -124,12 +129,9 @@ fn migrate_favorite_builds_table(conn: &Connection) -> Result<(), AppError> {
 
     // Check if download_url column exists
     let has_download_url: bool = conn.query_row(
-        "PRAGMA table_info(favorite_builds)",
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('favorite_builds') WHERE name = 'download_url'",
         [],
-        |row| {
-            let name: String = row.get(1)?;
-            Ok(name == "download_url")
-        },
+        |row| row.get(0),
     ).unwrap_or(false);
 
     if has_download_url {
@@ -166,6 +168,66 @@ fn migrate_favorite_builds_table(conn: &Connection) -> Result<(), AppError> {
         "
         DROP TABLE IF EXISTS favorite_builds;
         ALTER TABLE favorite_builds_new RENAME TO favorite_builds;
+        ",
+    )?;
+
+    Ok(())
+}
+
+/// Migrate installed_versions table from old schema (UNIQUE build_number+backend)
+/// to new schema (UNIQUE build_number+backend+architecture). Existing records default to 'x64'.
+fn migrate_installed_versions_table(conn: &Connection) -> Result<(), AppError> {
+    // Check if table exists
+    let table_exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='installed_versions'",
+        [],
+        |row| row.get(0),
+    )?;
+
+    if !table_exists {
+        return Ok(());
+    }
+
+    // Check if architecture column exists
+    let has_architecture: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('installed_versions') WHERE name = 'architecture'",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(false);
+
+    if has_architecture {
+        return Ok(());
+    }
+
+    // Recreate table with new schema, preserving existing data with default architecture 'x64'
+    conn.execute_batch(
+        "
+        CREATE TABLE installed_versions_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            build_number TEXT NOT NULL,
+            backend TEXT NOT NULL,
+            architecture TEXT NOT NULL DEFAULT 'x64',
+            install_path TEXT NOT NULL,
+            installed_at TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'installed',
+            UNIQUE(build_number, backend, architecture)
+        );
+        ",
+    )?;
+
+    // Migrate existing data with default architecture 'x64'
+    conn.execute(
+        "INSERT OR IGNORE INTO installed_versions_new (id, build_number, backend, architecture, install_path, installed_at, status)
+         SELECT id, build_number, backend, 'x64', install_path, installed_at, status
+         FROM installed_versions",
+        [],
+    )?;
+
+    // Drop old table and rename new one
+    conn.execute_batch(
+        "
+        DROP TABLE IF EXISTS installed_versions;
+        ALTER TABLE installed_versions_new RENAME TO installed_versions;
         ",
     )?;
 

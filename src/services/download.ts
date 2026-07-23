@@ -9,6 +9,7 @@ export async function installVersion(build: Build): Promise<number> {
   return invoke<number>('install_version', {
     buildNumber: build.build_number,
     backend: build.backend,
+    architecture: build.architecture,
     url: build.download_url,
     totalSize: build.file_size,
   }) as Promise<number>;

@@ -224,6 +224,7 @@ async fn install_version(
     state_download: tauri::State<'_, DownloadManager>,
     build_number: String,
     backend: String,
+    architecture: String,
     url: String,
     total_size: u64,
 ) -> Result<i64, String> {
@@ -235,12 +236,12 @@ async fn install_version(
     let build = Build {
         build_number,
         backend,
+        architecture,
         download_url: url,
         file_size: total_size,
         tag_name: String::new(),
         published_at: String::new(),
         platform: String::new(),
-        architecture: String::new(),
         checksum: None,
     };
 

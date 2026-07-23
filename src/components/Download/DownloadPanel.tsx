@@ -13,11 +13,11 @@ import type { DownloadProgress as DownloadProgressType } from '@/types';
 
 
 
-// Helper to parse composite key "build_number|backend"
-function parseDownloadKey(key: string): { buildNumber: string; backend: string } {
-  const idx = key.indexOf('|');
-  if (idx < 0) return { buildNumber: key, backend: '' };
-  return { buildNumber: key.slice(0, idx), backend: key.slice(idx + 1) };
+// Helper to parse composite key "build_number|backend|architecture"
+function parseDownloadKey(key: string): { buildNumber: string; backend: string; architecture: string } {
+  const parts = key.split('|');
+  if (parts.length < 2) return { buildNumber: key, backend: '', architecture: 'x64' };
+  return { buildNumber: parts[0], backend: parts[1], architecture: parts[2] || 'x64' };
 }
 
 export function DownloadPanel() {
@@ -40,12 +40,14 @@ export function DownloadPanel() {
           // Strategy 1: Match by download_id (exact match)
           let matchedBuildNumber = '';
           let matchedBackend = '';
+          let matchedArchitecture = '';
           let matchedKey = '';
           for (const [key, info] of store.activeDownloads.entries()) {
             if (info.id === p.download_id) {
               const parsed = parseDownloadKey(key);
               matchedBuildNumber = parsed.buildNumber;
               matchedBackend = parsed.backend;
+              matchedArchitecture = parsed.architecture;
               matchedKey = key;
               break;
             }
@@ -58,9 +60,10 @@ export function DownloadPanel() {
               if (parsed.buildNumber === p.build_number) {
                 matchedBuildNumber = parsed.buildNumber;
                 matchedBackend = parsed.backend;
+                matchedArchitecture = parsed.architecture;
                 matchedKey = key;
                 // Update the download_id and progress in a single call
-                store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
+                store.updateDownloadProgress(matchedBuildNumber, matchedBackend, matchedArchitecture, p.percentage, p.download_id, p.status);
                 break;
               }
             }
@@ -71,9 +74,9 @@ export function DownloadPanel() {
             if (p.status === 'extracting' && matchedKey) {
               const existingProgress = store.activeDownloads.get(matchedKey)?.progress ?? 0;
               const safePercentage = Math.max(p.percentage, existingProgress);
-              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, safePercentage, p.download_id, p.status);
+              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, matchedArchitecture, safePercentage, p.download_id, p.status);
             } else {
-              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
+              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, matchedArchitecture, p.percentage, p.download_id, p.status);
             }
           }
 
@@ -85,7 +88,7 @@ export function DownloadPanel() {
             for (const [key, info] of store.activeDownloads.entries()) {
               if (info.id === p.download_id) {
                 const parsed = parseDownloadKey(key);
-                store.clearDownload(parsed.buildNumber, parsed.backend);
+                store.clearDownload(parsed.buildNumber, parsed.backend, parsed.architecture);
                 cleared = true;
                 break;
               }
@@ -95,7 +98,7 @@ export function DownloadPanel() {
               for (const [key, _info] of store.activeDownloads.entries()) {
                 const parsed = parseDownloadKey(key);
                 if (parsed.buildNumber === p.build_number) {
-                  store.clearDownload(parsed.buildNumber, parsed.backend);
+                  store.clearDownload(parsed.buildNumber, parsed.backend, parsed.architecture);
                   break;
                 }
               }
@@ -115,16 +118,16 @@ export function DownloadPanel() {
     };
   }, [queryClient]);
 
-  const handleCancel = async (buildNumber: string, backend: string, downloadId: number) => {
+  const handleCancel = async (buildNumber: string, backend: string, architecture: string, downloadId: number) => {
     try {
       await cancelDownload(downloadId);
     } catch (err) {
       console.error('Failed to cancel download:', err);
     } finally {
-      updateDownloadProgress(buildNumber, backend, 0, downloadId, 'cancelled');
+      updateDownloadProgress(buildNumber, backend, architecture, 0, downloadId, 'cancelled');
       // Defensive: clear from activeDownloads in case the backend does not emit
       // a terminal download-progress event for cancellations.
-      clearDownload(buildNumber, backend);
+      clearDownload(buildNumber, backend, architecture);
     }
   };
 
@@ -156,13 +159,13 @@ export function DownloadPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           {activeEntries.map(([key, info]) => {
-            const { buildNumber, backend } = parseDownloadKey(key);
+            const { buildNumber, backend, architecture } = parseDownloadKey(key);
             return (
               <div key={key} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium">{buildNumber}</span>
-                    <span className="text-xs text-muted-foreground">({backend})</span>
+                    <span className="text-xs text-muted-foreground">({backend} {architecture})</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{Math.round(info.progress)}%</span>
@@ -171,7 +174,7 @@ export function DownloadPanel() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => handleCancel(buildNumber, backend, info.id)}
+                        onClick={() => handleCancel(buildNumber, backend, architecture, info.id)}
                       >
                         <X className="h-3 w-3" />
                       </Button>

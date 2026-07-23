@@ -20,6 +20,7 @@ pub struct InstalledVersion {
     pub id: i64,
     pub build_number: String,
     pub backend: String,
+    pub architecture: String,    // "x64", "arm64"
     pub install_path: String,
     pub installed_at: String,
     pub status: String,          // "installed", "corrupt", "pending"

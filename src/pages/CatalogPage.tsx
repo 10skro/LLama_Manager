@@ -36,10 +36,10 @@ function getBuildRowKey(build: { build_number: string; backend: string; download
   return build.download_url || `${build.build_number}_${build.backend}`;
 }
 
-function getBuildId(build_number: string, backend: string): string {
-  // Returns a stable composite identifier (build_number_backend) used for matching
+function getBuildId(build_number: string, backend: string, architecture: string): string {
+  // Returns a stable composite identifier (build_number_backend_architecture) used for matching
   // installed versions and download tracking.
-  return `${build_number}_${backend}`;
+  return `${build_number}_${backend}_${architecture}`;
 }
 
 function formatSize(bytes: number): string {
@@ -137,8 +137,8 @@ export function CatalogPage() {
   const installedKeys = useMemo(() => {
     const keys = new Set<string>();
     installed?.forEach(v => {
-      // Build a composite key (build_number_backend) from installed version for status matching.
-      keys.add(getBuildId(v.build_number, v.backend));
+      // Build a composite key (build_number_backend_architecture) from installed version for status matching.
+      keys.add(getBuildId(v.build_number, v.backend, v.architecture));
     });
     return keys;
   }, [installed]);
@@ -179,7 +179,7 @@ export function CatalogPage() {
 
     // Installed filter
     if (filters.installedOnly) {
-      result = result.filter(b => installedKeys.has(getBuildId(b.build_number, b.backend)));
+      result = result.filter(b => installedKeys.has(getBuildId(b.build_number, b.backend, b.architecture)));
     }
 
     // Sort (copy before sorting to avoid mutating source arrays)
@@ -229,22 +229,22 @@ export function CatalogPage() {
 
     // Check if already installed
     const alreadyInstalled = installed?.find(
-      v => v.build_number === build.build_number && v.backend === build.backend && v.status === 'installed'
+      v => v.build_number === build.build_number && v.backend === build.backend && v.architecture === build.architecture && v.status === 'installed'
     );
     if (alreadyInstalled) {
-      toast({ title: 'Already installed', description: `${build.build_number} (${build.backend}) is already installed.` });
+      toast({ title: 'Already installed', description: `${build.build_number} (${build.backend} ${build.architecture}) is already installed.` });
       return;
     }
 
     try {
       const downloadId = await installVersion(build);
       const store = useAppStore.getState();
-      store.updateDownloadProgress(build.build_number, build.backend, 0, downloadId, 'downloading');
-      toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend})...` });
+      store.updateDownloadProgress(build.build_number, build.backend, build.architecture, 0, downloadId, 'downloading');
+      toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend} ${build.architecture})...` });
     } catch (err: any) {
       toast({ title: 'Download failed', description: err.message || 'Could not start download.' });
       const store = useAppStore.getState();
-      store.clearDownload(build.build_number, build.backend);
+      store.clearDownload(build.build_number, build.backend, build.architecture);
     }
   };
 
@@ -671,22 +671,22 @@ export function CatalogPage() {
                            {/* Col 5: Size (empty on parent - shown per-variant on children) */}
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                           {/* Col 6: Status */}
-                           <TableCell className="text-center">
-                               <BuildStatusBadge
-                                 installed={variants.some(v => installedKeys.has(getBuildId(v.build_number, v.backend)))}
-                                  downloading={variants.some(v => downloadingKeys.has(makeKey(v.build_number, v.backend)))}
-                               />
-                           </TableCell>
+                            <TableCell className="text-center">
+                                <BuildStatusBadge
+                                  installed={variants.some(v => installedKeys.has(getBuildId(v.build_number, v.backend, v.architecture)))}
+                                    downloading={variants.some(v => downloadingKeys.has(makeKey(v.build_number, v.backend, v.architecture)))}
+                                />
+                            </TableCell>
                            {/* Col 7: Actions (empty on parent - actions moved to child rows) */}
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                         </TableRow>
 
                         {/* Child rows */}
-                        {isExpanded && variants.map((build, idx) => {
-                          const rowKey = getBuildRowKey(build);
-                          const compositeKey = getBuildId(build.build_number, build.backend);
-                          const isInstalled = installedKeys.has(compositeKey);
-                           const isDownloading = downloadingKeys.has(makeKey(build.build_number, build.backend));
+                         {isExpanded && variants.map((build, idx) => {
+                           const rowKey = getBuildRowKey(build);
+                           const compositeKey = getBuildId(build.build_number, build.backend, build.architecture);
+                           const isInstalled = installedKeys.has(compositeKey);
+                            const isDownloading = downloadingKeys.has(makeKey(build.build_number, build.backend, build.architecture));
                           const isFavorited = favoriteKeys.has(rowKey);
                           const isLast = idx === variants.length - 1;
                           const connector = isLast ? '└─ ' : '│  ';

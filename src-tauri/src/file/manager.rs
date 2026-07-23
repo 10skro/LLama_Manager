@@ -224,11 +224,9 @@ impl FileManager {
         };
 
         // Try to extract build number from directory name
-        let build_number = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown")
-            .to_string();
+        // Directory format is "{build_number}_{backend}_{architecture}", so split and take first part
+        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
+        let build_number = dir_name.split('_').next().unwrap_or(dir_name).to_string();
 
         Ok(VersionInfo {
             build_number,
@@ -253,9 +251,9 @@ impl FileManager {
         base.join("downloads").join(filename)
     }
 
-    /// Get the installation directory for a given build and backend.
-    pub fn get_install_path(base: &Path, build_number: &str, backend: &str) -> PathBuf {
-        base.join("versions").join(format!("{}_{}", build_number, backend))
+    /// Get the installation directory for a given build, backend, and architecture.
+    pub fn get_install_path(base: &Path, build_number: &str, backend: &str, architecture: &str) -> PathBuf {
+        base.join("versions").join(format!("{}_{}_{}", build_number, backend, architecture))
     }
 }
 

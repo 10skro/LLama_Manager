@@ -7,11 +7,12 @@ use crate::models::types::{AppError, Build, FavoriteBuild, InstalledVersion, Dow
 
 pub fn insert_version(conn: &Connection, version: &InstalledVersion) -> Result<i64, AppError> {
     let id = conn.execute(
-        "INSERT INTO installed_versions (build_number, backend, install_path, installed_at, status)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO installed_versions (build_number, backend, architecture, install_path, installed_at, status)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         params![
             version.build_number,
             version.backend,
+            version.architecture,
             version.install_path,
             version.installed_at,
             version.status,
@@ -22,7 +23,7 @@ pub fn insert_version(conn: &Connection, version: &InstalledVersion) -> Result<i
 
 pub fn get_all_versions(conn: &Connection) -> Result<Vec<InstalledVersion>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend, install_path, installed_at, status
+        "SELECT id, build_number, backend, architecture, install_path, installed_at, status
          FROM installed_versions ORDER BY id DESC",
     )?;
 
@@ -31,9 +32,10 @@ pub fn get_all_versions(conn: &Connection) -> Result<Vec<InstalledVersion>, AppE
             id: row.get(0)?,
             build_number: row.get(1)?,
             backend: row.get(2)?,
-            install_path: row.get(3)?,
-            installed_at: row.get(4)?,
-            status: row.get(5)?,
+            architecture: row.get(3)?,
+            install_path: row.get(4)?,
+            installed_at: row.get(5)?,
+            status: row.get(6)?,
         })
     })?;
 
@@ -45,21 +47,22 @@ pub fn delete_version(conn: &Connection, id: i64) -> Result<bool, AppError> {
     Ok(rows > 0)
 }
 
-pub fn get_version_by_build(conn: &Connection, build: &str, backend: &str) -> Result<Option<InstalledVersion>, AppError> {
+pub fn get_version_by_build(conn: &Connection, build: &str, backend: &str, architecture: &str) -> Result<Option<InstalledVersion>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend, install_path, installed_at, status
-         FROM installed_versions WHERE build_number = ?1 AND backend = ?2",
+        "SELECT id, build_number, backend, architecture, install_path, installed_at, status
+         FROM installed_versions WHERE build_number = ?1 AND backend = ?2 AND architecture = ?3",
     )?;
 
-    let mut rows = stmt.query(params![build, backend])?;
+    let mut rows = stmt.query(params![build, backend, architecture])?;
     if let Some(row) = rows.next()? {
         Ok(Some(InstalledVersion {
             id: row.get(0)?,
             build_number: row.get(1)?,
             backend: row.get(2)?,
-            install_path: row.get(3)?,
-            installed_at: row.get(4)?,
-            status: row.get(5)?,
+            architecture: row.get(3)?,
+            install_path: row.get(4)?,
+            installed_at: row.get(5)?,
+            status: row.get(6)?,
         }))
     } else {
         Ok(None)
