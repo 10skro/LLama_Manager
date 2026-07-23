@@ -25,8 +25,6 @@ const TOAST_DURATIONS = [
   { label: '3s', value: 3000 },
   { label: '5s', value: 5000 },
   { label: '10s', value: 10000 },
-  { label: '30s', value: 30000 },
-  { label: 'Permanent', value: 0 },
 ];
 
 export function SettingsPage() {
@@ -118,7 +116,7 @@ export function SettingsPage() {
         if (settings) {
           saveSettings({ ...settings, storage_path: selected }).catch(err => {
             console.error('Failed to auto-save storage path:', err);
-            setError('Could not persist storage path. Click Save Changes to retry.');
+            setError('Could not persist storage path. Changes will be lost on restart.');
           });
         }
       }
@@ -225,7 +223,7 @@ export function SettingsPage() {
                           console.error('Failed to auto-save theme:', err);
                           toast({
                             title: 'Save failed',
-                            description: 'Could not persist theme. Click Save Changes to retry.',
+                            description: 'Could not persist theme. Changes will be lost on restart.',
                             variant: 'destructive',
                           });
                         });
@@ -269,7 +267,7 @@ export function SettingsPage() {
                           console.error('Failed to auto-save font:', err);
                           toast({
                             title: 'Save failed',
-                            description: 'Could not persist font. Click Save Changes to retry.',
+                            description: 'Could not persist font. Changes will be lost on restart.',
                             variant: 'destructive',
                           });
                         });
@@ -315,6 +313,10 @@ export function SettingsPage() {
               onClick={() => {
                 const newValue = !settings?.auto_check_updates;
                 updateSetting('auto_check_updates', newValue);
+                toast({
+                  title: 'Auto-check updated',
+                  description: newValue ? 'Will check for updates on startup.' : 'Startup update check disabled.',
+                });
                 // Auto-save (fire-and-forget)
                 if (settings) {
                   saveSettings({ ...settings, auto_check_updates: newValue }).catch(err => {
@@ -363,13 +365,17 @@ export function SettingsPage() {
                     className={isActive ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''}
                     onClick={() => {
                       updateSetting('toast_duration', opt.value);
+                      toast({
+                        title: 'Toast duration updated',
+                        description: `Notifications will stay visible for ${opt.label}.`,
+                      });
                       // Auto-save toast duration (fire-and-forget)
                       if (settings) {
                         saveSettings({ ...settings, toast_duration: opt.value }).catch(err => {
                           console.error('Failed to auto-save toast duration:', err);
                           toast({
                             title: 'Save failed',
-                            description: 'Could not persist toast duration. Click Save Changes to retry.',
+                            description: 'Could not persist toast duration. Changes will be lost on restart.',
                             variant: 'destructive',
                           });
                         });
