@@ -440,19 +440,21 @@ export function SettingsPage() {
                         placeholder={hasToken ? 'Token is configured (edit to update)' : 'ghp_...'}
                         className="bg-background/50 font-mono text-sm pr-10"
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowToken(v => !v)}
-                      >
-                        {showToken ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
+                      {(githubToken.length > 0 || hasToken) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowToken(v => !v)}
+                        >
+                          {showToken ? (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                     {hasToken && githubToken.length === 0 && (
                       <Button
