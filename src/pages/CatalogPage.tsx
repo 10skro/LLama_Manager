@@ -28,14 +28,16 @@ import {
 } from 'lucide-react';
 import type { Build } from '@/types';
 
-function getBuildKey(build: { build_number: string; backend: string; download_url: string }): string {
-  // Use URL as unique identifier since same build_number+backend can appear in search results
-  // Fallback to build_number+backend if download_url is missing/empty
+function getBuildRowKey(build: { build_number: string; backend: string; download_url: string }): string {
+  // Returns a unique key for React rendering and favorite matching.
+  // Uses download_url as primary key since the same build_number+backend can appear in search results.
+  // Falls back to build_number+backend if download_url is missing.
   return build.download_url || `${build.build_number}_${build.backend}`;
 }
 
-function getBuildIdentifier(build_number: string, backend: string): string {
-  // Used for matching against installed versions, download tracking, and legacy key generation
+function getBuildId(build_number: string, backend: string): string {
+  // Returns a stable composite identifier (build_number_backend) used for matching
+  // installed versions and download tracking.
   return `${build_number}_${backend}`;
 }
 
@@ -131,9 +133,8 @@ export function CatalogPage() {
   const installedKeys = useMemo(() => {
     const keys = new Set<string>();
     installed?.forEach(v => {
-      // Build a download_url-like key from installed version to match against getBuildKey
-      // Installed versions are matched by build_number+backend
-      keys.add(getBuildIdentifier(v.build_number, v.backend));
+      // Build a composite key (build_number_backend) from installed version for status matching.
+      keys.add(getBuildId(v.build_number, v.backend));
     });
     return keys;
   }, [installed]);
@@ -169,7 +170,7 @@ export function CatalogPage() {
 
     // Favorites filter
     if (filters.favoritesOnly) {
-      result = result.filter(b => favoriteKeys.has(getBuildKey(b)));
+      result = result.filter(b => favoriteKeys.has(getBuildRowKey(b)));
     }
 
     // Sort (copy before sorting to avoid mutating source arrays)
@@ -208,11 +209,11 @@ export function CatalogPage() {
   }, [filteredBuilds]);
 
   const handleDownload = async (build: Build) => {
-    const legacyKey = getBuildIdentifier(build.build_number, build.backend);
+    const compositeKey = getBuildId(build.build_number, build.backend);
     setError(null);
     try {
       const downloadId = await installVersion(build);
-      setDownloading(prev => new Map(prev).set(legacyKey, downloadId));
+      setDownloading(prev => new Map(prev).set(compositeKey, downloadId));
       // Invalidate installed_versions cache so UI reflects the new installation
       queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
       toast({
@@ -243,7 +244,7 @@ export function CatalogPage() {
     try {
       begin(); // Disable button immediately before the async check
 
-      // Step 1: Lightweight check using FetchMode::Smart (ETag-cached, fast 304 if nothing changed)
+      // Step 1: Lightweight check using FetchMode::Conditional (ETag-cached, fast 304 if nothing changed)
       // If new builds are found, Step 2 does a full ForceRefresh fetch to update the local cache.
       // The double HTTP call is acceptable because ETag conditional requests make the first call
       // nearly instantaneous when the catalog hasn't changed on GitHub's side.
@@ -251,8 +252,8 @@ export function CatalogPage() {
 
       if (newBuilds.length > 0) {
         // Step 2: New builds found - fetch full catalog and update cache
-        const builds = await fetchBuilds({ forceRefresh: true });
-        queryClient.setQueryData(['builds', undefined], builds);
+        const freshBuilds = await fetchBuilds({ forceRefresh: true });
+        queryClient.setQueryData(['builds', undefined], freshBuilds);
         const ts = await (await import('@/services/github')).getCatalogLastFetched();
         setLastFetched(ts);
         end(true); // Success -> trigger cooldown
@@ -641,10 +642,10 @@ export function CatalogPage() {
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                           {/* Col 6: Status */}
                            <TableCell className="text-center">
-                             <BuildStatusBadge
-                               installed={variants.some(v => installedKeys.has(getBuildIdentifier(v.build_number, v.backend)))}
-                               downloading={variants.some(v => downloading.has(getBuildIdentifier(v.build_number, v.backend)))}
-                             />
+                              <BuildStatusBadge
+                                installed={variants.some(v => installedKeys.has(getBuildId(v.build_number, v.backend)))}
+                                downloading={variants.some(v => downloading.has(getBuildId(v.build_number, v.backend)))}
+                              />
                            </TableCell>
                            {/* Col 7: Actions (empty on parent - actions moved to child rows) */}
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
@@ -652,10 +653,10 @@ export function CatalogPage() {
 
                       {/* Child rows - only shown when expanded */}
                       {isExpanded && variants.map((build, idx) => {
-                        const rowKey = getBuildKey(build);
-                        const legacyKey = getBuildIdentifier(build.build_number, build.backend);
-                        const isInstalled = installedKeys.has(legacyKey);
-                        const isDownloading = downloading.has(legacyKey);
+                        const rowKey = getBuildRowKey(build);
+                        const compositeKey = getBuildId(build.build_number, build.backend);
+                        const isInstalled = installedKeys.has(compositeKey);
+                        const isDownloading = downloading.has(compositeKey);
                         const isFavorited = favoriteKeys.has(rowKey);
                         const isLast = idx === variants.length - 1;
                         const connector = isLast ? '└─ ' : '│  ';

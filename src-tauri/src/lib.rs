@@ -68,7 +68,7 @@ async fn fetch_builds(
     let mode = if force_refresh == Some(true) {
         FetchMode::ForceRefresh
     } else {
-        FetchMode::Smart
+        FetchMode::Conditional
     };
     github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, release_limit, mode)
         .await
@@ -81,10 +81,10 @@ async fn check_new_builds(
     state_db: tauri::State<'_, DbManager>,
 ) -> Result<Vec<Build>, String> {
     let installed = VersionManager::list_installed(&state_db).map_err(|e| e.to_string())?;
-    let available = github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, DEFAULT_RELEASE_LIMIT, FetchMode::Smart)
+    let available_builds = github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, DEFAULT_RELEASE_LIMIT, FetchMode::Conditional)
         .await
         .map_err(|e| e.to_string())?;
-    Ok(github::api::check_for_new_builds(&installed, &available))
+    Ok(github::api::check_for_new_builds(&installed, &available_builds))
 }
 
 #[tauri::command]

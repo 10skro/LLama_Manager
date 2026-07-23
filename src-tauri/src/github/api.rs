@@ -21,8 +21,8 @@ const SETTING_CATALOG_CACHE_TTL: &str = "catalog_cache_ttl_minutes";
 /// Fetch mode controlling cache behavior for catalog requests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FetchMode {
-    /// Default: if cache fresh → DB; if stale → ETag check → fetch if needed.
-    Smart,
+    /// Respect TTL: if cache fresh → return cached; if stale → ETag check → fetch if needed.
+    Conditional,
     /// Bypass TTL, always check ETag with GitHub.
     ForceRefresh,
 }
@@ -309,7 +309,7 @@ pub async fn fetch_latest_builds(
 /// Fetch builds from API, cache them, and fall back to cache on failure.
 ///
 /// The `mode` parameter controls cache behavior:
-/// - `Smart` (default): If cache fresh → DB; if stale → ETag check → fetch if needed.
+/// - `Conditional` (default): If cache fresh → DB; if stale → ETag check → fetch if needed.
 /// - `ForceRefresh`: Bypass TTL, always check ETag with GitHub.
 ///
 /// This function takes the connection lock briefly for caching, then releases it
@@ -320,7 +320,7 @@ pub async fn fetch_builds_from_cache_or_api(
     release_limit: usize,
     mode: FetchMode,
 ) -> Result<Vec<Build>, AppError> {
-    // For Smart mode, check if DB cache is fresh
+    // For Conditional mode, check if DB cache is fresh
     if mode != FetchMode::ForceRefresh {
         if is_cache_fresh(db) {
             log::info!("Cache is fresh (within TTL), returning cached builds from database.");
@@ -619,14 +619,14 @@ fn extract_changelog_content(body: &str) -> String {
 /// Check which available builds are not yet installed.
 pub fn check_for_new_builds(
     installed: &[InstalledVersion],
-    available: &[Build],
+    available_builds: &[Build],
 ) -> Vec<Build> {
     let installed_keys: HashSet<(String, String)> = installed
         .iter()
         .map(|v| (v.build_number.clone(), v.backend.clone()))
         .collect();
 
-    available
+    available_builds
         .iter()
         .filter(|b| !installed_keys.contains(&(b.build_number.clone(), b.backend.clone())))
         .cloned()
