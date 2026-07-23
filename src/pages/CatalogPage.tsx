@@ -20,9 +20,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { ChangelogModal } from '@/components/ChangelogModal';
+import { BuildStatusBadge } from '@/components/BuildStatusBadge';
 import {
   RefreshCw, Search, Download, X,
-  CheckCircle2, AlertCircle, Loader2, Star, Info,
+  AlertCircle, Loader2, Star, Info,
   ChevronDown, Clock,
 } from 'lucide-react';
 import type { Build } from '@/types';
@@ -639,19 +640,12 @@ export function CatalogPage() {
                            {/* Col 5: Size (empty on parent - shown per-variant on children) */}
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                           {/* Col 6: Status */}
-                          <TableCell className="text-center">
-                            {variants.some(v => installedKeys.has(getBuildIdentifier(v.build_number, v.backend))) ? (
-                              <div className="flex items-center justify-center gap-1.5 text-emerald-400">
-                                <CheckCircle2 className="h-4 w-4" />
-                                <span className="text-xs">Installed</span>
-                              </div>
-                            ) : variants.some(v => downloading.has(getBuildIdentifier(v.build_number, v.backend))) ? (
-                              <div className="flex items-center justify-center gap-1.5 text-blue-400">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span className="text-xs">Downloading</span>
-                              </div>
-                            ) : null}
-                          </TableCell>
+                           <TableCell className="text-center">
+                             <BuildStatusBadge
+                               installed={variants.some(v => installedKeys.has(getBuildIdentifier(v.build_number, v.backend)))}
+                               downloading={variants.some(v => downloading.has(getBuildIdentifier(v.build_number, v.backend)))}
+                             />
+                           </TableCell>
                            {/* Col 7: Actions (empty on parent - actions moved to child rows) */}
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                         </TableRow>
@@ -701,19 +695,9 @@ export function CatalogPage() {
                                 {formatSize(build.file_size)}
                               </TableCell>
                               {/* Col 6: Status */}
-                              <TableCell className="text-center">
-                                {isInstalled ? (
-                                  <div className="flex items-center justify-center gap-1.5 text-emerald-400">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    <span className="text-xs">Installed</span>
-                                  </div>
-                                ) : isDownloading ? (
-                                  <div className="flex items-center justify-center gap-1.5 text-blue-400">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span className="text-xs">Downloading</span>
-                                  </div>
-                                ) : null}
-                              </TableCell>
+                               <TableCell className="text-center">
+                                 <BuildStatusBadge installed={isInstalled} downloading={isDownloading} />
+                               </TableCell>
                               {/* Col 7: Actions */}
                               <TableCell className="text-center">
                                 <div className="flex items-center justify-center gap-2">

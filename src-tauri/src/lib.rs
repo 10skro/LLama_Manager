@@ -20,7 +20,7 @@ use crate::db::repo;
 use crate::download::manager::DownloadManager;
 use crate::github::api::{FetchMode, GithubClient};
 use crate::models::types::{
-    AppError, AppSettings, Build, DownloadProgress, DownloadRecord, FavoriteBuild, InstalledVersion,
+    AppError, AppSettings, Build, DownloadProgress, FavoriteBuild, InstalledVersion,
 };
 use crate::version::manager::VersionManager;
 
@@ -146,79 +146,6 @@ fn open_folder(app: tauri::AppHandle, path: String) -> Result<String, String> {
         .map_err(|e| format!("Failed to open folder: {}", e))?;
 
     Ok("Folder opened".to_string())
-}
-
-#[tauri::command]
-async fn start_download(
-    app: tauri::AppHandle,
-    state_db: tauri::State<'_, DbManager>,
-    state_download: tauri::State<'_, DownloadManager>,
-    build_number: String,
-    backend: String,
-    url: String,
-    total_size: u64,
-) -> Result<i64, String> {
-    // Get storage base path from settings, falling back to app data dir
-    let fallback_path = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| e.to_string())?
-        .to_string_lossy()
-        .to_string();
-    let app_dir = PathBuf::from(SettingsManager::get_storage_path(&state_db, &fallback_path));
-
-    // Check if already installed
-    {
-        let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-        if let Ok(Some(existing)) = repo::get_version_by_build(&conn, &build_number, &backend) {
-            if existing.status == "installed" {
-                return Err(format!("Version {} ({}) is already installed", build_number, backend));
-            }
-        }
-    }
-
-    // Create download record
-    let filename = url.split('/').next_back().unwrap_or("download.exe");
-    let download_path = app_dir.join("downloads").join(filename);
-    let download_path_str = download_path.to_string_lossy().to_string();
-
-    let now = chrono::Local::now().to_rfc3339();
-    let download = DownloadRecord {
-        id: 0,
-        build_number: build_number.clone(),
-        download_url: url.clone(),
-        file_path: Some(download_path_str.clone()),
-        total_size,
-        downloaded_size: 0,
-        status: "pending".to_string(),
-        error_message: None,
-        created_at: now.clone(),
-        updated_at: now,
-    };
-
-    let download_id = {
-        let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-        repo::insert_download(&conn, &download).map_err(|e| e.to_string())?
-    };
-
-    // Create progress channel and spawn forwarder task
-    let (tx, rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
-    spawn_progress_forwarder(app.clone(), (*state_db).clone(), rx, Some(download_id));
-
-    // Start the actual download
-    state_download
-        .start_download(
-            download_id,
-            url,
-            download_path_str,
-            total_size,
-            build_number,
-            tx,
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(download_id)
 }
 
 #[tauri::command]
@@ -437,7 +364,6 @@ pub fn run_tauri_app() {
             get_installed_versions,
             uninstall_version,
             open_folder,
-            start_download,
             cancel_download,
             get_download_status,
             get_settings,
