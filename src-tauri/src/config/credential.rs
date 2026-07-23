@@ -1,7 +1,7 @@
 use crate::models::types::AppError;
 use keyring::Entry;
 
-const KEYRING_SERVICE: &str = "LlamaCppManager";
+const KEYRING_SERVICE: &str = "LlamaManager";
 const KEYRING_USERNAME: &str = "github_token";
 
 pub struct CredentialManager;

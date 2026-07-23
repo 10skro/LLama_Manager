@@ -135,7 +135,7 @@ export function SettingsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           <p className="text-muted-foreground mt-1">
-            Configure your LlamaCpp Manager preferences.
+            Configure your Llama Manager preferences.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Manage storage paths, appearance, notifications, and advanced options.
@@ -171,7 +171,7 @@ export function SettingsPage() {
               <Input
                 value={settings?.storage_path || ''}
                 onChange={e => updateSetting('storage_path', e.target.value)}
-                placeholder="Default: %LOCALAPPDATA%\com.openfox.llamacpp-manager"
+                placeholder="Default: %LOCALAPPDATA%\llama-manager"
                 className="bg-background/50 font-mono text-sm"
               />
               <Button
@@ -509,7 +509,7 @@ export function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p><strong className="text-foreground">LlamaCpp Manager</strong> {appVersion ? `v${appVersion}` : '...'}</p>
+          <p><strong className="text-foreground">Llama Manager</strong> {appVersion ? `v${appVersion}` : '...'}</p>
           <p>A modern Windows application for managing llama.cpp builds.</p>
           <p>Built with Tauri, React, and Rust.</p>
         </CardContent>

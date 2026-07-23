@@ -1,7 +1,7 @@
 {
-  "productName": "LlamaCpp Manager",
+  "productName": "Llama Manager",
   "version": "0.3.10",
-  "identifier": "com.openfox.llamacpp-manager",
+  "identifier": "llama-manager",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "LlamaCpp Manager",
+        "title": "Llama Manager",
         "width": 1280,
         "height": 800,
         "minWidth": 900,

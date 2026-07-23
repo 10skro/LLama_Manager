@@ -339,7 +339,7 @@ pub fn run_tauri_app() {
             setup_directories(&app_dir).map_err(|e| e.to_string())?;
 
             // Initialize database
-            let db_path = app_dir.join("database").join("llamacpp.db");
+            let db_path = app_dir.join("database").join("llama.db");
             let db = DbManager::new(&db_path).map_err(|e| e.to_string())?;
             db.init_tables().map_err(|e| e.to_string())?;
 

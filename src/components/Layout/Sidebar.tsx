@@ -34,7 +34,7 @@ export function Sidebar() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Package className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold tracking-tight">LlamaCpp</span>
+            <span className="font-semibold tracking-tight">Llama</span>
           </div>
         )}
         {sidebarCollapsed && (
