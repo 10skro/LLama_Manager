@@ -35,7 +35,7 @@ function App() {
         }
 
         // Apply saved font on startup
-        const fontFamily = settings.fontFamily ?? DEFAULT_FONT_FAMILY;
+        const fontFamily = settings.font_family ?? DEFAULT_FONT_FAMILY;
         document.documentElement.style.setProperty('--custom-font', fontFamily);
       } catch (err) {
         console.error('Failed to load settings on startup:', err);

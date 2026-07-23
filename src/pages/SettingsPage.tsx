@@ -251,7 +251,7 @@ export function SettingsPage() {
             <Label>Font</Label>
             <div className="flex gap-2 flex-wrap">
               {AVAILABLE_FONTS.map((font) => {
-                const isActive = settings?.fontFamily === font.cssFamily;
+                const isActive = settings?.font_family === font.cssFamily;
                 return (
                   <Button
                     key={font.id}
@@ -260,12 +260,12 @@ export function SettingsPage() {
                     className={isActive ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''}
                     style={{ fontFamily: font.cssFamily }}
                     onClick={() => {
-                      updateSetting('fontFamily', font.cssFamily);
+                      updateSetting('font_family', font.cssFamily);
                       // Apply font instantly
                       document.documentElement.style.setProperty('--custom-font', font.cssFamily);
                       // Auto-save font choice (fire-and-forget)
                       if (settings) {
-                        saveSettings({ ...settings, fontFamily: font.cssFamily }).catch(err => {
+                        saveSettings({ ...settings, font_family: font.cssFamily }).catch(err => {
                           console.error('Failed to auto-save font:', err);
                           toast({
                             title: 'Save failed',

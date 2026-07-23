@@ -54,7 +54,7 @@ export interface AppSettings {
   last_fetch?: string;
   auto_check_updates: boolean;
   toast_duration?: number; // milliseconds, default 5000
-  fontFamily?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
+  font_family?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
 }
 
 // Favorite build

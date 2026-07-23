@@ -13,11 +13,11 @@ export function useTheme() {
     }
   }, [activeTheme]);
 
-  // Apply font when settings.fontFamily changes
+  // Apply font when settings.font_family changes
   useEffect(() => {
-    const fontFamily = settings?.fontFamily ?? DEFAULT_FONT_FAMILY;
+    const fontFamily = settings?.font_family ?? DEFAULT_FONT_FAMILY;
     document.documentElement.style.setProperty('--custom-font', fontFamily);
-  }, [settings?.fontFamily]);
+  }, [settings?.font_family]);
 
   return { activeTheme, setActiveTheme };
 }
