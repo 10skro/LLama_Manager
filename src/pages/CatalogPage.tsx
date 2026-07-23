@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, Fragment, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useBuilds } from '@/hooks/useBuilds';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
@@ -11,6 +12,7 @@ import { installVersion } from '@/services/download';
 import { fetchBuilds, checkNewBuilds, fetchReleaseByTag, searchBuilds } from '@/services/github';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate } from '@/utils/format';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -667,115 +669,131 @@ export function CatalogPage() {
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                         </TableRow>
 
-                      {/* Child rows - only shown when expanded */}
-                      {isExpanded && variants.map((build, idx) => {
-                        const rowKey = getBuildRowKey(build);
-                        const compositeKey = getBuildId(build.build_number, build.backend);
-                        const isInstalled = installedKeys.has(compositeKey);
-                        const isDownloading = downloading.has(compositeKey);
-                        const isFavorited = favoriteKeys.has(rowKey);
-                        const isLast = idx === variants.length - 1;
-                        const connector = isLast ? '└─ ' : '│  ';
+                        {/* Child rows - animated expand/collapse */}
+                        <AnimatePresence initial={false}>
+                        {isExpanded && variants.map((build, idx) => {
+                          const rowKey = getBuildRowKey(build);
+                          const compositeKey = getBuildId(build.build_number, build.backend);
+                          const isInstalled = installedKeys.has(compositeKey);
+                          const isDownloading = downloading.has(compositeKey);
+                          const isFavorited = favoriteKeys.has(rowKey);
+                          const isLast = idx === variants.length - 1;
+                          const connector = isLast ? '└─ ' : '│  ';
 
-                        return (
-                           <TableRow key={rowKey} className="border-border/30 hover:bg-secondary/30">
-                              {/* Col 1: Build with tree connector */}
-                              <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <span className="font-mono text-sm text-muted-foreground">{connector}</span>
-                                  <span className="font-mono text-sm font-medium">
-                                    {build.build_number}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              {/* Col 2: Arch */}
-                              <TableCell className="text-center text-muted-foreground text-sm">
-                                {build.architecture}
-                              </TableCell>
-                              {/* Col 3: Backend */}
-                              <TableCell className="text-center">
-                                <div className="flex items-center justify-center">
-                                  <Badge
-                                    variant="outline"
-                                    className={`border ${getBackendColor(build.backend)}`}
-                                  >
-                                    {build.backend}
-                                  </Badge>
-                                </div>
-                              </TableCell>
-                              {/* Col 4: Date */}
-                              <TableCell className="text-center text-muted-foreground text-sm">
-                                {formatDate(build.published_at)}
-                              </TableCell>
-                              {/* Col 5: Size */}
-                              <TableCell className="text-center text-muted-foreground text-sm">
-                                {formatSize(build.file_size)}
-                              </TableCell>
-                              {/* Col 6: Status */}
+                          return (
+                            <motion.tr
+                              key={rowKey}
+                              initial={{ opacity: 0, y: -8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              transition={{
+                                duration: 0.2,
+                                delay: idx * 0.03,
+                                ease: "easeOut",
+                              }}
+                              className={cn(
+                                "border-b border-border transition-colors hover:bg-muted/50",
+                                "border-border/30 hover:bg-secondary/30"
+                              )}
+                            >
+                               {/* Col 1: Build with tree connector */}
                                <TableCell className="text-center">
-                                 <BuildStatusBadge installed={isInstalled} downloading={isDownloading} />
+                                 <div className="flex items-center justify-center gap-1">
+                                   <span className="font-mono text-sm text-muted-foreground">{connector}</span>
+                                   <span className="font-mono text-sm font-medium">
+                                     {build.build_number}
+                                   </span>
+                                 </div>
                                </TableCell>
-                              {/* Col 7: Actions */}
-                              <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  <button
-                                     aria-pressed={isFavorited}
-                                     aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-                                     disabled={!build.download_url}
-                                     onClick={(e) => {
-                                       e.stopPropagation();
-                                       toggleFavorite.mutate({
-                                         downloadUrl: build.download_url,
-                                         buildNumber: build.build_number,
-                                         backend: build.backend,
-                                       });
-                                     }}
-                                     className={`hover:opacity-80 transition-opacity p-1 rounded hover:bg-secondary ${!build.download_url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                     title={!build.download_url ? 'Cannot favorite: no download URL' : (isFavorited ? 'Remove from favorites' : 'Add to favorites')}
+                               {/* Col 2: Arch */}
+                               <TableCell className="text-center text-muted-foreground text-sm">
+                                 {build.architecture}
+                               </TableCell>
+                               {/* Col 3: Backend */}
+                               <TableCell className="text-center">
+                                 <div className="flex items-center justify-center">
+                                   <Badge
+                                     variant="outline"
+                                     className={`border ${getBackendColor(build.backend)}`}
                                    >
-                                     <Star
-                                       className={`h-4 w-4 ${isFavorited ? 'fill-[hsl(var(--yellow))] text-[hsl(var(--yellow))]' : 'fill-none text-muted-foreground'}`}
-                                     />
-                                   </button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setChangelogModal({ open: true, tag: build.tag_name, build: build.build_number });
-                                    }}
-                                    className="h-8 w-8 p-0"
-                                    title="View changelog"
-                                  >
-                                    <Info className="h-4 w-4" />
-                                  </Button>
-                                  {isInstalled ? (
-                                      <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
-                                      Installed
-                                    </Button>
-                                  ) : isDownloading ? (
-                                     <Button variant="outline" size="sm" disabled className="w-[80px] justify-center">
-                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                      Downloading
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      size="sm"
+                                     {build.backend}
+                                   </Badge>
+                                 </div>
+                               </TableCell>
+                               {/* Col 4: Date */}
+                               <TableCell className="text-center text-muted-foreground text-sm">
+                                 {formatDate(build.published_at)}
+                               </TableCell>
+                               {/* Col 5: Size */}
+                               <TableCell className="text-center text-muted-foreground text-sm">
+                                 {formatSize(build.file_size)}
+                               </TableCell>
+                               {/* Col 6: Status */}
+                                <TableCell className="text-center">
+                                  <BuildStatusBadge installed={isInstalled} downloading={isDownloading} />
+                                </TableCell>
+                               {/* Col 7: Actions */}
+                               <TableCell className="text-center">
+                                 <div className="flex items-center justify-center gap-2">
+                                   <button
+                                      aria-pressed={isFavorited}
+                                      aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                                      disabled={!build.download_url}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleDownload(build);
+                                        toggleFavorite.mutate({
+                                          downloadUrl: build.download_url,
+                                          buildNumber: build.build_number,
+                                          backend: build.backend,
+                                        });
                                       }}
-                                       className="gap-2 w-[80px] justify-center"
+                                      className={`hover:opacity-80 transition-opacity p-1 rounded hover:bg-secondary ${!build.download_url ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                      title={!build.download_url ? 'Cannot favorite: no download URL' : (isFavorited ? 'Remove from favorites' : 'Add to favorites')}
                                     >
-                                      <Download className="h-4 w-4" />
-                                      Download
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                           </TableRow>
-                        );
-                      })}
+                                      <Star
+                                        className={`h-4 w-4 ${isFavorited ? 'fill-[hsl(var(--yellow))] text-[hsl(var(--yellow))]' : 'fill-none text-muted-foreground'}`}
+                                      />
+                                    </button>
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       setChangelogModal({ open: true, tag: build.tag_name, build: build.build_number });
+                                     }}
+                                     className="h-8 w-8 p-0"
+                                     title="View changelog"
+                                   >
+                                     <Info className="h-4 w-4" />
+                                   </Button>
+                                   {isInstalled ? (
+                                       <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
+                                       Installed
+                                     </Button>
+                                   ) : isDownloading ? (
+                                      <Button variant="outline" size="sm" disabled className="w-[80px] justify-center">
+                                       <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                       Downloading
+                                     </Button>
+                                   ) : (
+                                     <Button
+                                       size="sm"
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         handleDownload(build);
+                                       }}
+                                        className="gap-2 w-[80px] justify-center"
+                                     >
+                                       <Download className="h-4 w-4" />
+                                       Download
+                                     </Button>
+                                   )}
+                                 </div>
+                               </TableCell>
+                            </motion.tr>
+                          );
+                        })}
+                        </AnimatePresence>
                     </Fragment>
                   );
                 })}

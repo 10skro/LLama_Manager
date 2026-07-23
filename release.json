@@ -1,1 +1,1 @@
-{"tag_name":"v0.2.72","target_commitish":"main","name":"v0.2.72","body":"## Changements\n\n### 🐛 Fixes\n- Persistance de la durée des notifications toast dans les paramètres (backend + frontend)","draft":false,"prerelease":false}
+{"tag_name":"v0.3.00","target_commitish":"main","name":"v0.3.00","body":"## Changements\n\n### 🐛 Fixes\n- Persistance de la durée des notifications toast dans les paramètres (backend + frontend)","draft":false,"prerelease":false}
