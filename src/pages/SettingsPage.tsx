@@ -149,13 +149,17 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 h-full">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Configure your LlamaCpp Manager preferences.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6 p-6 h-full overflow-auto">
+      <div className="max-w-3xl mx-auto w-full flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground mt-1">
+            Configure your LlamaCpp Manager preferences.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Manage storage paths, appearance, notifications, and advanced options.
+          </p>
+        </div>
 
       {/* Error Banner */}
       {error && (
@@ -169,7 +173,7 @@ export function SettingsPage() {
       )}
 
       {/* Storage Path */}
-      <Card className="border-border/50 bg-card/50 max-w-3xl mx-auto">
+      <Card className="border-border/50 bg-card/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HardDrive className="h-5 w-5" />
@@ -208,7 +212,7 @@ export function SettingsPage() {
       </Card>
 
       {/* Appearance */}
-      <Card className="border-border/50 bg-card/50 max-w-3xl mx-auto">
+      <Card className="border-border/50 bg-card/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -305,7 +309,7 @@ export function SettingsPage() {
       </Card>
 
       {/* Notifications */}
-      <Card className="border-border/50 bg-card/50 max-w-3xl mx-auto">
+      <Card className="border-border/50 bg-card/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
@@ -386,7 +390,7 @@ export function SettingsPage() {
       </Card>
 
       {/* Advanced (collapsible) */}
-      <Card className="border-amber-500/20 bg-card/50 max-w-3xl mx-auto">
+      <Card className="border-amber-500/20 bg-card/50">
         <CardHeader className="cursor-pointer" onClick={() => setAdvancedOpen(v => !v)}>
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -480,7 +484,7 @@ export function SettingsPage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex items-center gap-3 max-w-3xl mx-auto">
+      <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={isSaving || saveSuccess}>
           {isSaving ? (
             <>
@@ -502,7 +506,7 @@ export function SettingsPage() {
       </div>
 
       {/* About */}
-      <Card className="border-border/50 bg-card/50 max-w-3xl mx-auto">
+      <Card className="border-border/50 bg-card/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Info className="h-5 w-5" />
@@ -515,6 +519,7 @@ export function SettingsPage() {
           <p>Built with Tauri, React, and Rust.</p>
         </CardContent>
       </Card>
+      </div> {/* end max-w-3xl mx-auto wrapper */}
     </div>
   );
 }
