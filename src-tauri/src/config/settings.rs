@@ -1,3 +1,4 @@
+use crate::config::storage::SYSTEM_DIRS;
 use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::models::types::{AppError, AppSettings};
@@ -126,13 +127,7 @@ impl SettingsManager {
             }
         };
         let path_str = resolved.to_string_lossy().to_string();
-        let system_dirs = vec![
-            "C:\\Windows",
-            "C:\\Program Files",
-            "C:\\Program Files (x86)",
-            "C:\\ProgramData",
-        ];
-        if system_dirs.iter().any(|sd| path_str.starts_with(sd)) {
+        if SYSTEM_DIRS.iter().any(|sd| path_str.starts_with(sd)) {
             log::warn!("Storage path {} is in a system directory, using fallback", path_str);
             path = fallback.to_string();
         }

@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/hooks/use-toast';
-import { getSettings, saveSettings, selectFolder } from '@/services/settings';
+import { getSettings, saveSettings, selectFolder, changeStoragePath } from '@/services/settings';
 import { saveGithubToken, hasGithubToken, deleteGithubToken } from '@/services/github-token';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +34,7 @@ export function SettingsPage() {
   const { toast } = useToast();
   const [showToken, setShowToken] = useState(false);
   const [isBrowsing, setIsBrowsing] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Local state for GitHub token (NOT in settings store)
@@ -42,6 +43,9 @@ export function SettingsPage() {
   const [isSavingToken, setIsSavingToken] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('...');
+
+  // Persisted storage path — tracks the last successfully committed path
+  const [persistedStoragePath, setPersistedStoragePath] = useState(() => settings?.storage_path || '');
 
   // Check if token exists on mount
   useEffect(() => {
@@ -86,6 +90,7 @@ export function SettingsPage() {
     try {
       const s = await getSettings();
       setSettings(s);
+      setPersistedStoragePath(s.storage_path || '');
 
       // Sync theme on settings load
       if (s.theme) {
@@ -111,21 +116,52 @@ export function SettingsPage() {
     try {
       const selected = await selectFolder();
       if (selected) {
+        const oldPath = persistedStoragePath;
+        await changeStoragePath(oldPath, selected);
         updateSetting('storage_path', selected);
-        // Auto-save storage path to DB to avoid race condition where
-        // a download started before "Save Changes" would use the old path.
-        if (settings) {
-          saveSettings({ ...settings, storage_path: selected }).catch(err => {
-            console.error('Failed to auto-save storage path:', err);
-            setError('Could not persist storage path. Changes will be lost on restart.');
-          });
-        }
+        setPersistedStoragePath(selected);
+        toast({
+          title: 'Storage path updated',
+          description: `Files migrated to ${selected}`,
+        });
       }
     } catch (err) {
-      console.error('Failed to open folder dialog:', err);
-      setError('Failed to open folder dialog. Please try again.');
+      console.error('Failed to change storage path:', err);
+      setError(String(err));
+      toast({
+        title: 'Migration failed',
+        description: String(err),
+        variant: 'destructive',
+      });
     } finally {
       setIsBrowsing(false);
+    }
+  };
+
+  const handleApplyStoragePath = async () => {
+    const newPath = settings?.storage_path || '';
+    if (!newPath.trim()) return;
+
+    setIsApplying(true);
+    setError(null);
+    try {
+      const oldPath = persistedStoragePath;
+      await changeStoragePath(oldPath, newPath.trim());
+      setPersistedStoragePath(newPath.trim());
+      toast({
+        title: 'Storage path updated',
+        description: `Files migrated to ${newPath.trim()}`,
+      });
+    } catch (err) {
+      console.error('Failed to change storage path:', err);
+      setError(String(err));
+      toast({
+        title: 'Migration failed',
+        description: String(err),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -179,12 +215,25 @@ export function SettingsPage() {
                 size="icon"
                 title="Browse for folder"
                 onClick={handleBrowse}
-                disabled={isBrowsing}
+                disabled={isBrowsing || isApplying}
               >
                 {isBrowsing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <FolderOpen className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                title="Apply typed path"
+                onClick={handleApplyStoragePath}
+                disabled={isApplying || (settings?.storage_path || '').trim().length === 0}
+              >
+                {isApplying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
                 )}
               </Button>
             </div>

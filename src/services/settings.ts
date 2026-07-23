@@ -18,3 +18,16 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
 export function selectFolder(): Promise<string | null> {
   return invoke<string | null>('open_folder_dialog') as Promise<string | null>;
 }
+
+/**
+ * Changes the storage path with full migration.
+ * Validates the new path, migrates existing files, updates the database,
+ * and cleans up the old storage directory.
+ *
+ * @param oldPath - The current storage path.
+ * @param newPath - The new storage path to migrate to.
+ * @returns The new storage path on success.
+ */
+export async function changeStoragePath(oldPath: string, newPath: string): Promise<string> {
+  return invoke<string>('change_storage_path', { oldPath, newPath }) as Promise<string>;
+}

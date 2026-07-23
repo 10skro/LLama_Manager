@@ -15,6 +15,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 
 use crate::config::settings::SettingsManager;
+use crate::config::storage::{validate_storage_path, migrate_storage_path, cleanup_old_storage};
 use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::download::manager::DownloadManager;
@@ -310,6 +311,33 @@ fn delete_github_token(
 }
 
 #[tauri::command]
+fn change_storage_path(
+    state_db: tauri::State<'_, DbManager>,
+    old_path: String,
+    new_path: String,
+) -> Result<String, String> {
+    // 1. Validate the new path
+    validate_storage_path(&new_path, &old_path).map_err(|e| e.to_string())?;
+
+    // 2. Migrate files from old to new location
+    migrate_storage_path(&old_path, &new_path, &state_db)
+        .map_err(|e| e.to_string())?;
+
+    // 3. Save new path to database (only after successful migration)
+    // Load current settings, update storage_path, save back
+    let mut settings = SettingsManager::get_settings(&state_db)
+        .map_err(|e| format!("Failed to load settings: {}", e))?;
+    settings.storage_path = new_path.clone();
+    SettingsManager::save_settings(&state_db, &settings)
+        .map_err(|e| format!("Failed to save settings: {}", e))?;
+
+    // 4. Clean up old directory
+    cleanup_old_storage(&old_path);
+
+    Ok(new_path)
+}
+
+#[tauri::command]
 fn get_catalog_last_fetched(
     state_db: tauri::State<'_, DbManager>,
 ) -> Result<Option<String>, String> {
@@ -384,6 +412,7 @@ pub fn run_tauri_app() {
             has_github_token,
             delete_github_token,
             get_catalog_last_fetched,
+            change_storage_path,
             get_app_version,
         ])
         .run(tauri::generate_context!())
