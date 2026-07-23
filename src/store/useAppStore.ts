@@ -48,6 +48,7 @@ const defaultFilters: BuildFilters = {
   sortBy: 'date',
   sortOrder: 'desc',
   favoritesOnly: false,
+  installedOnly: false,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({

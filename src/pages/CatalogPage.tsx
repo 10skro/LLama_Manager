@@ -24,7 +24,7 @@ import { BuildStatusBadge } from '@/components/BuildStatusBadge';
 import {
   RefreshCw, Search, Download, X,
   AlertCircle, Loader2, Star, Info,
-  ChevronDown, Clock,
+  ChevronDown, Clock, HardDrive,
 } from 'lucide-react';
 import type { Build } from '@/types';
 
@@ -173,6 +173,11 @@ export function CatalogPage() {
       result = result.filter(b => favoriteKeys.has(getBuildRowKey(b)));
     }
 
+    // Installed filter
+    if (filters.installedOnly) {
+      result = result.filter(b => installedKeys.has(getBuildId(b.build_number, b.backend)));
+    }
+
     // Sort (copy before sorting to avoid mutating source arrays)
     result = [...result].sort((a, b) => {
       if (filters.sortBy === 'date') {
@@ -186,7 +191,7 @@ export function CatalogPage() {
     });
 
     return result;
-  }, [builds, filters, searchState.tag, searchState.builds, favoriteKeys]);
+  }, [builds, filters, searchState.tag, searchState.builds, favoriteKeys, installedKeys]);
 
   // Count unique versions for display
   const versionCounts = useMemo(() => {
@@ -507,6 +512,17 @@ export function CatalogPage() {
             >
               <Star className={`h-4 w-4 ${filters.favoritesOnly ? 'fill-current' : ''}`} />
               {filters.favoritesOnly ? 'Favorites Only' : 'Favorites'}
+            </Button>
+
+            {/* Installed Filter Toggle */}
+            <Button
+              variant={filters.installedOnly ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilters({ installedOnly: !filters.installedOnly })}
+              className="gap-2"
+            >
+              <HardDrive className={`h-4 w-4 ${filters.installedOnly ? 'fill-current' : ''}`} />
+              {filters.installedOnly ? 'Installed Only' : 'Installed'}
             </Button>
 
             {/* Backend Filters */}

@@ -73,4 +73,5 @@ export interface BuildFilters {
   sortBy: 'date' | 'build_number';
   sortOrder: 'asc' | 'desc';
   favoritesOnly: boolean;
+  installedOnly: boolean;
 }
