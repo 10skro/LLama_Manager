@@ -94,7 +94,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       for (const [key] of next.entries()) {
         if (key.startsWith(buildNumber + '|')) {
           next.delete(key);
-          break;
+          // NOTE: No break here - deletes ALL variants with this build_number
         }
       }
       return { activeDownloads: next };

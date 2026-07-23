@@ -23,7 +23,6 @@ function parseDownloadKey(key: string): { buildNumber: string; backend: string }
 export function DownloadPanel() {
   const activeDownloads = useAppStore((state) => state.activeDownloads);
   const updateDownloadProgress = useAppStore((state) => state.updateDownloadProgress);
-  const clearDownloadByBuildNumber = useAppStore((state) => state.clearDownloadByBuildNumber);
   const queue = useDownloadQueue((state) => state.queue);
   const completeActive = useDownloadQueue((state) => state.completeActive);
   const removeFromQueue = useDownloadQueue((state) => state.removeFromQueue);
@@ -83,32 +82,56 @@ export function DownloadPanel() {
           const p = event.payload;
           const store = useAppStore.getState();
 
-          // FIX: Find backend from activeDownloads, fallback to queue.active
-          let backend = '';
-          for (const [key] of store.activeDownloads.entries()) {
-            const { buildNumber } = parseDownloadKey(key);
-            if (buildNumber === p.build_number) {
+          // FIX: Match by download_id to route progress to the correct variant
+          let matchedBuildNumber = '';
+          let matchedBackend = '';
+          for (const [key, info] of store.activeDownloads.entries()) {
+            if (info.id === p.download_id) {
               const parsed = parseDownloadKey(key);
-              backend = parsed.backend;
+              matchedBuildNumber = parsed.buildNumber;
+              matchedBackend = parsed.backend;
               break;
             }
           }
-          // Fallback: check queue's active build
-          if (!backend) {
+          // Fallback: if download_id not found, try matching by build_number
+          // BUT only if there's exactly ONE variant for this build_number (avoid guessing wrong)
+          if (!matchedBuildNumber) {
+            const variantsForBuild: string[] = [];
+            for (const [key] of store.activeDownloads.entries()) {
+              const { buildNumber } = parseDownloadKey(key);
+              if (buildNumber === p.build_number) {
+                variantsForBuild.push(key);
+              }
+            }
+            if (variantsForBuild.length === 1) {
+              const parsed = parseDownloadKey(variantsForBuild[0]);
+              matchedBuildNumber = parsed.buildNumber;
+              matchedBackend = parsed.backend;
+            } else if (variantsForBuild.length > 1) {
+              console.debug(`Download event for build ${p.build_number} (download_id=${p.download_id}) arrived before frontend registration; skipping build_number fallback (${variantsForBuild.length} variants active)`);
+            }
+          }
+          // Fallback 2: check queue's active build
+          if (!matchedBuildNumber) {
             const queueState = useDownloadQueue.getState();
             if (queueState.active?.build_number === p.build_number) {
-              backend = queueState.active.backend;
+              matchedBuildNumber = queueState.active.build_number;
+              matchedBackend = queueState.active.backend;
             }
           }
 
-          if (backend) {
-            store.updateDownloadProgress(p.build_number, backend, p.percentage, p.download_id, p.status);
+          if (matchedBuildNumber && matchedBackend) {
+            store.updateDownloadProgress(matchedBuildNumber, matchedBackend, p.percentage, p.download_id, p.status);
           }
 
           if (TERMINAL_STATUSES.has(p.status)) {
-            clearDownloadByBuildNumber(p.build_number);
-            const next = completeActive();
-            if (next) startQueuedDownload(next);
+            if (!matchedBuildNumber || !matchedBackend) {
+              console.warn(`Terminal download event (${p.status}) for build ${p.build_number} (download_id=${p.download_id}) could not be matched to any active download`);
+            } else {
+              store.clearDownload(matchedBuildNumber, matchedBackend);
+              const next = completeActive();
+              if (next) startQueuedDownload(next);
+            }
           }
         });
         if (!destroyed) {
@@ -159,7 +182,7 @@ export function DownloadPanel() {
       if (pollInterval) clearInterval(pollInterval);
       if (unlisten) unlisten();
     };
-  }, [clearDownloadByBuildNumber, completeActive, startQueuedDownload]);
+  }, [completeActive, startQueuedDownload]);
 
   // FIX: Cancel updates status to 'cancelled' instead of clearing immediately
   // This keeps the entry visible until the backend event confirms cancellation
@@ -171,7 +194,7 @@ export function DownloadPanel() {
     } finally {
       // Update status to cancelled (keep entry visible)
       updateDownloadProgress(buildNumber, backend, 0, downloadId, 'cancelled');
-      // The event listener will call clearDownloadByBuildNumber + completeActive when 'cancelled' event arrives
+      // The event listener will call clearDownload (targeted) + completeActive when 'cancelled' event arrives
     }
   };
 
