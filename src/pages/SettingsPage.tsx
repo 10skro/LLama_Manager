@@ -438,7 +438,8 @@ export function SettingsPage() {
                         value={githubToken}
                         onChange={e => setGithubToken(e.target.value)}
                         placeholder={hasToken ? 'Token is configured (edit to update)' : 'ghp_...'}
-                        className="bg-background/50 font-mono text-sm pr-10"
+                        className="bg-background/50 font-mono text-sm pr-10 [-webkit-text-security-disc:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                        style={{ WebkitAppearance: 'none' } as any}
                       />
                       {(githubToken.length > 0 || hasToken) && (
                         <Button
