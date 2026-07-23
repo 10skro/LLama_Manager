@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef, Fragment, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useBuilds } from '@/hooks/useBuilds';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
 import { useAppStore } from '@/store/useAppStore';
+import { useDownloadQueue } from '@/store/useDownloadQueue';
 import { useToast } from '@/hooks/use-toast';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { useRefreshStore, startCountdown } from '@/store/useRefreshStore';
@@ -26,7 +26,7 @@ import { BuildStatusBadge } from '@/components/BuildStatusBadge';
 import {
   RefreshCw, Search, X,
   AlertCircle, Loader2, Star, Info,
-  ChevronDown, Clock, HardDrive,
+  ChevronDown, Clock, HardDrive, Download,
 } from 'lucide-react';
 import type { Build } from '@/types';
 
@@ -70,6 +70,11 @@ export function CatalogPage() {
     });
     return keys;
   }, [favorites]);
+
+  // Download queue
+  const enqueueDownload = useDownloadQueue((state) => state.enqueue);
+  const isBusy = useDownloadQueue((state) => state.isBusy);
+  const getQueuePosition = useDownloadQueue((state) => state.getQueuePosition);
 
   // Format relative time (e.g., "5 min ago", "2 hours ago")
   const formatRelativeTime = useCallback((isoString: string): string => {
@@ -216,23 +221,48 @@ export function CatalogPage() {
   }, [filteredBuilds]);
 
   const handleDownload = async (build: Build) => {
-    const compositeKey = getBuildId(build.build_number, build.backend);
     setError(null);
-    try {
-      const downloadId = await installVersion(build);
-      setDownloading(prev => new Map(prev).set(compositeKey, downloadId));
-      // Invalidate installed_versions cache so UI reflects the new installation
-      queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
-      toast({
-        title: 'Download started',
-        description: `Downloading ${build.build_number} (${build.backend})...`,
-      });
-    } catch (err: any) {
-      setError(err.message || 'Download failed');
-      toast({
-        title: 'Download failed',
-        description: err.message || 'Could not start download.',
-      });
+
+    // Check if already busy (downloading or queued)
+    if (isBusy(build.build_number, build.backend)) {
+      const position = getQueuePosition(build.build_number, build.backend);
+      if (position === 0) {
+        toast({ title: 'Already downloading', description: `${build.build_number} (${build.backend}) is currently downloading.` });
+      } else {
+        toast({ title: 'Already in queue', description: `${build.build_number} (${build.backend}) is #${position} in queue.` });
+      }
+      return;
+    }
+
+    // Check if already installed
+    const alreadyInstalled = installed?.find(
+      v => v.build_number === build.build_number && v.backend === build.backend && v.status === 'installed'
+    );
+    if (alreadyInstalled) {
+      toast({ title: 'Already installed', description: `${build.build_number} (${build.backend}) is already installed.` });
+      return;
+    }
+
+    // Use the queue system — it will start immediately if idle, or queue if busy
+    enqueueDownload(build);
+
+    // If this build becomes active immediately, start the download
+    const queueState = useDownloadQueue.getState();
+    if (queueState.active === build) {
+      const compositeKey = getBuildId(build.build_number, build.backend);
+      try {
+        const downloadId = await installVersion(build);
+        setDownloading(prev => new Map(prev).set(compositeKey, downloadId));
+        queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+        toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend})...` });
+      } catch (err: any) {
+        setError(err.message || 'Download failed');
+        toast({ title: 'Download failed', description: err.message || 'Could not start download.' });
+        // Remove from active since it failed
+        useDownloadQueue.setState({ active: null });
+      }
+    } else {
+      toast({ title: 'Added to queue', description: `${build.build_number} (${build.backend}) will download after current ones.` });
     }
   };
 
@@ -386,7 +416,7 @@ export function CatalogPage() {
       // Collapse all build groups when backend filter is cleared
       setExpandedVersions(new Set());
     }
-  }, [filters.backend]);
+  }, [filters.backend, groupedBuilds]);
 
   // Available backend types from builds
   const availableBackends = useMemo(() => {
@@ -669,8 +699,7 @@ export function CatalogPage() {
                            <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
                         </TableRow>
 
-                        {/* Child rows - animated expand/collapse */}
-                        <AnimatePresence initial={false}>
+                        {/* Child rows */}
                         {isExpanded && variants.map((build, idx) => {
                           const rowKey = getBuildRowKey(build);
                           const compositeKey = getBuildId(build.build_number, build.backend);
@@ -681,16 +710,8 @@ export function CatalogPage() {
                           const connector = isLast ? '└─ ' : '│  ';
 
                           return (
-                            <motion.tr
+                            <TableRow
                               key={rowKey}
-                              initial={{ opacity: 0, y: -8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0 }}
-                              transition={{
-                                duration: 0.2,
-                                delay: idx * 0.03,
-                                ease: "easeOut",
-                              }}
                               className={cn(
                                 "border-b border-border transition-colors hover:bg-muted/50",
                                 "border-border/30 hover:bg-secondary/30"
@@ -749,11 +770,11 @@ export function CatalogPage() {
                                       }}
                                       className={`hover:opacity-80 transition-opacity p-1 rounded hover:bg-secondary ${!build.download_url ? 'opacity-50 cursor-not-allowed' : ''}`}
                                       title={!build.download_url ? 'Cannot favorite: no download URL' : (isFavorited ? 'Remove from favorites' : 'Add to favorites')}
-                                    >
-                                      <Star
-                                        className={`h-4 w-4 ${isFavorited ? 'fill-[hsl(var(--yellow))] text-[hsl(var(--yellow))]' : 'fill-none text-muted-foreground'}`}
-                                      />
-                                    </button>
+                                   >
+                                     <Star
+                                       className={`h-4 w-4 ${isFavorited ? 'fill-[hsl(var(--yellow))] text-[hsl(var(--yellow))]' : 'fill-none text-muted-foreground'}`}
+                                     />
+                                   </button>
                                    <Button
                                      variant="ghost"
                                      size="sm"
@@ -766,33 +787,49 @@ export function CatalogPage() {
                                    >
                                      <Info className="h-4 w-4" />
                                    </Button>
-                                   {isInstalled ? (
-                                       <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
-                                       Installed
-                                     </Button>
-                                   ) : isDownloading ? (
-                                      <Button variant="outline" size="sm" disabled className="w-[80px] justify-center">
-                                       <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                       Downloading
-                                     </Button>
-                                   ) : (
-                                      <Button
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDownload(build);
-                                        }}
-                                         className="w-[80px] justify-center"
-                                      >
-                                        Download
+                                    {isInstalled ? (
+                                        <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
+                                        Installed
                                       </Button>
-                                   )}
+                                    ) : (() => {
+                                        const queuePos = getQueuePosition(build.build_number, build.backend);
+                                        if (queuePos === 0) {
+                                          // Actively downloading
+                                          return (
+                                            <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
+                                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                              Downloading
+                                            </Button>
+                                          );
+                                        } else if (queuePos > 0) {
+                                          // In queue
+                                          return (
+                                            <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center" title={`Position #${queuePos} in queue`}>
+                                              <Clock className="h-3 w-3 mr-1" />
+                                              <span className="text-xs">#{queuePos}</span>
+                                            </Button>
+                                          );
+                                        }
+                                        // Normal download button
+                                        return (
+                                          <Button
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDownload(build);
+                                            }}
+                                            className="w-[80px] justify-center"
+                                          >
+                                            <Download className="h-3 w-3 mr-1" />
+                                            Download
+                                          </Button>
+                                        );
+                                      })()}
                                  </div>
                                </TableCell>
-                            </motion.tr>
+                            </TableRow>
                           );
                         })}
-                        </AnimatePresence>
                     </Fragment>
                   );
                 })}

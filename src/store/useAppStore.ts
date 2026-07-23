@@ -5,7 +5,7 @@ import { DEFAULT_THEME_ID } from '@/themes';
 interface ActiveDownloadInfo {
   id: number;
   progress: number;
-  status: 'downloading' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled';
 }
 
 interface AppState {
@@ -19,7 +19,7 @@ interface AppState {
 
   // Downloads
   activeDownloads: Map<string, ActiveDownloadInfo>; // build_number -> {id, progress}
-  updateDownloadProgress: (build: string, progress: number, downloadId?: number, status?: 'downloading' | 'completed' | 'failed' | 'cancelled') => void;
+  updateDownloadProgress: (build: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
   clearDownload: (build: string) => void;
   getDownloadId: (build: string) => number | undefined;
 

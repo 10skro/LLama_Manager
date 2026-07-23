@@ -44,7 +44,7 @@ export interface DownloadProgress {
   speed: number;           // bytes/sec
   percentage: number;
   eta_seconds: number;
-  status: 'downloading' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'downloading' | 'extracting' | 'completed' | 'failed' | 'cancelled';
 }
 
 // App settings
