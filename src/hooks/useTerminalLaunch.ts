@@ -8,6 +8,7 @@ interface UseTerminalLaunchParams {
   configLink: VersionConfigLink | null;
   launchConfigs: LaunchConfig[];
   customCommands: CustomCommand[];
+  onError?: (message: string) => void;
 }
 
 /**
@@ -69,52 +70,56 @@ export function useTerminalLaunch({
   configLink,
   launchConfigs,
   customCommands,
+  onError,
 }: UseTerminalLaunchParams) {
   const setTerminalVisible = useAppStore((state) => state.setTerminalVisible);
   const setActiveTerminalId = useAppStore((state) => state.setActiveTerminalId);
   const injectingRef = useRef(false);
 
   const handlePlay = useCallback(async () => {
+    // Guard: no config link or already injecting
     if (!configLink || injectingRef.current) return;
 
-    injectingRef.current = true;
     const installPath = version.install_path;
 
-    try {
-      let sessionId: string;
-      let startupCommand: string | null = null;
+    // Validate config exists BEFORE setting injectingRef
+    let startupCommand: string | null = null;
+    let shellType: 'cmd' | 'powershell' = 'cmd';
 
-      if (configLink.config_type === 'launch') {
-        const config = launchConfigs.find((c) => c.id === configLink.config_id);
-        if (!config) {
-          console.error('Launch config not found:', configLink.config_id);
-          return;
-        }
-
-        const exePath = `${installPath}\\llama-server.exe`;
-        startupCommand = buildLaunchCommand(exePath, config.modelPath, config.args, config.shellType);
-
-        sessionId = await invoke<string>('spawn_terminal', {
-          configId: configLink.config_id,
-          shellType: config.shellType,
-          workingDir: installPath,
-        });
-      } else if (configLink.config_type === 'custom') {
-        const cmd = customCommands.find((c) => c.id === configLink.config_id);
-        if (!cmd) {
-          console.error('Custom command not found:', configLink.config_id);
-          return;
-        }
-
-        startupCommand = cmd.command;
-        sessionId = await invoke<string>('spawn_terminal', {
-          configId: configLink.config_id,
-          shellType: 'cmd',
-          workingDir: installPath,
-        });
-      } else {
+    if (configLink.config_type === 'launch') {
+      const config = launchConfigs.find((c) => c.id === configLink.config_id);
+      if (!config) {
+        console.error('Launch config not found:', configLink.config_id);
+        onError?.('Linked configuration not found. It may have been deleted.');
         return;
       }
+
+      const exePath = `${installPath}\\llama-server.exe`;
+      startupCommand = buildLaunchCommand(exePath, config.modelPath, config.args, config.shellType);
+      shellType = config.shellType;
+    } else if (configLink.config_type === 'custom') {
+      const cmd = customCommands.find((c) => c.id === configLink.config_id);
+      if (!cmd) {
+        console.error('Custom command not found:', configLink.config_id);
+        onError?.('Linked configuration not found. It may have been deleted.');
+        return;
+      }
+
+      startupCommand = cmd.command;
+    } else {
+      onError?.('Unknown configuration type. Cannot launch.');
+      return;
+    }
+
+    // Only set injectingRef after validation passes
+    injectingRef.current = true;
+
+    try {
+      const sessionId = await invoke<string>('spawn_terminal', {
+        configId: configLink.config_id,
+        shellType,
+        workingDir: installPath,
+      });
 
       setActiveTerminalId(sessionId);
       setTerminalVisible(true);
@@ -122,9 +127,6 @@ export function useTerminalLaunch({
       // Inject startup commands after shell initializes
       if (startupCommand) {
         // Delay to let shell prompt appear (1000ms for PowerShell, 500ms for cmd)
-        const shellType = configLink.config_type === 'launch'
-          ? launchConfigs.find((c) => c.id === configLink.config_id)?.shellType ?? 'cmd'
-          : 'cmd';
         const initialDelay = shellType.toLowerCase() === 'powershell' ? 1000 : 500;
 
         setTimeout(async () => {
@@ -149,7 +151,7 @@ export function useTerminalLaunch({
     } finally {
       injectingRef.current = false;
     }
-  }, [version, configLink, launchConfigs, customCommands, setActiveTerminalId, setTerminalVisible]);
+  }, [version, configLink, launchConfigs, customCommands, setActiveTerminalId, setTerminalVisible, onError]);
 
   const hasConfig = configLink !== null;
 

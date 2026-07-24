@@ -85,6 +85,13 @@ export function VersionCard({
     configLink,
     launchConfigs,
     customCommands,
+    onError: (message: string) => {
+      toast({
+        variant: 'destructive',
+        title: 'Play Error',
+        description: message,
+      });
+    },
   });
 
   const isEditing = editingDropdownId === version.id;
