@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.34",
+  "tag_name": "v0.5.35",
   "target_commitish": "main",
-  "name": "v0.5.34",
-  "body": "## Changes\n\n### Features\n- Integrated terminal (cmd/PowerShell) via xterm.js\n- Play button replaces Open on version cards\n- Backend terminal module with spawn, write, and kill commands\n- Dockable terminal panel at the bottom of the app\n- Automatic shell type detection from database\n- Auto-execution of configuration commands in terminal\n\n### Fixes\n- ANSI escape sequences preserved in terminal output\n- Zombie process cleanup on terminal kill and app exit\n- Removed unsafe Rust implementations",
+  "name": "v0.5.35",
+  "body": "## Changes\n\n### Fixes\n- Added error handling for terminal launch with onError callback to show toast notifications when linked configurations are missing or invalid",
   "draft": false,
   "prerelease": false
 }
