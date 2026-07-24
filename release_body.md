@@ -1,7 +1,12 @@
 ## Changes
 
+### Features
+- Add persistent card customization for dashboard version cards (custom title, header color, text color)
+- Add text color picker with white and black thumbnail buttons
+- Add Apply and Reset buttons to customization dropdown
+
 ### Fixes
-- Fix model_folder setting not persisting to database — add debounced auto-save on input change
-- Fix font_family and model_folder not loading on app startup — include all AppSettings fields in merged object
-- Fix toggle_favorite_build missing required architecture parameter from frontend
-- Add architecture field to FavoriteBuild interface for backend compatibility
+- Fix header color bug where color could only be changed once per session
+- Fix card customization state not cleared after version uninstall
+- Fix empty customization upsert creating useless database rows
+- Improve white text color button visibility in dark mode

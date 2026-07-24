@@ -162,6 +162,7 @@ export function DashboardPage() {
           return next;
         });
       }
+      closeDropdown();
     } catch (err) {
       console.error('Failed to save customization:', err);
       toast({
@@ -169,7 +170,6 @@ export function DashboardPage() {
         description: 'Failed to save card customization.',
       });
     }
-    closeDropdown();
   };
 
   const resetCustomization = async () => {
@@ -181,6 +181,7 @@ export function DashboardPage() {
         delete next[editingDropdownId];
         return next;
       });
+      closeDropdown();
     } catch (err) {
       console.error('Failed to reset customization:', err);
       toast({
@@ -188,7 +189,6 @@ export function DashboardPage() {
         description: 'Failed to reset card customization.',
       });
     }
-    closeDropdown();
   };
 
   return (
@@ -267,9 +267,15 @@ export function DashboardPage() {
       ) : versions && versions.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {versions.map((version) => {
-            const customization = cardCustomizations[version.id];
-            const headerColorObj = HEADER_COLORS.find(c => c.name === customization?.header_color);
+            // Determine display values: use temp values for live preview when editing this card
+            const isEditing = editingDropdownId === version.id;
+            const activeCustomization = isEditing
+              ? { title: tempTitle, header_color: tempColor, text_color: tempTextColor }
+              : cardCustomizations[version.id];
+            const headerColorObj = HEADER_COLORS.find(c => c.name === activeCustomization?.header_color);
             const headerBg = headerColorObj?.variable ?? 'hsl(var(--secondary))';
+            const displayTitle = activeCustomization?.title || '\u00A0';
+            const displayTextColor = activeCustomization?.text_color || undefined;
 
             return (
               <Card
@@ -283,9 +289,9 @@ export function DashboardPage() {
                 >
                   <p
                     className="text-sm font-medium text-foreground truncate flex-1"
-                    style={{ color: customization?.text_color || undefined }}
+                    style={{ color: displayTextColor || undefined }}
                   >
-                    {customization?.title || '\u00A0'}
+                    {displayTitle}
                   </p>
                     <DropdownMenu
                       open={editingDropdownId === version.id}
@@ -353,12 +359,14 @@ export function DashboardPage() {
                         </div>
                       </div>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={saveCustomization}>
-                        Apply
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={resetCustomization}>
-                        Reset
-                      </DropdownMenuItem>
+                      <div className="flex gap-2 px-2 pb-1">
+                        <DropdownMenuItem onClick={saveCustomization} className="flex-1 justify-center">
+                          Apply
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={resetCustomization} className="flex-1 justify-center">
+                          Reset
+                        </DropdownMenuItem>
+                      </div>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
