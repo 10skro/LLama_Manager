@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import {
   Bell,
+  Terminal,
 } from 'lucide-react';
 
 const pageTitles: Record<string, string> = {
@@ -15,7 +16,7 @@ const pageTitles: Record<string, string> = {
 
 export function Header() {
   const location = useLocation();
-  const { newBuilds } = useAppStore();
+  const { newBuilds, terminalVisible, toggleTerminal } = useAppStore();
 
   const title = pageTitles[location.pathname] || 'Llama Manager';
 
@@ -23,6 +24,14 @@ export function Header() {
     <div className="flex items-center justify-between px-6 py-3 border-b border-border/50 bg-background/80 backdrop-blur-sm">
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
       <div className="flex items-center gap-2">
+        <Button
+          variant={terminalVisible ? 'secondary' : 'ghost'}
+          size="icon"
+          onClick={toggleTerminal}
+          title="Toggle terminal panel"
+        >
+          <Terminal className="h-5 w-5" />
+        </Button>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {newBuilds.length > 0 && (

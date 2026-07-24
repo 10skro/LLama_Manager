@@ -55,6 +55,14 @@ interface AppState {
   addCustomCommand: (command: CustomCommand) => void;
   removeCustomCommand: (id: string) => void;
   updateCustomCommand: (command: CustomCommand) => void;
+
+  // Terminal
+  terminalVisible: boolean;
+  setTerminalVisible: (visible: boolean) => void;
+  activeTerminalId: string | null;
+  setActiveTerminalId: (id: string | null) => void;
+  toggleTerminal: () => void;
+  resetTerminal: () => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -186,4 +194,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         c.id === command.id ? command : c
       ),
     })),
+
+  // Terminal
+  terminalVisible: false,
+  setTerminalVisible: (visible) => set({ terminalVisible: visible }),
+  activeTerminalId: null,
+  setActiveTerminalId: (id) => set({ activeTerminalId: id }),
+  toggleTerminal: () =>
+    set((state) => ({ terminalVisible: !state.terminalVisible })),
+  resetTerminal: () =>
+    set({ terminalVisible: false, activeTerminalId: null }),
 }));

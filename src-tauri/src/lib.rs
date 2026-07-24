@@ -8,13 +8,14 @@ mod file;
 mod github;
 mod launch_config;
 mod models;
+mod terminal;
 mod utils;
 mod version;
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_dialog::DialogExt;
 
 use crate::config::settings::SettingsManager;
@@ -27,6 +28,7 @@ use crate::models::types::{
     AppError, AppSettings, Build, CardCustomization, DownloadProgress, FavoriteBuild, InstalledVersion,
     ModelFile, VersionConfigLink,
 };
+use crate::terminal::manager::TerminalManager;
 use crate::version::manager::VersionManager;
 
 const DEFAULT_RELEASE_LIMIT: usize = 50;
@@ -562,6 +564,36 @@ fn delete_version_config_link(
     repo::delete_version_config_link(&conn, version_id).map_err(|e| e.to_string())
 }
 
+// ─── Terminal Commands ─────────────────────────────────────────────────
+
+#[tauri::command]
+fn spawn_terminal(
+    app: tauri::AppHandle,
+    state_terminal: tauri::State<'_, TerminalManager>,
+    config_id: String,
+    shell_type: String,
+    working_dir: String,
+) -> Result<String, String> {
+    state_terminal.spawn(app, config_id, shell_type, working_dir)
+}
+
+#[tauri::command]
+fn write_terminal_input(
+    state_terminal: tauri::State<'_, TerminalManager>,
+    session_id: String,
+    input: String,
+) -> Result<(), String> {
+    state_terminal.write_input(&session_id, input)
+}
+
+#[tauri::command]
+fn kill_terminal(
+    state_terminal: tauri::State<'_, TerminalManager>,
+    session_id: String,
+) -> Result<String, String> {
+    state_terminal.kill(&session_id)
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -610,6 +642,16 @@ pub fn run_tauri_app() {
             app.manage(db);
             app.manage(DownloadManager::new());
             app.manage(GithubClient::new(github_token, persisted_etag));
+            app.manage(TerminalManager::new());
+
+            // Cleanup terminal sessions on app close
+            {
+                let app_handle = app.app_handle().clone();
+                app_handle.clone().listen("tauri://destroy", move |_| {
+                    let terminal = app_handle.state::<TerminalManager>();
+                    terminal.kill_all();
+                });
+            }
 
             Ok(())
         })
@@ -650,6 +692,9 @@ pub fn run_tauri_app() {
             get_version_config_link,
             save_version_config_link,
             delete_version_config_link,
+            spawn_terminal,
+            write_terminal_input,
+            kill_terminal,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

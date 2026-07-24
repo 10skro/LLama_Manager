@@ -1,5 +1,7 @@
 import { useToast } from '@/hooks/use-toast';
-import { openFolder, saveCardCustomization, deleteCardCustomization } from '@/services/version';
+import { saveCardCustomization, deleteCardCustomization } from '@/services/version';
+import { useTerminalLaunch } from '@/hooks/useTerminalLaunch';
+import { useAppStore } from '@/store/useAppStore';
 import type { InstalledVersion, CardCustomization, ConfigEntry, VersionConfigLink } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
 import { Button } from '@/components/ui/button';
@@ -12,8 +14,9 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Package, FolderOpen, Trash2, List,
+  Package, Trash2, List,
   FileText, Terminal, SlidersHorizontal, Pencil,
+  Play,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 
@@ -74,6 +77,15 @@ export function VersionCard({
   onRemoveLink,
 }: VersionCardProps) {
   const { toast } = useToast();
+  const launchConfigs = useAppStore((state) => state.launchConfigs);
+  const customCommands = useAppStore((state) => state.customCommands);
+
+  const { handlePlay, hasConfig } = useTerminalLaunch({
+    version,
+    configLink,
+    launchConfigs,
+    customCommands,
+  });
 
   const isEditing = editingDropdownId === version.id;
   const activeCustomization = isEditing
@@ -88,18 +100,6 @@ export function VersionCard({
   const linkedConfig = configLink
     ? configs.find(c => c.type === configLink.config_type && c.id === configLink.config_id)
     : undefined;
-
-  const handleOpenFolder = async () => {
-    try {
-      await openFolder(version.install_path);
-    } catch (err) {
-      console.error('Failed to open folder:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to open folder.',
-      });
-    }
-  };
 
   const openCustomizeDropdown = () => {
     const existing = customization;
@@ -377,10 +377,13 @@ export function VersionCard({
             variant="outline"
             size="sm"
             className="flex-1 gap-2"
-            onClick={handleOpenFolder}
+            onClick={handlePlay}
+            disabled={!hasConfig}
+            aria-label={hasConfig ? 'Run configuration in terminal' : 'Link a configuration first to enable Play'}
+            title={hasConfig ? 'Run configuration in terminal' : 'Link a configuration first to enable Play'}
           >
-            <FolderOpen className="h-4 w-4" />
-            Open
+            <Play className="h-4 w-4" />
+            Play
           </Button>
           <Button
             variant="outline"
