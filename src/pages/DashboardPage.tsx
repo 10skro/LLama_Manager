@@ -3,12 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useStorageUsage } from '@/hooks/useStorageUsage';
 import { useLatestBuildInfo } from '@/hooks/useLatestBuildInfo';
+import { useConfigs } from '@/hooks/useConfigs';
 
 import { useToast } from '@/hooks/use-toast';
 import { uninstallVersion, openFolder, getCardCustomizations, saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import type { CardCustomization } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
-import { formatDate, formatSize } from '@/utils/format';
+import { formatSize } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -16,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator,
@@ -24,18 +25,11 @@ import {
 import { LaunchConfigModal } from '@/components/LaunchConfig';
 import { CustomCommandModal } from '@/components/CustomCommand';
 import {
-  Package, FolderOpen, Trash2, Settings,
+  Package, FolderOpen, Trash2, List,
   Loader2,
-  HardDrive, Calendar, Cpu, Plus, Download, FileText,
-  Pencil, Terminal,
+  HardDrive, Cpu, Plus, FileText,
+  Pencil, Terminal, SlidersHorizontal,
 } from 'lucide-react';
-
-function truncatePath(path: string, maxLen: number = 40): string {
-  if (path.length <= maxLen) return path;
-  const parts = path.split('\\');
-  if (parts.length <= 3) return path.substring(0, maxLen) + '...';
-  return `${parts[0]}\\...\\${parts[parts.length - 2]}\\${parts[parts.length - 1]}`;
-}
 
 const HEADER_COLORS = [
   { name: 'mauve', variable: 'hsl(var(--mauve))', label: 'Mauve' },
@@ -58,6 +52,7 @@ export function DashboardPage() {
   const { data: versions, isLoading } = useInstalledVersions();
   const { storageUsage, isLoading: storageLoading } = useStorageUsage();
   const { latestInstalled, latestAvailable, updateAvailable } = useLatestBuildInfo();
+  const { entries: configs, isLoading: configsLoading } = useConfigs();
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -418,24 +413,64 @@ export function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="h-4 w-4 shrink-0" />
-                      <span>Installed {formatDate(version.installed_at)}</span>
-                    </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2 text-muted-foreground cursor-help">
-                            <FolderOpen className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{truncatePath(version.install_path)}</span>
+                  <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="flex-1 gap-2">
+                          <List className="h-4 w-4" />
+                          Config
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-64">
+                        <DropdownMenuLabel>Select Config</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {configsLoading ? (
+                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                            Loading...
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs">{version.install_path}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                        ) : configs.length === 0 ? (
+                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                            No configs
+                          </div>
+                        ) : (
+                          configs.map((config) => (
+                            <DropdownMenuItem
+                              key={`${config.type}-${config.id}`}
+                              onClick={() =>
+                                // TODO: Placeholder for future config loading functionality.
+                                // Currently only shows a toast; actual config application
+                                // (passing config to launch/override) is not yet implemented.
+                                toast({
+                                  title: config.name,
+                                  description: `Loaded: ${config.name}`,
+                                })
+                              }
+                            >
+                              {config.type === 'launch' ? (
+                                <FileText className="h-4 w-4" />
+                              ) : (
+                                <Terminal className="h-4 w-4" />
+                              )}
+                              <span className="truncate">{config.name}</span>
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 opacity-60 hover:opacity-80"
+                      onClick={() =>
+                        toast({
+                          title: 'Override',
+                          description: 'Override settings are work in progress.',
+                        })
+                      }
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Override
+                    </Button>
                   </div>
 
                   <Separator className="border-border/50" />
@@ -458,19 +493,6 @@ export function DashboardPage() {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Settings className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => toast({ title: 'Load Config', description: 'Coming soon.' })}>
-                          <Download className="h-4 w-4" />
-                          Load Config
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 </CardContent>
               </Card>
