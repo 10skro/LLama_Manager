@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/hooks/useTheme';
@@ -47,6 +47,9 @@ export function SettingsPage() {
   // Persisted storage path — tracks the last successfully committed path
   const [persistedStoragePath, setPersistedStoragePath] = useState(() => settings?.storage_path || '');
 
+  // Debounce timer for model_folder auto-save
+  const modelSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Check if token exists on mount
   useEffect(() => {
     hasGithubToken().then(setHasToken).catch(() => {});
@@ -55,6 +58,15 @@ export function SettingsPage() {
   // Load app version on mount
   useEffect(() => {
     invoke<string>('get_app_version').then(v => setAppVersion(v)).catch(() => {});
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (modelSaveTimerRef.current) {
+        clearTimeout(modelSaveTimerRef.current);
+      }
+    };
   }, []);
 
   // Handle save token
@@ -258,7 +270,24 @@ export function SettingsPage() {
             <div className="flex gap-2">
               <Input
                 value={settings?.model_folder || ''}
-                onChange={e => updateSetting('model_folder', e.target.value || undefined)}
+                onChange={e => {
+                  const val = e.target.value;
+                  updateSetting('model_folder', val || undefined);
+                  // Debounced auto-save
+                  if (modelSaveTimerRef.current) {
+                    clearTimeout(modelSaveTimerRef.current);
+                  }
+                  modelSaveTimerRef.current = setTimeout(async () => {
+                    if (settings) {
+                      const updated = { ...settings, model_folder: val || undefined };
+                      try {
+                        await saveSettings(updated);
+                      } catch (err) {
+                        console.error('Failed to save model_folder:', err);
+                      }
+                    }
+                  }, 800);
+                }}
                 placeholder="Select a folder containing .gguf files"
                 className="bg-background/50 font-mono text-sm"
               />
@@ -273,11 +302,11 @@ export function SettingsPage() {
                       updateSetting('model_folder', selected);
                       if (settings) {
                         await saveSettings({ ...settings, model_folder: selected });
+                        toast({
+                          title: 'Model folder updated',
+                          description: `Models will be scanned from ${selected}`,
+                        });
                       }
-                      toast({
-                        title: 'Model folder updated',
-                        description: `Models will be scanned from ${selected}`,
-                      });
                     }
                   } catch (err) {
                     toast({
@@ -296,11 +325,21 @@ export function SettingsPage() {
                 title="Save model folder setting"
                 onClick={async () => {
                   if (settings) {
-                    await saveSettings(settings);
-                    toast({
-                      title: 'Model folder saved',
-                      description: 'Setting has been persisted.',
-                    });
+                    try {
+                      await saveSettings(settings);
+                      toast({
+                        title: 'Model folder saved',
+                        description: settings.model_folder
+                          ? `Saved: ${settings.model_folder}`
+                          : 'Model folder cleared.',
+                      });
+                    } catch (err) {
+                      toast({
+                        title: 'Save failed',
+                        description: String(err),
+                        variant: 'destructive',
+                      });
+                    }
                   }
                 }}
               >

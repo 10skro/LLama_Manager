@@ -14,7 +14,7 @@ import { DEFAULT_FONT_FAMILY } from './fonts';
 import { useAppStore } from './store/useAppStore';
 import { useRefreshStore } from './store/useRefreshStore';
 import { useTheme } from './hooks/useTheme';
-import type { Build } from './types';
+import type { AppSettings, Build } from './types';
 
 function App() {
   const queryClient = useQueryClient();
@@ -25,11 +25,14 @@ function App() {
     const loadSettingsAndTheme = async () => {
       try {
         const settings = await getSettings();
-        const merged = {
+        const merged: AppSettings = {
           storage_path: settings.storage_path ?? '',
           theme: settings.theme ?? DEFAULT_THEME_ID,
+          last_fetch: settings.last_fetch,
           auto_check_updates: settings.auto_check_updates ?? true,
           toast_duration: settings.toast_duration ?? 5000,
+          font_family: settings.font_family,
+          model_folder: settings.model_folder,
         };
         useAppStore.getState().setSettings(merged);
 

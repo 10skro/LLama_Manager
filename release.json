@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.4.1",
+  "tag_name": "v0.4.2",
   "target_commitish": "main",
-  "name": "v0.4.1",
-  "body": "## Changes\n\n### Fixes\n- Fix builds_cache UNIQUE constraint to support both x64 and arm64 architectures\n- Add CHECK constraints on installed_versions and downloads status columns\n- Add foreign key constraint on installed_versions.download_id\n- Fix search_builds deduplication to include architecture triplet\n- Fix check_for_new_builds to distinguish x64/arm64 per backend\n- Add architecture field to favorite_builds for consistency\n- Fix silent error swallowing in toggle_favorite_build and migrations\n- Replace hardcoded SQLite autoindex name with dynamic pragma_index_list lookup\n\n### Performance\n- Replace database polling loop with oneshot channel for download completion\n- Add targeted get_version_by_id query instead of full table load\n- Add idx_downloads_status index for faster status queries\n\n### Refactoring\n- Move launch_config SQL operations to repo.rs (repository pattern)\n- Factorize migration helpers (table_exists, column_exists, table_sql)\n- Standardize download status naming across the codebase\n- Use parameterized SQL in cleanup_old_downloads instead of string formatting\n\n### Chores\n- Add versioned migration framework with schema_migrations tracking table\n- Add automatic cleanup of old downloads (30-day retention) on startup\n- Add download_id column to installed_versions for traceability",
+  "name": "v0.4.2",
+  "body": "## Changes\n\n### Fixes\n- Fix model_folder setting not persisting to database — add debounced auto-save on input change\n- Fix font_family and model_folder not loading on app startup — include all AppSettings fields in merged object\n- Fix toggle_favorite_build missing required architecture parameter from frontend\n- Add architecture field to FavoriteBuild interface for backend compatibility",
   "draft": false,
   "prerelease": false
 }

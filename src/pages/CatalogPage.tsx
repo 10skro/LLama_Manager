@@ -203,6 +203,7 @@ export function CatalogPage() {
           downloadUrl: build.download_url,
           buildNumber: build.build_number,
           backend: build.backend,
+          architecture: build.architecture,
         })}
         onShowChangelog={(build) => setChangelogModal({ open: true, tag: build.tag_name, build: build.build_number })}
         onDownload={handleDownload}
