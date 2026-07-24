@@ -23,7 +23,7 @@ use crate::db::repo;
 use crate::download::manager::DownloadManager;
 use crate::github::api::{FetchMode, GithubClient};
 use crate::models::types::{
-    AppError, AppSettings, Build, DownloadProgress, FavoriteBuild, InstalledVersion,
+    AppError, AppSettings, Build, CardCustomization, DownloadProgress, FavoriteBuild, InstalledVersion,
     ModelFile,
 };
 use crate::version::manager::VersionManager;
@@ -448,6 +448,43 @@ fn delete_launch_config(
     launch_config::delete_launch_config(&state_db, &id).map_err(|e| e.to_string())
 }
 
+// ─── Card Customization Commands ────────────────────────────────────────
+
+#[tauri::command]
+fn get_card_customizations(
+    state_db: tauri::State<'_, DbManager>,
+) -> Result<Vec<CardCustomization>, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::get_all_card_customizations(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_card_customization(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+    title: String,
+    header_color: String,
+    text_color: String,
+) -> Result<(), String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    let customization = CardCustomization {
+        version_id,
+        title,
+        header_color,
+        text_color,
+    };
+    repo::upsert_card_customization(&conn, &customization).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_card_customization(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+) -> Result<bool, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::delete_card_customization(&conn, version_id).map_err(|e| e.to_string())
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -526,6 +563,9 @@ pub fn run_tauri_app() {
             save_launch_config,
             get_launch_configs,
             delete_launch_config,
+            get_card_customizations,
+            save_card_customization,
+            delete_card_customization,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

@@ -103,3 +103,11 @@ export interface ModelFile {
   name: string;
   size: number;
 }
+
+// Card customization for dashboard version cards
+export interface CardCustomization {
+  version_id: number;
+  title: string;
+  header_color: string;
+  text_color: string;
+}

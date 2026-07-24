@@ -1,7 +1,7 @@
 use rusqlite::{Connection, params};
 use chrono::Local;
 
-use crate::models::types::{AppError, Build, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig};
+use crate::models::types::{AppError, Build, CardCustomization, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig};
 
 // ─── Installed Versions ─────────────────────────────────────────────────
 
@@ -429,4 +429,49 @@ pub fn launch_config_exists(conn: &Connection, id: &str) -> Result<bool, AppErro
         |row| row.get(0),
     )?;
     Ok(exists)
+}
+
+// ─── Card Customizations ────────────────────────────────────────────────
+
+pub fn get_all_card_customizations(conn: &Connection) -> Result<Vec<CardCustomization>, AppError> {
+    let mut stmt = conn.prepare(
+        "SELECT version_id, title, header_color, text_color FROM card_customizations",
+    )?;
+
+    let customs = stmt.query_map([], |row| {
+        Ok(CardCustomization {
+            version_id: row.get(0)?,
+            title: row.get(1)?,
+            header_color: row.get(2)?,
+            text_color: row.get(3)?,
+        })
+    })?;
+
+    Ok(customs.collect::<Result<Vec<_>, rusqlite::Error>>()?)
+}
+
+pub fn upsert_card_customization(conn: &Connection, customization: &CardCustomization) -> Result<(), AppError> {
+    conn.execute(
+        "INSERT INTO card_customizations (version_id, title, header_color, text_color)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(version_id) DO UPDATE SET
+           title = excluded.title,
+           header_color = excluded.header_color,
+           text_color = excluded.text_color",
+        params![
+            customization.version_id,
+            customization.title,
+            customization.header_color,
+            customization.text_color,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn delete_card_customization(conn: &Connection, version_id: i64) -> Result<bool, AppError> {
+    let rows = conn.execute(
+        "DELETE FROM card_customizations WHERE version_id = ?1",
+        params![version_id],
+    )?;
+    Ok(rows > 0)
 }

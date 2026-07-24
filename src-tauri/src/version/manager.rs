@@ -247,6 +247,7 @@ impl VersionManager {
         // 3. Remove from DB
         {
             let conn = db.lock_conn()?;
+            repo::delete_card_customization(&conn, version_id)?;
             repo::delete_version(&conn, version_id)?;
         }
 

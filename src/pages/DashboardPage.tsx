@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 
 import { useToast } from '@/hooks/use-toast';
-import { uninstallVersion, openFolder } from '@/services/version';
+import { uninstallVersion, openFolder, getCardCustomizations, saveCardCustomization, deleteCardCustomization } from '@/services/version';
+import type { CardCustomization } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
@@ -33,11 +34,6 @@ function truncatePath(path: string, maxLen: number = 40): string {
   return `${parts[0]}\\...\\${parts[parts.length - 2]}\\${parts[parts.length - 1]}`;
 }
 
-interface CardCustomization {
-  title: string;
-  headerColor: string; // name of the color (ex: 'mauve')
-}
-
 const HEADER_COLORS = [
   { name: 'mauve', variable: 'hsl(var(--mauve))', label: 'Mauve' },
   { name: 'red', variable: 'hsl(var(--red))', label: 'Red' },
@@ -61,13 +57,31 @@ export function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLaunchConfigOpen, setIsLaunchConfigOpen] = useState(false);
-  // Card customizations per version (versionId -> { title, headerColor })
+  // Card customizations per version (versionId -> { title, headerColor, textColor })
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
   // Which card's customize dropdown is open
   const [editingDropdownId, setEditingDropdownId] = useState<number | null>(null);
   // Temporary values being edited in the dropdown
   const [tempTitle, setTempTitle] = useState('');
   const [tempColor, setTempColor] = useState('');
+  const [tempTextColor, setTempTextColor] = useState('');
+
+  // Load customizations from backend on mount
+  useEffect(() => {
+    const loadCustomizations = async () => {
+      try {
+        const customs = await getCardCustomizations();
+        const record: Record<number, CardCustomization> = {};
+        for (const c of customs) {
+          record[c.version_id] = c;
+        }
+        setCardCustomizations(record);
+      } catch (err) {
+        console.error('Failed to load card customizations:', err);
+      }
+    };
+    loadCustomizations();
+  }, []);
 
   const handleOpenFolder = async (path: string) => {
     try {
@@ -88,6 +102,11 @@ export function DashboardPage() {
     try {
       await uninstallVersion(deleteTarget);
       await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+      setCardCustomizations(prev => {
+        const next = { ...prev };
+        delete next[deleteTarget];
+        return next;
+      });
       toast({
         title: 'Version deleted',
         description: `${versionToDelete?.build_number ?? 'Version'} has been removed.`,
@@ -108,40 +127,67 @@ export function DashboardPage() {
     const existing = cardCustomizations[versionId];
     setEditingDropdownId(versionId);
     setTempTitle(existing?.title ?? '');
-    setTempColor(existing?.headerColor ?? '');
+    setTempColor(existing?.header_color ?? '');
+    setTempTextColor(existing?.text_color ?? '');
   };
 
   const closeDropdown = () => {
     setEditingDropdownId(null);
     setTempTitle('');
     setTempColor('');
+    setTempTextColor('');
   };
 
-  const saveCustomization = () => {
+  const saveCustomization = async () => {
     if (editingDropdownId === null) return;
     const trimmed = tempTitle.trim();
-    setCardCustomizations(prev => {
-      const next = { ...prev };
-      if (trimmed || tempColor) {
-        next[editingDropdownId] = {
-          title: trimmed,
-          headerColor: tempColor,
-        };
+    try {
+      if (trimmed === '' && tempColor === '' && tempTextColor === '') {
+        await deleteCardCustomization(editingDropdownId);
+        setCardCustomizations(prev => {
+          const next = { ...prev };
+          delete next[editingDropdownId];
+          return next;
+        });
       } else {
-        delete next[editingDropdownId];
+        await saveCardCustomization(editingDropdownId, trimmed, tempColor, tempTextColor);
+        setCardCustomizations(prev => {
+          const next = { ...prev };
+          next[editingDropdownId] = {
+            version_id: editingDropdownId,
+            title: trimmed,
+            header_color: tempColor,
+            text_color: tempTextColor,
+          };
+          return next;
+        });
       }
-      return next;
-    });
+    } catch (err) {
+      console.error('Failed to save customization:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to save card customization.',
+      });
+    }
     closeDropdown();
   };
 
-  const resetCustomization = () => {
+  const resetCustomization = async () => {
     if (editingDropdownId === null) return;
-    setCardCustomizations(prev => {
-      const next = { ...prev };
-      delete next[editingDropdownId];
-      return next;
-    });
+    try {
+      await deleteCardCustomization(editingDropdownId);
+      setCardCustomizations(prev => {
+        const next = { ...prev };
+        delete next[editingDropdownId];
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to reset customization:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to reset card customization.',
+      });
+    }
     closeDropdown();
   };
 
@@ -222,7 +268,7 @@ export function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {versions.map((version) => {
             const customization = cardCustomizations[version.id];
-            const headerColorObj = HEADER_COLORS.find(c => c.name === customization?.headerColor);
+            const headerColorObj = HEADER_COLORS.find(c => c.name === customization?.header_color);
             const headerBg = headerColorObj?.variable ?? 'hsl(var(--secondary))';
 
             return (
@@ -235,19 +281,22 @@ export function DashboardPage() {
                   className="px-3 py-2 flex items-center justify-between rounded-t-xl"
                   style={{ backgroundColor: headerBg }}
                 >
-                  <p className="text-sm font-medium text-foreground truncate flex-1">
+                  <p
+                    className="text-sm font-medium text-foreground truncate flex-1"
+                    style={{ color: customization?.text_color || undefined }}
+                  >
                     {customization?.title || '\u00A0'}
                   </p>
-                  <DropdownMenu
-                    open={editingDropdownId === version.id}
-                    onOpenChange={(open) => {
-                      if (open) {
-                        openCustomizeDropdown(version.id);
-                      } else {
-                        saveCustomization();
-                      }
-                    }}
-                  >
+                    <DropdownMenu
+                      open={editingDropdownId === version.id}
+                      onOpenChange={(open) => {
+                        if (open) {
+                          openCustomizeDropdown(version.id);
+                        } else {
+                          closeDropdown();
+                        }
+                      }}
+                    >
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
@@ -288,6 +337,25 @@ export function DashboardPage() {
                         </div>
                       </div>
                       <DropdownMenuSeparator />
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-muted-foreground mb-1.5">Text Color</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setTempTextColor('white')}
+                            className={`h-6 w-6 rounded-full border-2 bg-white shadow-md ring-1 ring-gray-300 transition-all ${tempTextColor === 'white' ? 'border-white scale-110' : 'border-border'}`}
+                            title="White"
+                          />
+                          <button
+                            onClick={() => setTempTextColor('black')}
+                            className={`h-6 w-6 rounded-full border-2 bg-black transition-all ${tempTextColor === 'black' ? 'border-white scale-110' : 'border-border'}`}
+                            title="Black"
+                          />
+                        </div>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={saveCustomization}>
+                        Apply
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={resetCustomization}>
                         Reset
                       </DropdownMenuItem>

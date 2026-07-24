@@ -121,6 +121,15 @@ pub struct FavoriteBuild {
     pub architecture: String, // NEW: "x64", "arm64"
 }
 
+/// Card customization for dashboard version cards
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CardCustomization {
+    pub version_id: i64,
+    pub title: String,
+    pub header_color: String,
+    pub text_color: String,
+}
+
 /// Application error type
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {

@@ -239,6 +239,13 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
         mark_applied(conn, 7, "Add architecture to favorite_builds")?;
     }
 
+    // V8: Create card_customizations table
+    if !is_applied(conn, 8)? {
+        log::info!("Applying migration v8: card_customizations table");
+        migrate_card_customizations_table(conn)?;
+        mark_applied(conn, 8, "Create card_customizations table")?;
+    }
+
     Ok(())
 }
 
@@ -410,8 +417,29 @@ fn migrate_builds_cache_unique(conn: &Connection) -> Result<(), AppError> {
     // Drop old table and rename new one
     conn.execute_batch(
         "
-        DROP TABLE IF EXISTS builds_cache;
-        ALTER TABLE builds_cache_new RENAME TO builds_cache;
+        DROP TABLE IF EXISTS favorite_builds;
+        ALTER TABLE favorite_builds_new RENAME TO favorite_builds;
+        ",
+    )?;
+
+    Ok(())
+}
+
+/// Create the card_customizations table for persistent dashboard card customizations.
+fn migrate_card_customizations_table(conn: &Connection) -> Result<(), AppError> {
+    if table_exists(conn, "card_customizations")? {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "
+        CREATE TABLE card_customizations (
+            version_id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL DEFAULT '',
+            header_color TEXT NOT NULL DEFAULT '',
+            text_color TEXT NOT NULL DEFAULT '' CHECK(text_color IN ('white', 'black', '')),
+            FOREIGN KEY (version_id) REFERENCES installed_versions(id)
+        );
         ",
     )?;
 
