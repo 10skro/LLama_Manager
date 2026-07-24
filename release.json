@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.3",
+  "tag_name": "v0.5.31",
   "target_commitish": "main",
-  "name": "v0.5.3",
-  "body": "## Changes\n\n### Features\n- Add Configs page: browse, search, and manage all saved configurations (Launch Configs and Custom Commands) in a unified list\n\n### Fixes\n- Rename \"Create Launch Config\" dropdown item to \"Build Config\" for clarity\n- Extract shared formatRelativeTime utility to reduce code duplication",
+  "name": "v0.5.31",
+  "body": "## Changes\n\n### Features\n- Add Storage Used dashboard card with disk usage calculation\n- Add Latest Build dashboard card with update detection via GitHub cache\n\n### Fixes\n- Use spawn_blocking for async storage command to prevent thread blocking\n- Add skeleton loading UI for storage card\n- Use log::warn for directory read errors instead of panicking",
   "draft": false,
   "prerelease": false
 }
