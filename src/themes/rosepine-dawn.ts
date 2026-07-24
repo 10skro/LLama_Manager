@@ -55,6 +55,8 @@ export const rosepineDawn: Theme = {
     '--foreground': hexToHSL(rosepineDawnColors.text),
     '--card': hexToHSL(rosepineDawnColors.surface),
     '--card-foreground': hexToHSL(rosepineDawnColors.subtle),
+    '--popover': hexToHSL(rosepineDawnColors.surface),
+    '--popover-foreground': hexToHSL(rosepineDawnColors.subtle),
     '--primary': hexToHSL(rosepineDawnColors.pine),
     '--primary-foreground': hexToHSL(rosepineDawnColors.surface),
     '--secondary': hexToHSL(rosepineDawnColors.overlay),

@@ -76,3 +76,12 @@ export interface BuildFilters {
   favoritesOnly: boolean;
   installedOnly: boolean;
 }
+
+// Llama.cpp launch configuration
+export interface LlamaCppConfig {
+  id: string;
+  name: string;
+  createdAt: string;
+  args: Record<string, string | boolean | number>;
+  description?: string;
+}

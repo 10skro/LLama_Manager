@@ -7,6 +7,7 @@ import { uninstallVersion, openFolder } from '@/services/version';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,9 +15,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { CreateConfigModal } from '@/components/CreateConfigModal';
+import {
   Package, FolderOpen, Trash2, Settings,
-  CheckCircle2, AlertCircle, Loader2,
-  HardDrive, Calendar, Cpu,
+  Loader2,
+  HardDrive, Calendar, Cpu, Plus, Download, FileText,
+  Pencil,
 } from 'lucide-react';
 
 function truncatePath(path: string, maxLen: number = 40): string {
@@ -26,6 +33,26 @@ function truncatePath(path: string, maxLen: number = 40): string {
   return `${parts[0]}\\...\\${parts[parts.length - 2]}\\${parts[parts.length - 1]}`;
 }
 
+interface CardCustomization {
+  title: string;
+  headerColor: string; // name of the color (ex: 'mauve')
+}
+
+const HEADER_COLORS = [
+  { name: 'mauve', variable: 'hsl(var(--mauve))', label: 'Mauve' },
+  { name: 'red', variable: 'hsl(var(--red))', label: 'Red' },
+  { name: 'pink', variable: 'hsl(var(--pink))', label: 'Pink' },
+  { name: 'peach', variable: 'hsl(var(--peach))', label: 'Peach' },
+  { name: 'yellow', variable: 'hsl(var(--yellow))', label: 'Yellow' },
+  { name: 'green', variable: 'hsl(var(--green))', label: 'Green' },
+  { name: 'teal', variable: 'hsl(var(--teal))', label: 'Teal' },
+  { name: 'blue', variable: 'hsl(var(--blue))', label: 'Blue' },
+  { name: 'lavender', variable: 'hsl(var(--lavender))', label: 'Lavender' },
+  { name: 'love', variable: 'hsl(var(--love))', label: 'Love' },
+  { name: 'iris', variable: 'hsl(var(--iris))', label: 'Iris' },
+  { name: 'pine', variable: 'hsl(var(--pine))', label: 'Pine' },
+];
+
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -33,6 +60,14 @@ export function DashboardPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreateConfigOpen, setIsCreateConfigOpen] = useState(false);
+  // Card customizations per version (versionId -> { title, headerColor })
+  const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
+  // Which card's customize dropdown is open
+  const [editingDropdownId, setEditingDropdownId] = useState<number | null>(null);
+  // Temporary values being edited in the dropdown
+  const [tempTitle, setTempTitle] = useState('');
+  const [tempColor, setTempColor] = useState('');
 
   const handleOpenFolder = async (path: string) => {
     try {
@@ -69,6 +104,54 @@ export function DashboardPage() {
     }
   };
 
+  const handleCreateConfig = (name: string) => {
+    setIsCreateConfigOpen(false);
+    toast({
+      title: 'Configuration created',
+      description: `"${name}" has been created successfully.`,
+    });
+  };
+
+  const openCustomizeDropdown = (versionId: number) => {
+    const existing = cardCustomizations[versionId];
+    setEditingDropdownId(versionId);
+    setTempTitle(existing?.title ?? '');
+    setTempColor(existing?.headerColor ?? '');
+  };
+
+  const closeDropdown = () => {
+    setEditingDropdownId(null);
+    setTempTitle('');
+    setTempColor('');
+  };
+
+  const saveCustomization = () => {
+    if (editingDropdownId === null) return;
+    const trimmed = tempTitle.trim();
+    setCardCustomizations(prev => {
+      const next = { ...prev };
+      if (trimmed || tempColor) {
+        next[editingDropdownId] = {
+          title: trimmed,
+          headerColor: tempColor,
+        };
+      } else {
+        delete next[editingDropdownId];
+      }
+      return next;
+    });
+    closeDropdown();
+  };
+
+  const resetCustomization = () => {
+    if (editingDropdownId === null) return;
+    setCardCustomizations(prev => {
+      const next = { ...prev };
+      delete next[editingDropdownId];
+      return next;
+    });
+    closeDropdown();
+  };
 
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
@@ -80,6 +163,20 @@ export function DashboardPage() {
             Overview of your installed llama.cpp builds.
           </p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Config
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setIsCreateConfigOpen(true)}>
+              <FileText className="h-4 w-4" />
+              Create Custom Config
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
 
@@ -131,89 +228,163 @@ export function DashboardPage() {
         </div>
       ) : versions && versions.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {versions.map((version) => (
-            <Card
-              key={version.id}
-              className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                       <Package className="h-5 w-5 text-foreground" />
-                     </div>
-                     <div>
-                       <p className="font-mono font-semibold text-lg">
-                         {version.build_number}
-                       </p>
-                       <div className="flex items-center gap-1.5">
-                         <Badge
-                           variant="outline"
-                           className={`border ${getBackendColor(version.backend)}`}
-                         >
-                           {version.backend}
-                         </Badge>
-                         <Badge variant="outline" className="border text-muted-foreground text-xs">
-                           {version.architecture}
-                         </Badge>
-                       </div>
-                     </div>
-                   </div>
-                  {version.status === 'installed' ? (
-                    <CheckCircle2 className="h-5 w-5 text-green" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-yellow" />
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4 shrink-0" />
-                    <span>Installed {formatDate(version.installed_at)}</span>
-                  </div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-2 text-muted-foreground cursor-help">
-                          <FolderOpen className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{truncatePath(version.install_path)}</span>
+          {versions.map((version) => {
+            const customization = cardCustomizations[version.id];
+            const headerColorObj = HEADER_COLORS.find(c => c.name === customization?.headerColor);
+            const headerBg = headerColorObj?.variable ?? 'hsl(var(--secondary))';
+
+            return (
+              <Card
+                key={version.id}
+                className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden"
+              >
+                {/* Colored Header Bar */}
+                <div
+                  className="px-3 py-2 flex items-center justify-between rounded-t-xl"
+                  style={{ backgroundColor: headerBg }}
+                >
+                  <p className="text-sm font-medium text-foreground truncate flex-1">
+                    {customization?.title || '\u00A0'}
+                  </p>
+                  <DropdownMenu
+                    open={editingDropdownId === version.id}
+                    onOpenChange={(open) => {
+                      if (open) {
+                        openCustomizeDropdown(version.id);
+                      } else {
+                        saveCustomization();
+                      }
+                    }}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuLabel>Customize Card</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5">
+                        <Input
+                          value={tempTitle}
+                          onChange={(e) => setTempTitle(e.target.value)}
+                          placeholder="Enter title..."
+                          aria-label="Card title"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-muted-foreground mb-1.5">Header Color</p>
+                        <div className="flex flex-wrap gap-2">
+                          {HEADER_COLORS.map(color => (
+                            <button
+                              key={color.name}
+                              onClick={() => setTempColor(color.name)}
+                              aria-label={color.label}
+                              className={`h-6 w-6 rounded-full border-2 transition-all ${
+                                tempColor === color.name ? 'border-white scale-110' : 'border-transparent'
+                              }`}
+                              style={{ backgroundColor: color.variable }}
+                              title={color.label}
+                            />
+                          ))}
                         </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-xs">{version.install_path}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={resetCustomization}>
+                        Reset
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
-                <Separator className="border-border/50" />
+                <CardHeader className="pb-3 pt-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                      <Package className="h-5 w-5 text-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono font-semibold text-lg">
+                        {version.build_number}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className={`border ${getBackendColor(version.backend)}`}
+                        >
+                          {version.backend}
+                        </Badge>
+                        <Badge variant="outline" className="border text-muted-foreground text-xs">
+                          {version.architecture}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-4 w-4 shrink-0" />
+                      <span>Installed {formatDate(version.installed_at)}</span>
+                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-2 text-muted-foreground cursor-help">
+                            <FolderOpen className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{truncatePath(version.install_path)}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">{version.install_path}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 gap-2"
-                    onClick={() => handleOpenFolder(version.install_path)}
-                  >
-                    <FolderOpen className="h-4 w-4" />
-                    Open
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 text-red hover:text-red/80 hover:bg-red/10 border-red/20"
-                    onClick={() => setDeleteTarget(version.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" disabled title="Coming soon">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <Separator className="border-border/50" />
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => handleOpenFolder(version.install_path)}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      Open
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 text-red hover:text-red/80 hover:bg-red/10 border-red/20"
+                      onClick={() => setDeleteTarget(version.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => toast({ title: 'Load Config', description: 'Coming soon.' })}>
+                          <Download className="h-4 w-4" />
+                          Load Config
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         /* Empty State */
@@ -263,6 +434,13 @@ export function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Config Modal */}
+      <CreateConfigModal
+        open={isCreateConfigOpen}
+        onOpenChange={setIsCreateConfigOpen}
+        onCreate={handleCreateConfig}
+      />
     </div>
   );
 }

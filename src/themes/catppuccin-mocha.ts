@@ -65,6 +65,8 @@ export const catppuccinMocha: Theme = {
     '--foreground': hexToHSL(catppuccinMochaColors.text),
     '--card': hexToHSL(catppuccinMochaColors.mantle),
     '--card-foreground': hexToHSL(catppuccinMochaColors.subtext1),
+    '--popover': hexToHSL(catppuccinMochaColors.mantle),
+    '--popover-foreground': hexToHSL(catppuccinMochaColors.subtext1),
     '--primary': hexToHSL(catppuccinMochaColors.blue),
     '--primary-foreground': '0 0% 15%',
     '--secondary': hexToHSL(catppuccinMochaColors.surface1),
