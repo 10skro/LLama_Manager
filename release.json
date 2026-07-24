@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.0",
+  "tag_name": "v0.5.1",
   "target_commitish": "main",
-  "name": "v0.5.0",
-  "body": "## Changes\n\n### Features\n- Add persistent card customization for dashboard version cards (custom title, header color, text color)\n- Add text color picker with white and black thumbnail buttons\n- Add Apply and Reset buttons to customization dropdown\n\n### Fixes\n- Fix header color bug where color could only be changed once per session\n- Fix card customization state not cleared after version uninstall\n- Fix empty customization upsert creating useless database rows\n- Improve white text color button visibility in dark mode",
+  "name": "v0.5.1",
+  "body": "## Changes\n\n### Features\n- Live preview on color selection in Customize Card dropdown\n- Apply and Reset buttons displayed side by side\n\n### Fixes\n- Edits no longer lost when backend API call fails in Customize Card",
   "draft": false,
   "prerelease": false
 }
