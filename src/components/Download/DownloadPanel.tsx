@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { listen } from '@tauri-apps/api/event';
 import { cancelDownload } from '@/services/download';
 import { useQueryClient } from '@tanstack/react-query';
+import { parseKey } from '@/utils/buildKey';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,15 +11,6 @@ import {
   Download, X, Loader2,
 } from 'lucide-react';
 import type { DownloadProgress as DownloadProgressType } from '@/types';
-
-
-
-// Helper to parse composite key "build_number|backend|architecture"
-function parseDownloadKey(key: string): { buildNumber: string; backend: string; architecture: string } {
-  const parts = key.split('|');
-  if (parts.length < 2) return { buildNumber: key, backend: '', architecture: 'x64' };
-  return { buildNumber: parts[0], backend: parts[1], architecture: parts[2] || 'x64' };
-}
 
 export function DownloadPanel() {
   const activeDownloads = useAppStore((state) => state.activeDownloads);
@@ -44,7 +36,7 @@ export function DownloadPanel() {
           let matchedKey = '';
           for (const [key, info] of store.activeDownloads.entries()) {
             if (info.id === p.download_id) {
-              const parsed = parseDownloadKey(key);
+              const parsed = parseKey(key);
               matchedBuildNumber = parsed.buildNumber;
               matchedBackend = parsed.backend;
               matchedArchitecture = parsed.architecture;
@@ -56,7 +48,7 @@ export function DownloadPanel() {
           // Strategy 2: Fallback — find first entry with matching build_number (ignoring download_id)
           if (!matchedBuildNumber) {
             for (const [key, _info] of store.activeDownloads.entries()) {
-              const parsed = parseDownloadKey(key);
+              const parsed = parseKey(key);
               if (parsed.buildNumber === p.build_number) {
                 matchedBuildNumber = parsed.buildNumber;
                 matchedBackend = parsed.backend;
@@ -87,7 +79,7 @@ export function DownloadPanel() {
             let cleared = false;
             for (const [key, info] of store.activeDownloads.entries()) {
               if (info.id === p.download_id) {
-                const parsed = parseDownloadKey(key);
+                const parsed = parseKey(key);
                 store.clearDownload(parsed.buildNumber, parsed.backend, parsed.architecture);
                 cleared = true;
                 break;
@@ -96,7 +88,7 @@ export function DownloadPanel() {
             // Fallback: find by build_number
             if (!cleared) {
               for (const [key, _info] of store.activeDownloads.entries()) {
-                const parsed = parseDownloadKey(key);
+                const parsed = parseKey(key);
                 if (parsed.buildNumber === p.build_number) {
                   store.clearDownload(parsed.buildNumber, parsed.backend, parsed.architecture);
                   break;
@@ -159,7 +151,7 @@ export function DownloadPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           {activeEntries.map(([key, info]) => {
-            const { buildNumber, backend, architecture } = parseDownloadKey(key);
+            const { buildNumber, backend, architecture } = parseKey(key);
             return (
               <div key={key} className="space-y-2">
                 <div className="flex items-center justify-between">

@@ -1,16 +1,12 @@
 import { create } from 'zustand';
 import type { BuildFilters, AppSettings } from '@/types';
 import { DEFAULT_THEME_ID } from '@/themes';
+import { makeKey } from '@/utils/buildKey';
 
 interface ActiveDownloadInfo {
   id: number;
   progress: number;
   status: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
-}
-
-// Helper to create composite key
-export function makeKey(buildNumber: string, backend: string, architecture: string): string {
-  return `${buildNumber}|${backend}|${architecture}`;
 }
 
 interface AppState {
