@@ -111,3 +111,13 @@ export interface CardCustomization {
   header_color: string;
   text_color: string;
 }
+
+// User custom command configuration
+export interface CustomCommand {
+  id: string;
+  name: string;
+  command: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}

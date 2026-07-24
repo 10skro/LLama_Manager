@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.1",
+  "tag_name": "v0.5.2",
   "target_commitish": "main",
-  "name": "v0.5.1",
-  "body": "## Changes\n\n### Features\n- Live preview on color selection in Customize Card dropdown\n- Apply and Reset buttons displayed side by side\n\n### Fixes\n- Edits no longer lost when backend API call fails in Customize Card",
+  "name": "v0.5.2",
+  "body": "## Changes\n\n### Features\n- Add Custom Command creator: write and save custom commands manually via a free-form text editor modal",
   "draft": false,
   "prerelease": false
 }

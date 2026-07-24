@@ -1,8 +1,4 @@
 ## Changes
 
 ### Features
-- Live preview on color selection in Customize Card dropdown
-- Apply and Reset buttons displayed side by side
-
-### Fixes
-- Edits no longer lost when backend API call fails in Customize Card
+- Add Custom Command creator: write and save custom commands manually via a free-form text editor modal

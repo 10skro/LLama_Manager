@@ -1,7 +1,7 @@
 use rusqlite::{Connection, params};
 use chrono::Local;
 
-use crate::models::types::{AppError, Build, CardCustomization, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig};
+use crate::models::types::{AppError, Build, CardCustomization, CustomCommand, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig};
 
 // ─── Installed Versions ─────────────────────────────────────────────────
 
@@ -474,4 +474,68 @@ pub fn delete_card_customization(conn: &Connection, version_id: i64) -> Result<b
         params![version_id],
     )?;
     Ok(rows > 0)
+}
+
+// ─── Custom Commands ───────────────────────────────────────────────────
+
+pub fn insert_custom_command(conn: &Connection, command: &CustomCommand) -> Result<(), AppError> {
+    conn.execute(
+        "INSERT INTO custom_commands (id, name, command, description, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            command.id,
+            command.name,
+            command.command,
+            command.description,
+            command.created_at,
+            command.updated_at,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn update_custom_command(conn: &Connection, command: &CustomCommand) -> Result<(), AppError> {
+    conn.execute(
+        "UPDATE custom_commands SET name = ?1, command = ?2, description = ?3, updated_at = ?4 WHERE id = ?5",
+        params![
+            command.name,
+            command.command,
+            command.description,
+            command.updated_at,
+            command.id,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn get_all_custom_commands(conn: &Connection) -> Result<Vec<CustomCommand>, AppError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, command, description, created_at, updated_at FROM custom_commands ORDER BY updated_at DESC",
+    )?;
+
+    let commands = stmt.query_map([], |row| {
+        Ok(CustomCommand {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            command: row.get(2)?,
+            description: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        })
+    })?;
+
+    Ok(commands.collect::<Result<Vec<_>, rusqlite::Error>>()?)
+}
+
+pub fn delete_custom_command_by_id(conn: &Connection, id: &str) -> Result<bool, AppError> {
+    let rows = conn.execute("DELETE FROM custom_commands WHERE id = ?1", params![id])?;
+    Ok(rows > 0)
+}
+
+pub fn custom_command_exists(conn: &Connection, id: &str) -> Result<bool, AppError> {
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM custom_commands WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )?;
+    Ok(exists)
 }

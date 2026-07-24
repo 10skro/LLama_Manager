@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod config;
+mod custom_command;
 mod db;
 mod download;
 mod file;
@@ -485,6 +486,31 @@ fn delete_card_customization(
     repo::delete_card_customization(&conn, version_id).map_err(|e| e.to_string())
 }
 
+// ─── Custom Command Commands ────────────────────────────────────────────
+
+#[tauri::command]
+fn save_custom_command(
+    state_db: tauri::State<'_, DbManager>,
+    config: serde_json::Value,
+) -> Result<String, String> {
+    custom_command::save_custom_command(&state_db, config).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_custom_commands(
+    state_db: tauri::State<'_, DbManager>,
+) -> Result<Vec<serde_json::Value>, String> {
+    custom_command::get_custom_commands(&state_db).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_custom_command(
+    state_db: tauri::State<'_, DbManager>,
+    id: String,
+) -> Result<bool, String> {
+    custom_command::delete_custom_command(&state_db, &id).map_err(|e| e.to_string())
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -566,6 +592,9 @@ pub fn run_tauri_app() {
             get_card_customizations,
             save_card_customization,
             delete_card_customization,
+            save_custom_command,
+            get_custom_commands,
+            delete_custom_command,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

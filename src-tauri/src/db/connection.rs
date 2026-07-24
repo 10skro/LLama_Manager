@@ -246,6 +246,13 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
         mark_applied(conn, 8, "Create card_customizations table")?;
     }
 
+    // V9: Create custom_commands table
+    if !is_applied(conn, 9)? {
+        log::info!("Applying migration v9: custom_commands table");
+        migrate_custom_commands_table(conn)?;
+        mark_applied(conn, 9, "Create custom_commands table")?;
+    }
+
     Ok(())
 }
 
@@ -543,8 +550,33 @@ fn migrate_downloads_check(conn: &Connection) -> Result<(), AppError> {
     // Drop old table and rename new one
     conn.execute_batch(
         "
-        DROP TABLE IF EXISTS downloads;
-        ALTER TABLE downloads_new RENAME TO downloads;
+        DROP TABLE IF EXISTS favorite_builds;
+        ALTER TABLE favorite_builds_new RENAME TO favorite_builds;
+        ",
+    )?;
+
+    Ok(())
+}
+
+/// Create the custom_commands table for user-defined command configurations.
+fn migrate_custom_commands_table(conn: &Connection) -> Result<(), AppError> {
+    if table_exists(conn, "custom_commands")? {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "
+        CREATE TABLE custom_commands (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            command TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_custom_commands_updated_at
+        ON custom_commands(updated_at);
         ",
     )?;
 

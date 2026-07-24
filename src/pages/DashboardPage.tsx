@@ -20,11 +20,12 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { LaunchConfigModal } from '@/components/LaunchConfig';
+import { CustomCommandModal } from '@/components/CustomCommand';
 import {
   Package, FolderOpen, Trash2, Settings,
   Loader2,
   HardDrive, Calendar, Cpu, Plus, Download, FileText,
-  Pencil,
+  Pencil, Terminal,
 } from 'lucide-react';
 
 function truncatePath(path: string, maxLen: number = 40): string {
@@ -57,6 +58,7 @@ export function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLaunchConfigOpen, setIsLaunchConfigOpen] = useState(false);
+  const [isCustomCommandOpen, setIsCustomCommandOpen] = useState(false);
   // Card customizations per version (versionId -> { title, headerColor, textColor })
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
   // Which card's customize dropdown is open
@@ -212,6 +214,10 @@ export function DashboardPage() {
             <DropdownMenuItem onClick={() => setIsLaunchConfigOpen(true)}>
               <FileText className="h-4 w-4" />
               Create Launch Config
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsCustomCommandOpen(true)}>
+              <Terminal className="h-4 w-4" />
+              Create Custom Command
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -507,6 +513,12 @@ export function DashboardPage() {
       <LaunchConfigModal
         open={isLaunchConfigOpen}
         onOpenChange={setIsLaunchConfigOpen}
+      />
+
+      {/* Custom Command Modal */}
+      <CustomCommandModal
+        open={isCustomCommandOpen}
+        onOpenChange={setIsCustomCommandOpen}
       />
     </div>
   );

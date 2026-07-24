@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BuildFilters, AppSettings, LaunchConfig } from '@/types';
+import type { BuildFilters, AppSettings, LaunchConfig, CustomCommand } from '@/types';
 import { DEFAULT_THEME_ID } from '@/themes';
 import { makeKey } from '@/utils/buildKey';
 
@@ -48,6 +48,13 @@ interface AppState {
   addLaunchConfig: (config: LaunchConfig) => void;
   removeLaunchConfig: (id: string) => void;
   updateLaunchConfig: (config: LaunchConfig) => void;
+
+  // Custom Commands
+  customCommands: CustomCommand[];
+  setCustomCommands: (commands: CustomCommand[]) => void;
+  addCustomCommand: (command: CustomCommand) => void;
+  removeCustomCommand: (id: string) => void;
+  updateCustomCommand: (command: CustomCommand) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -161,6 +168,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       launchConfigs: state.launchConfigs.map((c) =>
         c.id === config.id ? config : c
+      ),
+    })),
+
+  // Custom Commands
+  customCommands: [],
+  setCustomCommands: (commands) => set({ customCommands: commands }),
+  addCustomCommand: (command) =>
+    set((state) => ({ customCommands: [...state.customCommands, command] })),
+  removeCustomCommand: (id) =>
+    set((state) => ({
+      customCommands: state.customCommands.filter((c) => c.id !== id),
+    })),
+  updateCustomCommand: (command) =>
+    set((state) => ({
+      customCommands: state.customCommands.map((c) =>
+        c.id === command.id ? command : c
       ),
     })),
 }));

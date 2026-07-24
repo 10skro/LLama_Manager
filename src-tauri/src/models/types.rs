@@ -130,6 +130,17 @@ pub struct CardCustomization {
     pub text_color: String,
 }
 
+/// User custom command configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomCommand {
+    pub id: String,
+    pub name: String,
+    pub command: String,
+    pub description: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 /// Application error type
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
