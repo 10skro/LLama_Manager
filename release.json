@@ -1,1 +1,8 @@
-{"tag_name":"v0.3.18","target_commitish":"main","name":"v0.3.18","body":"## Changes\n\n### ♻️ Refactoring\n- Decompose CatalogPage into modular components (CatalogHeader, FilterBar, BuildsTable, VersionGroup, BuildRow)\n- Extract dedicated hooks (useVersionSearch, useCatalogRefresh, useCatalogActions)\n- Unify key generation into single buildKey module (makeKey, parseKey, getRowKey)\n- Reduce CatalogPage from 827 to 226 lines for improved maintainability","draft":false,"prerelease":false}
+{
+  "tag_name": "v0.3.19",
+  "target_commitish": "main",
+  "name": "v0.3.19",
+  "body": "## Changes\n\n### Fixes\n- Fix catalog groups collapsing after download extraction completion\n- Fix catalog groups collapsing when toggling favorites\n- Remove redundant 'Download started' toast (DownloadPanel already shows progress)\n- Fix toast auto-dismiss not respecting configured toast duration\n- Remove conflicting ToastProvider duration prop to allow custom timeout system",
+  "draft": false,
+  "prerelease": false
+}
