@@ -53,8 +53,10 @@ interface State {
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 const addToRemoveQueue = (toastId: string, delay: number) => {
+  // Clear existing timeout if any (allows rescheduling with updated duration)
   if (toastTimeouts.has(toastId)) {
-    return;
+    clearTimeout(toastTimeouts.get(toastId));
+    toastTimeouts.delete(toastId);
   }
 
   // Permanent toasts (duration 0) are not auto-removed
@@ -93,13 +95,16 @@ export const reducer = (state: State, action: Action): State => {
       const { toastId } = action;
 
       if (toastId) {
+        // Individual dismiss: use stored duration from toast
         const toast = state.toasts.find((t) => t.id === toastId);
         const duration = toast?.duration ?? 5000;
         addToRemoveQueue(toastId, duration);
       } else {
+        // Displaced toasts: use current settings duration
+        const currentSettings = useAppStore.getState().settings;
+        const currentDuration = currentSettings?.toast_duration ?? 5000;
         state.toasts.forEach((toast) => {
-          const duration = toast.duration ?? 5000;
-          addToRemoveQueue(toast.id, duration);
+          addToRemoveQueue(toast.id, currentDuration);
         });
       }
 
@@ -173,6 +178,9 @@ function toast({ ...props }: Toast) {
       },
     },
   });
+
+  // Schedule auto-dismiss using configured duration
+  addToRemoveQueue(id, duration);
 
   return {
     id: id,

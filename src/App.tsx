@@ -9,7 +9,7 @@ import { CatalogPage } from './pages/CatalogPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { fetchBuilds, getCatalogLastFetched } from './services/github';
 import { getSettings } from './services/settings';
-import { getThemeById } from './themes';
+import { getThemeById, DEFAULT_THEME_ID } from './themes';
 import { DEFAULT_FONT_FAMILY } from './fonts';
 import { useAppStore } from './store/useAppStore';
 import { useRefreshStore } from './store/useRefreshStore';
@@ -25,7 +25,13 @@ function App() {
     const loadSettingsAndTheme = async () => {
       try {
         const settings = await getSettings();
-        useAppStore.getState().setSettings(settings);
+        const merged = {
+          storage_path: settings.storage_path ?? '',
+          theme: settings.theme ?? DEFAULT_THEME_ID,
+          auto_check_updates: settings.auto_check_updates ?? true,
+          toast_duration: settings.toast_duration ?? 5000,
+        };
+        useAppStore.getState().setSettings(merged);
 
         if (settings.theme) {
           const theme = getThemeById(settings.theme);

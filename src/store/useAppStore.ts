@@ -26,7 +26,7 @@ interface AppState {
   getDownloadId: (buildNumber: string, backend: string, architecture: string) => number | undefined;
 
   // Settings
-  settings: AppSettings | null;
+  settings: AppSettings;
   setSettings: (settings: AppSettings) => void;
 
   // Notifications
@@ -42,6 +42,13 @@ interface AppState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 }
+
+const defaultSettings: AppSettings = {
+  storage_path: '',
+  theme: DEFAULT_THEME_ID,
+  auto_check_updates: true,
+  toast_duration: 5000,
+};
 
 const defaultFilters: BuildFilters = {
   search: '',
@@ -114,7 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // Settings
-  settings: null,
+  settings: defaultSettings,
   setSettings: (settings) => set({ settings }),
 
   // Notifications

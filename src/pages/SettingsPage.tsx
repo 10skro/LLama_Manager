@@ -25,7 +25,6 @@ const TOAST_DURATIONS = [
   { label: '2s', value: 2000 },
   { label: '3s', value: 3000 },
   { label: '5s', value: 5000 },
-  { label: '10s', value: 10000 },
 ];
 
 export function SettingsPage() {
