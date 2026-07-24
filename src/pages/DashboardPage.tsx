@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
+import { useStorageUsage } from '@/hooks/useStorageUsage';
+import { useLatestBuildInfo } from '@/hooks/useLatestBuildInfo';
 
 import { useToast } from '@/hooks/use-toast';
 import { uninstallVersion, openFolder, getCardCustomizations, saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import type { CardCustomization } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
-import { formatDate } from '@/utils/format';
+import { formatDate, formatSize } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -54,6 +56,8 @@ export function DashboardPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: versions, isLoading } = useInstalledVersions();
+  const { storageUsage, isLoading: storageLoading } = useStorageUsage();
+  const { latestInstalled, latestAvailable, updateAvailable } = useLatestBuildInfo();
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -242,10 +246,17 @@ export function DashboardPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green/20">
               <Cpu className="h-5 w-5 text-green" />
             </div>
-            <div>
-              <p className="text-2xl font-semibold">
-                {versions?.length ? versions[0].build_number : '\u2014'}
-              </p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-semibold truncate">
+                  {latestInstalled?.build_number ?? '\u2014'}
+                </p>
+                {updateAvailable && (
+                  <Badge variant="outline" className="text-xs border-green/40 text-green shrink-0">
+                    {latestAvailable?.build_number ?? 'update'}
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">Latest Build</p>
             </div>
           </CardContent>
@@ -256,7 +267,13 @@ export function DashboardPage() {
               <HardDrive className="h-5 w-5 text-mauve" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">\u2014</p>
+              {storageLoading ? (
+                <Skeleton className="h-7 w-24" />
+              ) : (
+                <p className="text-2xl font-semibold">
+                  {storageUsage != null ? formatSize(storageUsage) : '\u2014'}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">Storage Used</p>
             </div>
           </CardContent>

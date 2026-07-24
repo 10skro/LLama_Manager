@@ -34,3 +34,7 @@ export async function saveCardCustomization(
 export async function deleteCardCustomization(versionId: number): Promise<boolean> {
   return invoke<boolean>('delete_card_customization', { versionId }) as Promise<boolean>;
 }
+
+export async function getStorageUsage(): Promise<number> {
+  return invoke<number>('get_storage_usage') as Promise<number>;
+}

@@ -375,6 +375,26 @@ fn get_app_version(app: tauri::AppHandle) -> String {
     app.package_info().version.to_string()
 }
 
+#[tauri::command]
+async fn get_storage_usage(
+    app: tauri::AppHandle,
+    state_db: tauri::State<'_, DbManager>,
+) -> Result<u64, String> {
+    let fallback_path = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?
+        .to_string_lossy()
+        .to_string();
+    let db = (*state_db).clone();
+    tokio::task::spawn_blocking(move || {
+        VersionManager::calculate_storage_usage(&db, &fallback_path)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+    .map_err(|e| e.to_string())
+}
+
 // ─── Model File Scanning ─────────────────────────────────────────────────
 
 #[tauri::command]
@@ -585,6 +605,7 @@ pub fn run_tauri_app() {
             get_catalog_last_fetched,
             change_storage_path,
             get_app_version,
+            get_storage_usage,
             scan_model_files,
             save_launch_config,
             get_launch_configs,

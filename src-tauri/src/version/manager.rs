@@ -260,6 +260,67 @@ impl VersionManager {
         repo::get_all_versions(&conn)
     }
 
+    /// Calculate total storage used by iterating over the versions directory.
+    /// Uses iterative directory walking (not recursive) for performance.
+    /// Designed to be called from `tokio::task::spawn_blocking` to avoid blocking the main thread.
+    pub fn calculate_storage_usage(
+        db: &DbManager,
+        fallback_path: &str,
+    ) -> Result<u64, AppError> {
+        let storage_path = crate::config::settings::SettingsManager::get_storage_path(db, fallback_path);
+        let versions_dir = std::path::PathBuf::from(&storage_path).join("versions");
+
+        if !versions_dir.exists() {
+            return Ok(0);
+        }
+
+        let mut total_size: u64 = 0;
+        // Iterative walk using a stack to avoid recursion depth issues
+        let mut stack: Vec<std::path::PathBuf> = vec![versions_dir];
+
+        while let Some(current) = stack.pop() {
+            match std::fs::read_dir(&current) {
+                Ok(entries) => {
+                    for entry in entries {
+                        match entry {
+                            Ok(entry) => {
+                                let path = entry.path();
+                                if path.is_dir() {
+                                    stack.push(path);
+                                } else {
+                                    match std::fs::metadata(&path) {
+                                        Ok(metadata) => {
+                                            total_size += metadata.len();
+                                        }
+                                        Err(e) => {
+                                            log::warn!(
+                                                "Failed to read metadata for {}: {}",
+                                                path.display(),
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Failed to read directory entry in {}: {}",
+                                    current.display(),
+                                    e
+                                );
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to read directory {}: {}", current.display(), e);
+                }
+            }
+        }
+
+        Ok(total_size)
+    }
+
     /// Open a folder in the system file explorer.
     pub fn open_folder(path: &str) -> Result<(), AppError> {
         #[cfg(windows)]
