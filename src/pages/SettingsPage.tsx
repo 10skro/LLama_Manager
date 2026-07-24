@@ -49,6 +49,12 @@ export function SettingsPage() {
 
   // Debounce timer for model_folder auto-save
   const modelSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Debounce timer for mmproj_folder auto-save
+  const mmprojSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Debounce timer for mmproj_folder validation
+  const mmprojValidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // mmproj_folder validation state
+  const [mmprojValidation, setMmprojValidation] = useState<'valid' | 'invalid' | 'idle'>('idle');
 
   // Check if token exists on mount
   useEffect(() => {
@@ -65,6 +71,12 @@ export function SettingsPage() {
     return () => {
       if (modelSaveTimerRef.current) {
         clearTimeout(modelSaveTimerRef.current);
+      }
+      if (mmprojSaveTimerRef.current) {
+        clearTimeout(mmprojSaveTimerRef.current);
+      }
+      if (mmprojValidateTimerRef.current) {
+        clearTimeout(mmprojValidateTimerRef.current);
       }
     };
   }, []);
@@ -349,6 +361,130 @@ export function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               This folder is used to browse and select model files when creating launch configurations.
             </p>
+          </div>
+
+          <Separator className="border-border/50" />
+
+          {/* Mmproj Folder */}
+          <div className="space-y-2">
+            <Label>Mmproj Folder</Label>
+            <div className="flex gap-2">
+              <Input
+                value={settings?.mmproj_folder || ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  updateSetting('mmproj_folder', val || undefined);
+                  // Debounced auto-save
+                  if (mmprojSaveTimerRef.current) {
+                    clearTimeout(mmprojSaveTimerRef.current);
+                  }
+                  mmprojSaveTimerRef.current = setTimeout(async () => {
+                    if (settings) {
+                      const updated = { ...settings, mmproj_folder: val || undefined };
+                      try {
+                        await saveSettings(updated);
+                      } catch (err) {
+                        console.error('Failed to save mmproj_folder:', err);
+                      }
+                    }
+                  }, 800);
+                  // Debounced folder validation
+                  if (mmprojValidateTimerRef.current) {
+                    clearTimeout(mmprojValidateTimerRef.current);
+                  }
+                  if (!val.trim()) {
+                    setMmprojValidation('idle');
+                  } else {
+                    mmprojValidateTimerRef.current = setTimeout(async () => {
+                      try {
+                        await invoke('validate_folder', { path: val.trim() });
+                        setMmprojValidation('valid');
+                      } catch {
+                        setMmprojValidation('invalid');
+                      }
+                    }, 500);
+                  }
+                }}
+                placeholder="Select a folder containing .mmproj files"
+                className="bg-background/50 font-mono text-sm"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                title="Browse for mmproj folder"
+                onClick={async () => {
+                  try {
+                    const selected = await selectFolder();
+                    if (selected) {
+                      updateSetting('mmproj_folder', selected);
+                      if (settings) {
+                        await saveSettings({ ...settings, mmproj_folder: selected });
+                        toast({
+                          title: 'Mmproj folder updated',
+                          description: `Mmproj files will be scanned from ${selected}`,
+                        });
+                      }
+                      // Validate the selected folder
+                      try {
+                        await invoke('validate_folder', { path: selected });
+                        setMmprojValidation('valid');
+                      } catch {
+                        setMmprojValidation('invalid');
+                      }
+                    }
+                  } catch (err) {
+                    toast({
+                      title: 'Error',
+                      description: String(err),
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                title="Save mmproj folder setting"
+                onClick={async () => {
+                  if (settings) {
+                    try {
+                      await saveSettings(settings);
+                      toast({
+                        title: 'Mmproj folder saved',
+                        description: settings.mmproj_folder
+                          ? `Saved: ${settings.mmproj_folder}`
+                          : 'Mmproj folder cleared.',
+                      });
+                    } catch (err) {
+                      toast({
+                        title: 'Save failed',
+                        description: String(err),
+                        variant: 'destructive',
+                      });
+                    }
+                  }
+                }}
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This folder is used to browse and select .mmproj files for model overrides.
+            </p>
+            {mmprojValidation === 'invalid' && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Folder does not exist or is not accessible.
+              </p>
+            )}
+            {mmprojValidation === 'valid' && (
+              <p className="text-xs text-green-400 flex items-center gap-1">
+                <Check className="h-3 w-3" />
+                Folder exists and is accessible.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

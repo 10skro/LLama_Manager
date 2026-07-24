@@ -57,6 +57,7 @@ export interface AppSettings {
   toast_duration?: number; // milliseconds, default 5000
   font_family?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
   model_folder?: string; // Folder containing .gguf model files
+  mmproj_folder?: string; // Folder containing .mmproj project files
 }
 
 // Favorite build
@@ -118,6 +119,7 @@ export interface CustomCommand {
   name: string;
   command: string;
   description?: string;
+  shellType: 'cmd' | 'powershell';
   createdAt: string;
   updatedAt: string;
 }
@@ -139,4 +141,11 @@ export interface VersionConfigLink {
   version_id: number;
   config_type: 'launch' | 'custom';
   config_id: string;
+}
+
+// Per-version override for model path and mmproj path
+export interface VersionOverride {
+  version_id: number;
+  model_path: string | null;
+  mmproj_path: string | null;
 }

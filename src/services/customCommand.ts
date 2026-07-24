@@ -1,13 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { CustomCommand } from '@/types';
 
-export async function saveCustomCommand(config: { name: string; command: string; description?: string }): Promise<CustomCommand> {
+export async function saveCustomCommand(config: { name: string; command: string; description?: string; shellType: 'cmd' | 'powershell' }): Promise<CustomCommand> {
   const now = new Date().toISOString();
   const result = await invoke<{ id: string }>('save_custom_command', {
     config: {
       name: config.name,
       command: config.command,
       description: config.description || '',
+      shellType: config.shellType,
     },
   });
   return {
@@ -15,6 +16,7 @@ export async function saveCustomCommand(config: { name: string; command: string;
     name: config.name,
     command: config.command,
     description: config.description,
+    shellType: config.shellType,
     createdAt: now,
     updatedAt: now,
   };

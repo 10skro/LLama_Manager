@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
 import { saveCustomCommand as saveCustomCommandApi } from '@/services/customCommand';
+import { convertCommand, detectShellFormat } from '@/lib/commandConverter';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Terminal, Loader2 } from 'lucide-react';
+import { Terminal, Loader2, Command } from 'lucide-react';
 
 interface CustomCommandModalProps {
   open: boolean;
@@ -23,7 +24,14 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [command, setCommand] = useState('');
+  const [shellType, setShellType] = useState<'cmd' | 'powershell'>('cmd');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Detect the shell format of the entered command for display
+  const detectedFormat = useMemo(() => {
+    if (!command.trim()) return null;
+    return detectShellFormat(command);
+  }, [command]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -31,6 +39,7 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
       setName('');
       setDescription('');
       setCommand('');
+      setShellType('cmd');
     }
   }, [open]);
 
@@ -45,13 +54,26 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
     }
     setIsSaving(true);
     try {
+      // Convert the command to the target shell format before saving
+      const trimmedCommand = command.trim();
+      const convertedCommand = convertCommand(trimmedCommand, shellType);
       const config = await saveCustomCommandApi({
         name: name.trim(),
-        command: command.trim(),
+        command: convertedCommand,
         description: description.trim() || undefined,
+        shellType,
       });
       addCustomCommand(config);
-      toast({ title: 'Command saved', description: `"${config.name}" has been created.` });
+
+      // Notify user if conversion happened
+      if (convertedCommand !== trimmedCommand) {
+        const shellLabel = shellType === 'cmd' ? 'CMD' : 'PowerShell';
+        toast({
+          title: 'Command converted',
+          description: `Command was converted to ${shellLabel} format and saved.`,
+        });
+      }
+
       onOpenChange(false);
     } catch (err) {
       toast({ title: 'Save failed', description: String(err), variant: 'destructive' });
@@ -94,6 +116,31 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
             />
           </div>
 
+          {/* Shell Type */}
+          <div className="space-y-2">
+            <Label>Shell Type</Label>
+            <div className="flex gap-2">
+              <Button
+                variant={shellType === 'cmd' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1 gap-2"
+                onClick={() => setShellType('cmd')}
+              >
+                <Command className="h-4 w-4" />
+                CMD
+              </Button>
+              <Button
+                variant={shellType === 'powershell' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1 gap-2"
+                onClick={() => setShellType('powershell')}
+              >
+                <Terminal className="h-4 w-4" />
+                PowerShell
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="cc-command">Command</Label>
             <Textarea
@@ -103,6 +150,14 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
               placeholder="llama-server.exe -m path\to\model.gguf -c 2048 --threads 8"
               className="font-mono text-sm min-h-[120px]"
             />
+            {detectedFormat && detectedFormat !== 'plain' && (
+              <p className="text-xs text-muted-foreground">
+                Detected format: {detectedFormat === 'cmd' ? 'CMD (^)' : 'PowerShell (`)'}
+                {detectedFormat !== shellType && (
+                  <span> — will be converted to {shellType === 'cmd' ? 'CMD' : 'PowerShell'} on save</span>
+                )}
+              </p>
+            )}
           </div>
         </div>
 

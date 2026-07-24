@@ -8,7 +8,9 @@ import { useConfigs } from '@/hooks/useConfigs';
 
 import { useToast } from '@/hooks/use-toast';
 import { uninstallVersion, getCardCustomizations } from '@/services/version';
-import type { CardCustomization } from '@/types';
+import { getVersionOverride } from '@/services/versionOverride';
+import type { CardCustomization, VersionOverride } from '@/types';
+import { useAppStore } from '@/store/useAppStore';
 import { formatSize } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,6 +38,7 @@ export function DashboardPage() {
   const { data: versions, isLoading } = useInstalledVersions();
   const { storageUsage, isLoading: storageLoading } = useStorageUsage();
   const { latestInstalled, latestAvailable, updateAvailable } = useLatestBuildInfo();
+  const settings = useAppStore((state) => state.settings);
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -43,6 +46,8 @@ export function DashboardPage() {
   const [isCustomCommandOpen, setIsCustomCommandOpen] = useState(false);
   // Card customizations per version (versionId -> customization)
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
+  // Version overrides per version (versionId -> override)
+  const [versionOverrides, setVersionOverrides] = useState<Record<number, VersionOverride>>({});
   // Shared editing state: only one card's customize dropdown can be open at a time
   const [editingDropdownId, setEditingDropdownId] = useState<number | null>(null);
   const [tempTitle, setTempTitle] = useState('');
@@ -59,6 +64,27 @@ export function DashboardPage() {
       loadAll(versions.map(v => v.id));
     }
   }, [versions, loadAll]);
+
+  // Load overrides for all installed versions
+  useEffect(() => {
+    if (!versions || versions.length === 0) return;
+
+    const loadOverrides = async () => {
+      const record: Record<number, VersionOverride> = {};
+      for (const version of versions) {
+        try {
+          const override = await getVersionOverride(version.id);
+          if (override) {
+            record[version.id] = override;
+          }
+        } catch (err) {
+          console.error(`Failed to load override for version ${version.id}:`, err);
+        }
+      }
+      setVersionOverrides(record);
+    };
+    loadOverrides();
+  }, [versions]);
 
   // Load customizations from backend on mount
   useEffect(() => {
@@ -110,6 +136,18 @@ export function DashboardPage() {
       const next = { ...prev };
       if (customization) {
         next[versionId] = customization;
+      } else {
+        delete next[versionId];
+      }
+      return next;
+    });
+  };
+
+  const handleOverrideChange = (versionId: number, override: VersionOverride | null) => {
+    setVersionOverrides(prev => {
+      const next = { ...prev };
+      if (override) {
+        next[versionId] = override;
       } else {
         delete next[versionId];
       }
@@ -228,6 +266,10 @@ export function DashboardPage() {
               configsLoading={configsLoading}
               onSetLink={setLink}
               onRemoveLink={removeLink}
+              override={versionOverrides[version.id] ?? null}
+              onOverrideChange={handleOverrideChange}
+              modelFolder={settings?.model_folder}
+              mmprojFolder={settings?.mmproj_folder}
             />
           ))}
         </div>

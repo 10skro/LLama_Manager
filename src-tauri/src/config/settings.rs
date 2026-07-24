@@ -36,6 +36,8 @@ impl SettingsManager {
 
         let model_folder = map.remove("model_folder");
 
+        let mmproj_folder = map.remove("mmproj_folder");
+
         Ok(AppSettings {
             storage_path,
             theme,
@@ -44,6 +46,7 @@ impl SettingsManager {
             font_family,
             toast_duration,
             model_folder,
+            mmproj_folder,
         })
     }
 
@@ -87,6 +90,15 @@ impl SettingsManager {
             }
             _ => {
                 let _ = repo::delete_setting(&conn, "model_folder");
+            }
+        }
+        // Save mmproj_folder
+        match &settings.mmproj_folder {
+            Some(folder) if !folder.is_empty() => {
+                repo::set_setting(&conn, "mmproj_folder", folder)?;
+            }
+            _ => {
+                let _ = repo::delete_setting(&conn, "mmproj_folder");
             }
         }
         Ok(())

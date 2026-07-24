@@ -267,6 +267,20 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
         mark_applied(conn, 11, "Change config_id to TEXT in version_config_links")?;
     }
 
+    // V12: Add shell_type column to custom_commands table
+    if !is_applied(conn, 12)? {
+        log::info!("Applying migration v12: custom_commands shell_type column");
+        migrate_custom_commands_shell_type(conn)?;
+        mark_applied(conn, 12, "Add shell_type to custom_commands")?;
+    }
+
+    // V13: Create version_overrides table
+    if !is_applied(conn, 13)? {
+        log::info!("Applying migration v13: version_overrides table");
+        migrate_version_overrides_table(conn)?;
+        mark_applied(conn, 13, "Create version_overrides table")?;
+    }
+
     Ok(())
 }
 
@@ -704,8 +718,81 @@ fn migrate_version_config_links_config_id_text(conn: &Connection) -> Result<(), 
     // Drop old table and rename new one
     conn.execute_batch(
         "
-        DROP TABLE IF EXISTS version_config_links;
-        ALTER TABLE version_config_links_new RENAME TO version_config_links;
+        DROP TABLE IF EXISTS favorite_builds;
+        ALTER TABLE favorite_builds_new RENAME TO favorite_builds;
+        ",
+    )?;
+
+    Ok(())
+}
+
+/// Migrate custom_commands to add shell_type column if it doesn't exist.
+/// Uses table-recreate pattern inside a transaction for safety.
+fn migrate_custom_commands_shell_type(conn: &Connection) -> Result<(), AppError> {
+    if !table_exists(conn, "custom_commands")? {
+        return Ok(());
+    }
+
+    if column_exists(conn, "custom_commands", "shell_type")? {
+        return Ok(());
+    }
+
+    // Recreate table with shell_type column, defaulting to 'cmd'
+    conn.execute_batch(
+        "
+        CREATE TABLE custom_commands_new (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            command TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            shell_type TEXT NOT NULL DEFAULT 'cmd',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        ",
+    )?;
+
+    // Migrate existing data with default shell_type 'cmd'
+    conn.execute(
+        "INSERT INTO custom_commands_new (id, name, command, description, shell_type, created_at, updated_at)
+         SELECT id, name, command, description, 'cmd', created_at, updated_at
+         FROM custom_commands",
+        [],
+    )?;
+
+    // Recreate the index on the new table
+    conn.execute_batch(
+        "
+        CREATE INDEX IF NOT EXISTS idx_custom_commands_updated_at
+        ON custom_commands_new(updated_at);
+        ",
+    )?;
+
+    // Drop old table and rename new one
+    conn.execute_batch(
+        "
+        DROP TABLE IF EXISTS favorite_builds;
+        ALTER TABLE favorite_builds_new RENAME TO favorite_builds;
+        ",
+    )?;
+
+    Ok(())
+}
+
+/// Create the version_overrides table for per-version model/mmproj path overrides.
+fn migrate_version_overrides_table(conn: &Connection) -> Result<(), AppError> {
+    if table_exists(conn, "version_overrides")? {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "
+        CREATE TABLE version_overrides (
+            version_id INTEGER PRIMARY KEY,
+            model_path TEXT,
+            mmproj_path TEXT,
+            FOREIGN KEY (version_id) REFERENCES installed_versions(id) ON DELETE CASCADE
+        );
         ",
     )?;
 

@@ -1,8 +1,9 @@
+import { useCallback, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import { useTerminalLaunch } from '@/hooks/useTerminalLaunch';
 import { useAppStore } from '@/store/useAppStore';
-import type { InstalledVersion, CardCustomization, ConfigEntry, VersionConfigLink } from '@/types';
+import type { InstalledVersion, CardCustomization, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ import {
   Play,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
+import OverrideDialog from './OverrideDialog';
 
 const HEADER_COLORS = [
   { name: 'mauve', variable: 'hsl(var(--mauve))', label: 'Mauve' },
@@ -55,6 +57,12 @@ interface VersionCardProps {
   configsLoading: boolean;
   onSetLink: (versionId: number, configType: 'launch' | 'custom', configId: string) => Promise<void>;
   onRemoveLink: (versionId: number) => Promise<void>;
+  // Override state
+  override: VersionOverride | null;
+  onOverrideChange: (versionId: number, override: VersionOverride | null) => void;
+  // Settings for file selectors
+  modelFolder: string | undefined;
+  mmprojFolder: string | undefined;
 }
 
 export function VersionCard({
@@ -75,16 +83,22 @@ export function VersionCard({
   configsLoading,
   onSetLink,
   onRemoveLink,
+  override,
+  onOverrideChange,
+  modelFolder,
+  mmprojFolder,
 }: VersionCardProps) {
   const { toast } = useToast();
   const launchConfigs = useAppStore((state) => state.launchConfigs);
   const customCommands = useAppStore((state) => state.customCommands);
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
 
   const { handlePlay, hasConfig } = useTerminalLaunch({
     version,
     configLink,
     launchConfigs,
     customCommands,
+    override,
     onError: (message: string) => {
       toast({
         variant: 'destructive',
@@ -190,6 +204,38 @@ export function VersionCard({
     }
   };
 
+  const handleOverrideSave = useCallback((newOverride: VersionOverride | null) => {
+    onOverrideChange(version.id, newOverride);
+    if (newOverride) {
+      toast({
+        title: 'Override saved',
+        description: `Override applied to ${version.build_number}.`,
+      });
+    } else {
+      toast({
+        title: 'Override cleared',
+        description: `Override removed from ${version.build_number}.`,
+      });
+    }
+  }, [version.id, version.build_number, onOverrideChange, toast]);
+
+  const hasOverride = override !== null && (override.model_path || override.mmproj_path);
+
+  // Build descriptive override badge text
+  const getOverrideBadgeText = (): string => {
+    if (!override) return 'Override active';
+    const parts: string[] = [];
+    if (override.model_path) {
+      const modelName = override.model_path.split('\\').pop()?.split('/').pop() ?? 'model.gguf';
+      parts.push(`Model: ${modelName}`);
+    }
+    if (override.mmproj_path) {
+      const mmprojName = override.mmproj_path.split('\\').pop()?.split('/').pop() ?? 'mmproj.mmproj';
+      parts.push(`MMProj: ${mmprojName}`);
+    }
+    return parts.join(' + ') || 'Override active';
+  };
+
   return (
     <Card
       className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden"
@@ -289,6 +335,16 @@ export function VersionCard({
         configName={linkedConfig?.name}
       />
 
+      {/* Override Badge */}
+      {hasOverride && (
+        <div className="px-3 pb-1">
+          <Badge variant="outline" className="border-iris/30 text-iris text-xs gap-1">
+            <SlidersHorizontal className="h-3 w-3" />
+            {getOverrideBadgeText()}
+          </Badge>
+        </div>
+      )}
+
       <CardHeader className="pb-3 pt-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
@@ -364,13 +420,8 @@ export function VersionCard({
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 opacity-60 hover:opacity-80"
-            onClick={() =>
-              toast({
-                title: 'Override',
-                description: 'Override settings are work in progress.',
-              })
-            }
+            className={`gap-2 ${hasOverride ? 'border-iris text-iris hover:bg-iris/10' : ''}`}
+            onClick={() => setOverrideDialogOpen(true)}
           >
             <SlidersHorizontal className="h-4 w-4" />
             Override
@@ -402,6 +453,17 @@ export function VersionCard({
           </Button>
         </div>
       </CardContent>
+
+      <OverrideDialog
+        open={overrideDialogOpen}
+        onOpenChange={setOverrideDialogOpen}
+        versionId={version.id}
+        versionName={version.build_number}
+        modelFolder={modelFolder}
+        mmprojFolder={mmprojFolder}
+        currentOverride={override}
+        onSave={handleOverrideSave}
+      />
     </Card>
   );
 }

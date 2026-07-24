@@ -77,6 +77,8 @@ pub struct AppSettings {
     pub toast_duration: Option<i64>, // milliseconds, default 5000
     #[serde(default)]
     pub model_folder: Option<String>, // folder containing .gguf model files
+    #[serde(default)]
+    pub mmproj_folder: Option<String>, // folder containing .mmproj project files
 }
 
 /// Model file discovered by scanning a folder
@@ -130,6 +132,11 @@ pub struct CardCustomization {
     pub text_color: String,
 }
 
+/// Default shell type for custom commands.
+fn default_shell_type() -> String {
+    "cmd".to_string()
+}
+
 /// User custom command configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomCommand {
@@ -137,8 +144,19 @@ pub struct CustomCommand {
     pub name: String,
     pub command: String,
     pub description: Option<String>,
+    #[serde(default = "default_shell_type")]
+    pub shell_type: String,
     pub created_at: String,
     pub updated_at: String,
+}
+
+/// Per-version override for model path and mmproj path.
+/// Replaces the config values when launching via LaunchConfig.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionOverride {
+    pub version_id: i64,
+    pub model_path: Option<String>,
+    pub mmproj_path: Option<String>,
 }
 
 /// Link between an installed version and a configuration (launch or custom).

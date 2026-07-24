@@ -38,11 +38,18 @@ pub fn save_custom_command(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    let shell_type: String = config
+        .get("shellType")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "cmd".to_string());
+
     let custom_command = CustomCommand {
         id: id.clone(),
         name,
         command,
         description,
+        shell_type,
         created_at: now.clone(),
         updated_at: now,
     };
@@ -69,6 +76,7 @@ pub fn get_custom_commands(
             "name": c.name,
             "command": c.command,
             "description": c.description,
+            "shellType": c.shell_type,
             "createdAt": c.created_at,
             "updatedAt": c.updated_at,
         })

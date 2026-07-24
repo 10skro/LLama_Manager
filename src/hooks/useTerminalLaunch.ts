@@ -1,68 +1,16 @@
 import { useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/store/useAppStore';
-import type { InstalledVersion, LaunchConfig, CustomCommand, VersionConfigLink } from '@/types';
+import { buildLaunchCommand } from '@/utils/buildLaunchCommand';
+import type { InstalledVersion, LaunchConfig, CustomCommand, VersionConfigLink, VersionOverride, LaunchConfigArg } from '@/types';
 
 interface UseTerminalLaunchParams {
   version: InstalledVersion;
   configLink: VersionConfigLink | null;
   launchConfigs: LaunchConfig[];
   customCommands: CustomCommand[];
+  override?: VersionOverride | null;
   onError?: (message: string) => void;
-}
-
-/**
- * Escapes a value for CMD shell.
- */
-function escapeCmdValue(value: string): string {
-  const escaped = value.replace(/"/g, '""');
-  return `"${escaped}"`;
-}
-
-/**
- * Escapes a value for PowerShell.
- */
-function escapePsValue(value: string): string {
-  const escaped = value.replace(/"/g, '`"');
-  return `"${escaped}"`;
-}
-
-/**
- * Builds a shell launch command for llama-server.exe (mirrors buildLaunchCommand.ts).
- */
-function buildLaunchCommand(
-  exePath: string,
-  modelPath: string,
-  args: Array<{ argKey: string; value: string }>,
-  shellType: 'cmd' | 'powershell'
-): string {
-  const isCmd = shellType === 'cmd';
-  const continuation = isCmd ? '^' : '`';
-  const escape = isCmd ? escapeCmdValue : escapePsValue;
-
-  const lines: string[] = [];
-  lines.push(`${escape(exePath)} ${continuation}`);
-  lines.push(`-m ${escape(modelPath)} ${continuation}`);
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    const isLast = i === args.length - 1;
-
-    if (!arg.value && arg.value !== 'true' && arg.value !== 'false') continue;
-    if (arg.value === 'false') continue;
-
-    if (isLast) {
-      lines.push(arg.value === 'true' ? arg.argKey : `${arg.argKey} ${escape(arg.value)}`);
-    } else {
-      if (arg.value === 'true') {
-        lines.push(`${arg.argKey} ${continuation}`);
-      } else {
-        lines.push(`${arg.argKey} ${escape(arg.value)} ${continuation}`);
-      }
-    }
-  }
-
-  return lines.join('\r\n');
 }
 
 export function useTerminalLaunch({
@@ -70,6 +18,7 @@ export function useTerminalLaunch({
   configLink,
   launchConfigs,
   customCommands,
+  override,
   onError,
 }: UseTerminalLaunchParams) {
   const setTerminalVisible = useAppStore((state) => state.setTerminalVisible);
@@ -94,8 +43,29 @@ export function useTerminalLaunch({
         return;
       }
 
+      // Apply override: replace model path and mmproj path from config
+      let modelPath = config.modelPath;
+      let args: LaunchConfigArg[] = config.args;
+
+      if (override) {
+        if (override.model_path) {
+          modelPath = override.model_path;
+        }
+        if (override.mmproj_path) {
+          // Replace existing --mmproj arg or add new one
+          const mmprojIndex = args.findIndex(a => a.argKey === '--mmproj');
+          if (mmprojIndex >= 0) {
+            args = args.map((a, i) =>
+              i === mmprojIndex ? { ...a, value: override.mmproj_path! } : a
+            );
+          } else {
+            args = [...args, { argKey: '--mmproj', value: override.mmproj_path }];
+          }
+        }
+      }
+
       const exePath = `${installPath}\\llama-server.exe`;
-      startupCommand = buildLaunchCommand(exePath, config.modelPath, config.args, config.shellType);
+      startupCommand = buildLaunchCommand(exePath, modelPath, args, config.shellType);
       shellType = config.shellType;
     } else if (configLink.config_type === 'custom') {
       const cmd = customCommands.find((c) => c.id === configLink.config_id);
@@ -106,6 +76,7 @@ export function useTerminalLaunch({
       }
 
       startupCommand = cmd.command;
+      shellType = cmd.shellType || 'cmd';
     } else {
       onError?.('Unknown configuration type. Cannot launch.');
       return;
@@ -132,7 +103,7 @@ export function useTerminalLaunch({
         setTimeout(async () => {
           try {
             // For cmd, each line needs \r\n. For PowerShell, use \r\n too.
-            const lines = startupCommand.split('\r\n');
+            const lines = startupCommand.split(/\r?\n/);
             for (const line of lines) {
               await invoke('write_terminal_input', {
                 sessionId,
@@ -151,7 +122,7 @@ export function useTerminalLaunch({
     } finally {
       injectingRef.current = false;
     }
-  }, [version, configLink, launchConfigs, customCommands, setActiveTerminalId, setTerminalVisible, onError]);
+  }, [version, configLink, launchConfigs, customCommands, override, setActiveTerminalId, setTerminalVisible, onError]);
 
   const hasConfig = configLink !== null;
 

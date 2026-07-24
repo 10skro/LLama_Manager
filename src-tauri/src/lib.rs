@@ -26,7 +26,7 @@ use crate::download::manager::DownloadManager;
 use crate::github::api::{FetchMode, GithubClient};
 use crate::models::types::{
     AppError, AppSettings, Build, CardCustomization, DownloadProgress, FavoriteBuild, InstalledVersion,
-    ModelFile, VersionConfigLink,
+    ModelFile, VersionConfigLink, VersionOverride,
 };
 use crate::terminal::manager::TerminalManager;
 use crate::version::manager::VersionManager;
@@ -399,9 +399,11 @@ async fn get_storage_usage(
 
 // ─── Model File Scanning ─────────────────────────────────────────────────
 
-#[tauri::command]
-fn scan_model_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
-    let path = std::path::Path::new(&folder_path);
+/// Shared utility: scan a folder for files matching a given extension.
+/// Non-recursive: only files directly in the folder.
+/// Returns files sorted by name (case-insensitive).
+fn scan_files(folder_path: &str, extension: &str) -> Result<Vec<ModelFile>, String> {
+    let path = std::path::Path::new(folder_path);
 
     if !path.exists() {
         return Err(format!("Folder does not exist: {}", folder_path));
@@ -422,8 +424,8 @@ fn scan_model_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
             continue;
         }
 
-        let extension = file_path.extension().and_then(|e| e.to_str());
-        if extension != Some("gguf") {
+        let file_ext = file_path.extension().and_then(|e| e.to_str());
+        if file_ext != Some(extension) {
             continue;
         }
 
@@ -444,6 +446,29 @@ fn scan_model_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
     files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
     Ok(files)
+}
+
+#[tauri::command]
+fn scan_model_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
+    scan_files(&folder_path, "gguf")
+}
+
+#[tauri::command]
+fn scan_mmproj_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
+    scan_files(&folder_path, "mmproj")
+}
+
+/// Validate that a folder path exists and is accessible as a directory.
+#[tauri::command]
+fn validate_folder(path: String) -> Result<bool, String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err(format!("Folder does not exist: {}", path));
+    }
+    if !p.is_dir() {
+        return Err(format!("Path is not a directory: {}", path));
+    }
+    Ok(true)
 }
 
 // ─── Launch Config Commands ──────────────────────────────────────────────
@@ -562,6 +587,37 @@ fn delete_version_config_link(
 ) -> Result<bool, String> {
     let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
     repo::delete_version_config_link(&conn, version_id).map_err(|e| e.to_string())
+}
+
+// ─── Version Override Commands ─────────────────────────────────────────
+
+#[tauri::command]
+fn get_version_override(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+) -> Result<Option<VersionOverride>, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::get_version_override(&conn, version_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_version_override(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+    model_path: Option<String>,
+    mmproj_path: Option<String>,
+) -> Result<(), String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::save_version_override(&conn, version_id, model_path, mmproj_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_version_override(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+) -> Result<bool, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::delete_version_override(&conn, version_id).map_err(|e| e.to_string())
 }
 
 // ─── Terminal Commands ─────────────────────────────────────────────────
@@ -692,6 +748,11 @@ pub fn run_tauri_app() {
             get_version_config_link,
             save_version_config_link,
             delete_version_config_link,
+            scan_mmproj_files,
+            validate_folder,
+            get_version_override,
+            save_version_override,
+            delete_version_override,
             spawn_terminal,
             write_terminal_input,
             kill_terminal,
