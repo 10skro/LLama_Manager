@@ -5,9 +5,9 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{mpsc, Mutex, oneshot};
 
-use crate::models::types::{AppError, DownloadProgress};
+use crate::models::types::{AppError, DownloadProgress, DownloadResult};
 
 /// Maximum number of concurrent downloads allowed.
 const MAX_CONCURRENT_DOWNLOADS: usize = 3;
@@ -38,6 +38,9 @@ impl DownloadManager {
 
     /// Start a download for the given URL to the specified file path.
     ///
+    /// Returns a oneshot receiver that resolves when the download completes,
+    /// fails, or is cancelled. This replaces the polling-based approach.
+    ///
     /// Emits progress updates via `progress_tx` which the caller should forward
     /// to the frontend (e.g., via Tauri event emission).
     pub async fn start_download(
@@ -48,7 +51,7 @@ impl DownloadManager {
         total_size: u64,
         build_number: String,
         progress_tx: mpsc::Sender<DownloadProgress>,
-    ) -> Result<(), AppError> {
+    ) -> Result<oneshot::Receiver<DownloadResult>, AppError> {
         // Enforce max concurrent download limit
         {
             let active = self.active_downloads.lock().await;
@@ -58,6 +61,7 @@ impl DownloadManager {
         }
 
         let (cancel_tx, mut cancel_rx) = mpsc::channel::<DownloadCommand>(1);
+        let (result_tx, result_rx) = oneshot::channel();
 
         let initial_progress = DownloadProgress {
             download_id,
@@ -100,7 +104,7 @@ impl DownloadManager {
             let mut active = active_downloads.lock().await;
             active.remove(&download_id);
 
-            // Send final status
+            // Send final status via progress channel
             let final_status = match &result {
                 Ok(_) => DownloadProgress {
                     download_id,
@@ -110,7 +114,7 @@ impl DownloadManager {
                     speed: 0.0,
                     percentage: 100.0,
                     eta_seconds: 0.0,
-                    status: "downloaded".to_string(),
+                    status: "completed".to_string(),
                 },
                 Err(AppError::Cancelled) => DownloadProgress {
                     download_id,
@@ -135,10 +139,16 @@ impl DownloadManager {
             };
             let _ = progress_tx.send(final_status).await;
 
-            result
+            // Send result via oneshot channel
+            let download_result = match result {
+                Ok(_) => DownloadResult::Completed,
+                Err(AppError::Cancelled) => DownloadResult::Cancelled,
+                Err(e) => DownloadResult::Failed(e.to_string()),
+            };
+            let _ = result_tx.send(download_result);
         });
 
-        Ok(())
+        Ok(result_rx)
     }
 
     /// Cancel a running download by ID.

@@ -1,14 +1,14 @@
 use rusqlite::{Connection, params};
 use chrono::Local;
 
-use crate::models::types::{AppError, Build, FavoriteBuild, InstalledVersion, DownloadRecord};
+use crate::models::types::{AppError, Build, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig};
 
 // ─── Installed Versions ─────────────────────────────────────────────────
 
 pub fn insert_version(conn: &Connection, version: &InstalledVersion) -> Result<i64, AppError> {
-    let id = conn.execute(
-        "INSERT INTO installed_versions (build_number, backend, architecture, install_path, installed_at, status)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+    conn.execute(
+        "INSERT INTO installed_versions (build_number, backend, architecture, install_path, installed_at, status, download_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             version.build_number,
             version.backend,
@@ -16,14 +16,15 @@ pub fn insert_version(conn: &Connection, version: &InstalledVersion) -> Result<i
             version.install_path,
             version.installed_at,
             version.status,
+            version.download_id,
         ],
     )?;
-    Ok(id as i64)
+    Ok(conn.last_insert_rowid())
 }
 
 pub fn get_all_versions(conn: &Connection) -> Result<Vec<InstalledVersion>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend, architecture, install_path, installed_at, status
+        "SELECT id, build_number, backend, architecture, install_path, installed_at, status, download_id
          FROM installed_versions ORDER BY id DESC",
     )?;
 
@@ -36,6 +37,7 @@ pub fn get_all_versions(conn: &Connection) -> Result<Vec<InstalledVersion>, AppE
             install_path: row.get(4)?,
             installed_at: row.get(5)?,
             status: row.get(6)?,
+            download_id: row.get(7)?,
         })
     })?;
 
@@ -49,7 +51,7 @@ pub fn delete_version(conn: &Connection, id: i64) -> Result<bool, AppError> {
 
 pub fn get_version_by_build(conn: &Connection, build: &str, backend: &str, architecture: &str) -> Result<Option<InstalledVersion>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend, architecture, install_path, installed_at, status
+        "SELECT id, build_number, backend, architecture, install_path, installed_at, status, download_id
          FROM installed_versions WHERE build_number = ?1 AND backend = ?2 AND architecture = ?3",
     )?;
 
@@ -63,6 +65,32 @@ pub fn get_version_by_build(conn: &Connection, build: &str, backend: &str, archi
             install_path: row.get(4)?,
             installed_at: row.get(5)?,
             status: row.get(6)?,
+            download_id: row.get(7)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Fetch a single installed version by its primary key ID.
+/// Used by `uninstall_version` to avoid loading the entire table.
+pub fn get_version_by_id(conn: &Connection, id: i64) -> Result<Option<InstalledVersion>, AppError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, build_number, backend, architecture, install_path, installed_at, status, download_id
+         FROM installed_versions WHERE id = ?1",
+    )?;
+
+    let mut rows = stmt.query(params![id])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(InstalledVersion {
+            id: row.get(0)?,
+            build_number: row.get(1)?,
+            backend: row.get(2)?,
+            architecture: row.get(3)?,
+            install_path: row.get(4)?,
+            installed_at: row.get(5)?,
+            status: row.get(6)?,
+            download_id: row.get(7)?,
         }))
     } else {
         Ok(None)
@@ -72,7 +100,7 @@ pub fn get_version_by_build(conn: &Connection, build: &str, backend: &str, archi
 // ─── Downloads ──────────────────────────────────────────────────────────
 
 pub fn insert_download(conn: &Connection, download: &DownloadRecord) -> Result<i64, AppError> {
-    let id = conn.execute(
+    conn.execute(
         "INSERT INTO downloads (build_number, download_url, file_path, total_size, downloaded_size, status, error_message, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         params![
@@ -87,7 +115,7 @@ pub fn insert_download(conn: &Connection, download: &DownloadRecord) -> Result<i
             download.updated_at,
         ],
     )?;
-    Ok(id as i64)
+    Ok(conn.last_insert_rowid())
 }
 
 pub fn update_download_progress(
@@ -185,6 +213,19 @@ pub fn cancel_download(conn: &Connection, id: i64) -> Result<bool, AppError> {
     Ok(rows > 0)
 }
 
+/// Delete old download records that are in terminal states (completed, failed, cancelled)
+/// and were last updated more than `days` ago.
+pub fn cleanup_old_downloads(conn: &Connection, days: i64) -> Result<usize, AppError> {
+    // SQLite datetime modifier requires the format '-N days' as a single string argument.
+    // We use string concatenation in SQL to safely inject the parameter.
+    let rows = conn.execute(
+        "DELETE FROM downloads WHERE status IN ('completed', 'failed', 'cancelled')
+         AND updated_at < datetime('now', '-' || ?1 || ' days')",
+        params![days],
+    )?;
+    Ok(rows)
+}
+
 // ─── Settings ───────────────────────────────────────────────────────────
 
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>, AppError> {
@@ -280,7 +321,7 @@ pub fn get_cached_builds(conn: &Connection) -> Result<Vec<Build>, AppError> {
 
 pub fn get_favorite_builds(conn: &Connection) -> Result<Vec<FavoriteBuild>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend, download_url FROM favorite_builds ORDER BY id DESC",
+        "SELECT id, build_number, backend, download_url, architecture FROM favorite_builds ORDER BY id DESC",
     )?;
     let builds = stmt.query_map([], |row| {
         Ok(FavoriteBuild {
@@ -288,31 +329,104 @@ pub fn get_favorite_builds(conn: &Connection) -> Result<Vec<FavoriteBuild>, AppE
             build_number: row.get(1)?,
             backend: row.get(2)?,
             download_url: row.get(3)?,
+            architecture: row.get(4)?,
         })
     })?;
     Ok(builds.collect::<Result<Vec<_>, rusqlite::Error>>()?)
 }
 
-pub fn toggle_favorite_build(conn: &Connection, build_number: &str, backend: &str, download_url: &str) -> Result<bool, AppError> {
-    // Check if already favorite
-    let mut stmt = conn.prepare(
-        "SELECT id FROM favorite_builds WHERE download_url = ?1",
-    )?;
-    let mut rows = stmt.query(params![download_url])?;
+pub fn toggle_favorite_build(conn: &mut Connection, build_number: &str, backend: &str, download_url: &str, architecture: &str) -> Result<bool, AppError> {
+    let tx = conn.transaction()?;
 
-    if rows.next()?.is_some() {
-        // Remove favorite
-        conn.execute(
-            "DELETE FROM favorite_builds WHERE download_url = ?1",
-            params![download_url],
-        )?;
-        Ok(false) // was favorite, now removed
+    // Check if already favorited — propagate DB errors instead of silently swallowing them
+    let exists: bool = tx.query_row(
+        "SELECT COUNT(*) > 0 FROM favorite_builds WHERE download_url = ?1",
+        params![download_url],
+        |row| row.get(0),
+    ).map_err(|e| {
+        log::warn!("Error checking favorite build existence for '{}': {}", download_url, e);
+        e
+    })?;
+
+    if exists {
+        tx.execute("DELETE FROM favorite_builds WHERE download_url = ?1", params![download_url])?;
     } else {
-        // Add favorite
-        conn.execute(
-            "INSERT INTO favorite_builds (build_number, backend, download_url) VALUES (?1, ?2, ?3)",
-            params![build_number, backend, download_url],
+        tx.execute(
+            "INSERT INTO favorite_builds (build_number, backend, download_url, architecture) VALUES (?1, ?2, ?3, ?4)",
+            params![build_number, backend, download_url, architecture],
         )?;
-        Ok(true) // was not favorite, now added
     }
+
+    tx.commit()?;
+    Ok(!exists)
+}
+
+// ─── Launch Configs ─────────────────────────────────────────────────────
+
+pub fn insert_launch_config(conn: &Connection, config: &LaunchConfig) -> Result<(), AppError> {
+    conn.execute(
+        "INSERT INTO launch_configs (id, name, shell_type, model_path, args_json, description, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![
+            config.id,
+            config.name,
+            config.shell_type,
+            config.model_path,
+            config.args_json,
+            config.description,
+            config.created_at,
+            config.updated_at,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn update_launch_config(conn: &Connection, config: &LaunchConfig) -> Result<(), AppError> {
+    conn.execute(
+        "UPDATE launch_configs SET name = ?1, shell_type = ?2, model_path = ?3, args_json = ?4, description = ?5, updated_at = ?6 WHERE id = ?7",
+        params![
+            config.name,
+            config.shell_type,
+            config.model_path,
+            config.args_json,
+            config.description,
+            config.updated_at,
+            config.id,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn get_all_launch_configs(conn: &Connection) -> Result<Vec<LaunchConfig>, AppError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, shell_type, model_path, args_json, description, created_at, updated_at FROM launch_configs ORDER BY updated_at DESC",
+    )?;
+
+    let configs = stmt.query_map([], |row| {
+        Ok(LaunchConfig {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            shell_type: row.get(2)?,
+            model_path: row.get(3)?,
+            args_json: row.get(4)?,
+            description: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+        })
+    })?;
+
+    Ok(configs.collect::<Result<Vec<_>, rusqlite::Error>>()?)
+}
+
+pub fn delete_launch_config_by_id(conn: &Connection, id: &str) -> Result<bool, AppError> {
+    let rows = conn.execute("DELETE FROM launch_configs WHERE id = ?1", params![id])?;
+    Ok(rows > 0)
+}
+
+pub fn launch_config_exists(conn: &Connection, id: &str) -> Result<bool, AppError> {
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM launch_configs WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )?;
+    Ok(exists)
 }

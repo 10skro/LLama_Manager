@@ -24,6 +24,8 @@ pub struct InstalledVersion {
     pub install_path: String,
     pub installed_at: String,
     pub status: String,          // "installed", "corrupt", "pending"
+    #[serde(default)]
+    pub download_id: Option<i64>, // NEW: links to downloads table
 }
 
 /// Download tracking record
@@ -52,6 +54,14 @@ pub struct DownloadProgress {
     pub percentage: f64,
     pub eta_seconds: f64,
     pub status: String,
+}
+
+/// Result of a download operation, sent via oneshot channel.
+#[derive(Debug)]
+pub enum DownloadResult {
+    Completed,
+    Failed(String),
+    Cancelled,
 }
 
 /// Application settings
@@ -107,6 +117,8 @@ pub struct FavoriteBuild {
     pub build_number: String,
     pub backend: String,
     pub download_url: String,
+    #[serde(default)]
+    pub architecture: String, // NEW: "x64", "arm64"
 }
 
 /// Application error type

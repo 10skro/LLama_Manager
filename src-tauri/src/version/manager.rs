@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 
 use chrono::Local;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::download::manager::DownloadManager;
 use crate::file::manager::FileManager;
 use crate::models::types::{
-    AppError, Build, DownloadProgress, DownloadRecord, InstalledVersion,
+    AppError, Build, DownloadProgress, DownloadRecord, DownloadResult, InstalledVersion,
 };
 
 /// Orchestrates version installation, uninstallation, and listing.
@@ -25,6 +25,7 @@ pub struct InstallPaths {
 
 impl VersionManager {
     /// Starts the download pipeline and returns the download_id immediately.
+    /// Also returns a oneshot receiver that resolves when the download completes.
     /// Does NOT wait for download completion. Extraction/validation runs
     /// asynchronously via `post_download_tasks`.
     pub async fn start_install(
@@ -33,7 +34,7 @@ impl VersionManager {
         build: &Build,
         storage_base: PathBuf,
         progress_tx: mpsc::Sender<DownloadProgress>,
-    ) -> Result<(i64, InstallPaths), AppError> {
+    ) -> Result<(i64, InstallPaths, oneshot::Receiver<DownloadResult>), AppError> {
         // 1. Check if already installed
         {
             let conn = db.lock_conn()?;
@@ -84,13 +85,13 @@ impl VersionManager {
             repo::insert_download(&conn, &download)?
         };
 
-        // 4. Start download with progress
+        // 4. Start download with progress - now returns oneshot receiver
         {
             let conn = db.lock_conn()?;
             repo::update_download_progress(&conn, download_id, 0, "downloading")?;
         }
 
-        download_mgr
+        let download_rx = download_mgr
             .start_download(
                 download_id,
                 build.download_url.clone(),
@@ -109,52 +110,22 @@ impl VersionManager {
             architecture: build.architecture.clone(),
         };
 
-        Ok((download_id, paths))
+        Ok((download_id, paths, download_rx))
     }
 
-    /// Waits for download completion, then extracts, validates, and registers.
+    /// Waits for download completion via oneshot channel, then extracts, validates, and registers.
     /// Emits progress events through `progress_tx` for extracting/completed/failed.
     pub async fn post_download_tasks(
         db: &DbManager,
         download_id: i64,
         paths: InstallPaths,
         progress_tx: mpsc::Sender<DownloadProgress>,
+        download_rx: oneshot::Receiver<DownloadResult>,
     ) -> Result<InstalledVersion, AppError> {
-        // 1. Poll until download completes or fails
-        let max_wait_seconds = 3600;
-        let mut waited = 0;
-        loop {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            waited += 1;
-
-            let status = {
-                let conn = db.lock_conn().map_err(|_| AppError::Generic("DB lock failed".to_string()))?;
-                if let Some(rec) = repo::get_download(&conn, download_id).map_err(|_| AppError::Generic("DB query failed".to_string()))? {
-                    rec.status
-                } else {
-                    "unknown".to_string()
-                }
-            };
-
-            match status.as_str() {
-                "completed" => break,
-                "failed" | "cancelled" => {
-                    let _ = progress_tx.send(DownloadProgress {
-                        download_id,
-                        build_number: paths.build_number.clone(),
-                        downloaded: 0,
-                        total: 0,
-                        speed: 0.0,
-                        percentage: 0.0,
-                        eta_seconds: 0.0,
-                        status: status.clone(),
-                    }).await;
-                    return Err(AppError::Generic(format!("Download was {}", status)));
-                }
-                _ => {}
-            }
-
-            if waited >= max_wait_seconds {
+        // 1. Wait for download completion via oneshot channel (no polling needed)
+        match download_rx.await {
+            Ok(DownloadResult::Completed) => {},
+            Ok(DownloadResult::Failed(msg)) => {
                 let _ = progress_tx.send(DownloadProgress {
                     download_id,
                     build_number: paths.build_number.clone(),
@@ -165,7 +136,23 @@ impl VersionManager {
                     eta_seconds: 0.0,
                     status: "failed".to_string(),
                 }).await;
-                return Err(AppError::Generic("Download timed out".to_string()));
+                return Err(AppError::Generic(format!("Download failed: {}", msg)));
+            }
+            Ok(DownloadResult::Cancelled) => {
+                let _ = progress_tx.send(DownloadProgress {
+                    download_id,
+                    build_number: paths.build_number.clone(),
+                    downloaded: 0,
+                    total: 0,
+                    speed: 0.0,
+                    percentage: 0.0,
+                    eta_seconds: 0.0,
+                    status: "cancelled".to_string(),
+                }).await;
+                return Err(AppError::Cancelled);
+            }
+            Err(_) => {
+                return Err(AppError::Generic("Download channel closed unexpectedly".to_string()));
             }
         }
 
@@ -201,11 +188,11 @@ impl VersionManager {
             Some(progress_tx.clone()),
         ).await?;
 
-        // 4. Validate installation
+        // 5. Validate installation
         let valid = FileManager::validate_installation(&paths.install_path)?;
         let status = if valid { "installed" } else { "corrupt" };
 
-        // 5. Register in installed_versions table
+        // 6. Register in installed_versions table with download_id
         let version = InstalledVersion {
             id: 0,
             build_number: paths.build_number.clone(),
@@ -214,6 +201,7 @@ impl VersionManager {
             install_path: paths.install_path.clone(),
             installed_at: Local::now().to_rfc3339(),
             status: status.to_string(),
+            download_id: Some(download_id),
         };
 
         let version_id = {
@@ -223,7 +211,7 @@ impl VersionManager {
             id
         };
 
-        // 6. Emit completed status
+        // 7. Emit completed status
         let _ = progress_tx.send(DownloadProgress {
             download_id,
             build_number: paths.build_number.clone(),
@@ -235,7 +223,7 @@ impl VersionManager {
             status: "completed".to_string(),
         }).await;
 
-        // 7. Clean up downloaded file
+        // 8. Clean up downloaded file
         let _ = std::fs::remove_file(&paths.download_path);
 
         Ok(InstalledVersion { id: version_id, ..version })
@@ -243,11 +231,10 @@ impl VersionManager {
 
     /// Uninstall a version: delete files and DB record.
     pub fn uninstall_version(db: &DbManager, version_id: i64) -> Result<(), AppError> {
-        // 1. Get version from DB
+        // 1. Get version from DB by ID (avoids loading the entire table)
         let version = {
             let conn = db.lock_conn()?;
-            let all = repo::get_all_versions(&conn)?;
-            all.into_iter().find(|v| v.id == version_id)
+            repo::get_version_by_id(&conn, version_id)?
         };
 
         let version = version.ok_or_else(|| {

@@ -2,7 +2,8 @@ use chrono::Local;
 use uuid::Uuid;
 
 use crate::db::connection::DbManager;
-use crate::models::types::AppError;
+use crate::db::repo;
+use crate::models::types::{AppError, LaunchConfig};
 
 /// Save a launch configuration to the database.
 /// If the config has an existing ID, it will be updated.
@@ -50,26 +51,22 @@ pub fn save_launch_config(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    // Check if config with this ID already exists
-    let exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) > 0 FROM launch_configs WHERE id = ?",
-            [&id],
-            |row| row.get(0),
-        )?;
+    let launch_config = LaunchConfig {
+        id: id.clone(),
+        name,
+        shell_type,
+        model_path,
+        args_json,
+        description,
+        created_at: now.clone(),
+        updated_at: now,
+    };
 
-    if exists {
-        // Update existing
-        conn.execute(
-            "UPDATE launch_configs SET name = ?, shell_type = ?, model_path = ?, args_json = ?, description = ?, updated_at = ? WHERE id = ?",
-            (&name, &shell_type, &model_path, &args_json, &description, &now, &id),
-        )?;
+    // Check if config with this ID already exists
+    if repo::launch_config_exists(&conn, &id)? {
+        repo::update_launch_config(&conn, &launch_config)?;
     } else {
-        // Insert new
-        conn.execute(
-            "INSERT INTO launch_configs (id, name, shell_type, model_path, args_json, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (&id, &name, &shell_type, &model_path, &args_json, &description, &now, &now),
-        )?;
+        repo::insert_launch_config(&conn, &launch_config)?;
     }
 
     Ok(id)
@@ -80,32 +77,26 @@ pub fn get_launch_configs(
     db: &DbManager,
 ) -> Result<Vec<serde_json::Value>, AppError> {
     let conn = db.lock_conn()?;
+    let configs = repo::get_all_launch_configs(&conn)?;
 
-    let mut stmt = conn.prepare(
-        "SELECT id, name, shell_type, model_path, args_json, description, created_at, updated_at FROM launch_configs ORDER BY updated_at DESC",
-    )?;
+    let json_configs: Vec<serde_json::Value> = configs.into_iter().map(|c| {
+        serde_json::json!({
+            "id": c.id,
+            "name": c.name,
+            "shellType": c.shell_type,
+            "modelPath": c.model_path,
+            "args": c.args_json,
+            "description": c.description,
+            "createdAt": c.created_at,
+            "updatedAt": c.updated_at,
+        })
+    }).collect();
 
-    let rows = stmt.query_map([], |row| {
-        Ok(serde_json::json!({
-            "id": row.get::<_, String>(0)?,
-            "name": row.get::<_, String>(1)?,
-            "shellType": row.get::<_, String>(2)?,
-            "modelPath": row.get::<_, String>(3)?,
-            "args": row.get::<_, String>(4)?,
-            "description": row.get::<_, Option<String>>(5)?,
-            "createdAt": row.get::<_, String>(6)?,
-            "updatedAt": row.get::<_, String>(7)?,
-        }))
-    })?;
-
-    let configs: Result<Vec<serde_json::Value>, _> = rows.collect();
-    Ok(configs?)
+    Ok(json_configs)
 }
 
 /// Delete a launch configuration by ID.
 pub fn delete_launch_config(db: &DbManager, id: &str) -> Result<bool, AppError> {
     let conn = db.lock_conn()?;
-    let rows_affected = conn
-        .execute("DELETE FROM launch_configs WHERE id = ?", [id])?;
-    Ok(rows_affected > 0)
+    repo::delete_launch_config_by_id(&conn, id)
 }

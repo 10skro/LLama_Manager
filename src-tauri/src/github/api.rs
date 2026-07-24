@@ -487,7 +487,9 @@ pub async fn search_builds(
     log::info!("Fetched {} releases for search.", releases.len());
 
     let mut matching_builds: Vec<Build> = Vec::new();
-    let mut seen_keys: HashSet<(String, String)> = HashSet::new();
+    // Deduplicate by the full triplet (build_number, backend, architecture) to correctly
+    // distinguish x64 and arm64 variants of the same build across multiple releases.
+    let mut seen_keys: HashSet<(String, String, String)> = HashSet::new();
 
     for release in releases.into_iter().take(max_releases) {
         let builds = parse_release_into_builds(&release);
@@ -495,9 +497,7 @@ pub async fn search_builds(
             // Extract the numeric part of the build number
             let build_num = build.build_number.trim_start_matches('b').to_lowercase();
             if build_num.contains(&normalized) {
-                // Deduplicate by (build_number, backend) to avoid duplicates
-                // when the same build appears across multiple releases
-                let key = (build.build_number.clone(), build.backend.clone());
+                let key = (build.build_number.clone(), build.backend.clone(), build.architecture.clone());
                 if seen_keys.insert(key) {
                     matching_builds.push(build);
                 }
@@ -617,18 +617,20 @@ fn extract_changelog_content(body: &str) -> String {
 }
 
 /// Check which available builds are not yet installed.
+/// Uses triplet (build_number, backend, architecture) to correctly distinguish
+/// x64 and arm64 variants of the same build.
 pub fn check_for_new_builds(
     installed: &[InstalledVersion],
     available_builds: &[Build],
 ) -> Vec<Build> {
-    let installed_keys: HashSet<(String, String)> = installed
+    let installed_keys: HashSet<(String, String, String)> = installed
         .iter()
-        .map(|v| (v.build_number.clone(), v.backend.clone()))
+        .map(|v| (v.build_number.clone(), v.backend.clone(), v.architecture.clone()))
         .collect();
 
     available_builds
         .iter()
-        .filter(|b| !installed_keys.contains(&(b.build_number.clone(), b.backend.clone())))
+        .filter(|b| !installed_keys.contains(&(b.build_number.clone(), b.backend.clone(), b.architecture.clone())))
         .cloned()
         .collect()
 }

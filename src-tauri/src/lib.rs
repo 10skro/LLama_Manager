@@ -250,8 +250,8 @@ async fn install_version(
     let (tx, rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
     spawn_progress_forwarder(app.clone(), (*state_db).clone(), rx, None);
 
-    // Start install and get download_id immediately (non-blocking)
-    let (download_id, paths) = VersionManager::start_install(
+    // Start install and get download_id + oneshot receiver immediately (non-blocking)
+    let (download_id, paths, download_rx) = VersionManager::start_install(
         &state_db,
         &state_download,
         &build,
@@ -262,7 +262,7 @@ async fn install_version(
     // Spawn post-download tasks (extract, validate, register) in background
     let db_clone = (*state_db).clone();
     tokio::spawn(async move {
-        let result = VersionManager::post_download_tasks(&db_clone, download_id, paths, tx).await;
+        let result = VersionManager::post_download_tasks(&db_clone, download_id, paths, tx, download_rx).await;
         match result {
             Ok(_) => {},
             Err(e) => {
@@ -296,9 +296,10 @@ fn toggle_favorite_build(
     build_number: String,
     backend: String,
     download_url: String,
+    architecture: String,
 ) -> Result<bool, String> {
-    let conn = state.lock_conn().map_err(|e| e.to_string())?;
-    repo::toggle_favorite_build(&conn, &build_number, &backend, &download_url).map_err(|e| e.to_string())
+    let mut conn = state.lock_conn().map_err(|e| e.to_string())?;
+    repo::toggle_favorite_build(&mut conn, &build_number, &backend, &download_url, &architecture).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -481,6 +482,15 @@ pub fn run_tauri_app() {
                 let conn = db.lock_conn().map_err(|e| e.to_string())?;
                 repo::get_setting(&conn, "github_etag").map_err(|e| e.to_string())?
             };
+
+            // Clean up old downloads (30 days retention)
+            {
+                let conn = db.lock_conn().map_err(|e| e.to_string())?;
+                let cleaned = repo::cleanup_old_downloads(&conn, 30).map_err(|e| e.to_string())?;
+                if cleaned > 0 {
+                    log::info!("Cleaned up {} old download records", cleaned);
+                }
+            }
 
             // Register state
             app.manage(db);
