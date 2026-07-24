@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.32",
+  "tag_name": "v0.5.33",
   "target_commitish": "main",
-  "name": "v0.5.32",
-  "body": "## Changes\n\n### Features\n- Add config selector and override button to dashboard version cards",
+  "name": "v0.5.33",
+  "body": "## Changes\n\n### Features\n- Add persistent version-to-config linking for launch configs and custom commands\n- Extract VersionCard component for cleaner dashboard architecture\n\n### Refactoring\n- Refactor DashboardPage by extracting version card into dedicated component\n- Lift config hooks to shared state across version cards",
   "draft": false,
   "prerelease": false
 }
