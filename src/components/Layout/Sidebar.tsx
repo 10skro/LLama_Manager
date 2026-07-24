@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  LayoutDashboard, Package, Settings as SettingsIcon,
+  LayoutDashboard, FileStack, Package, Settings as SettingsIcon,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/configs', label: 'Configs', icon: FileStack },
   { path: '/catalog', label: 'Catalog', icon: Package },
   { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];

@@ -121,3 +121,15 @@ export interface CustomCommand {
   createdAt: string;
   updatedAt: string;
 }
+
+// Unified config entry for the Configs page
+export type ConfigEntry = {
+  type: 'launch' | 'custom';
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Command string (from both LaunchConfig and CustomCommand)
+  command?: string;
+};

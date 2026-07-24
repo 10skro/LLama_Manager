@@ -213,7 +213,7 @@ export function DashboardPage() {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setIsLaunchConfigOpen(true)}>
               <FileText className="h-4 w-4" />
-              Create Launch Config
+              Build Config
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setIsCustomCommandOpen(true)}>
               <Terminal className="h-4 w-4" />

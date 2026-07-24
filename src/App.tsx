@@ -7,6 +7,7 @@ import { Toaster } from './components/ui/toaster';
 import { DashboardPage } from './pages/DashboardPage';
 import { CatalogPage } from './pages/CatalogPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ConfigsPage } from './pages/ConfigsPage';
 import { fetchBuilds, getCatalogLastFetched } from './services/github';
 import { getSettings } from './services/settings';
 import { getThemeById, DEFAULT_THEME_ID } from './themes';
@@ -74,6 +75,7 @@ function App() {
       <AppShell>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/configs" element={<ConfigsPage />} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
