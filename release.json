@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.31",
+  "tag_name": "v0.5.32",
   "target_commitish": "main",
-  "name": "v0.5.31",
-  "body": "## Changes\n\n### Features\n- Add Storage Used dashboard card with disk usage calculation\n- Add Latest Build dashboard card with update detection via GitHub cache\n\n### Fixes\n- Use spawn_blocking for async storage command to prevent thread blocking\n- Add skeleton loading UI for storage card\n- Use log::warn for directory read errors instead of panicking",
+  "name": "v0.5.32",
+  "body": "## Changes\n\n### Features\n- Add config selector and override button to dashboard version cards",
   "draft": false,
   "prerelease": false
 }
