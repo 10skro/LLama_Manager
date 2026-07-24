@@ -1,15 +1,12 @@
-import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '@/components/ui/toast';
 
 export function Toaster() {
   const { toasts } = useToast();
-  const toastDuration = useAppStore((state) => state.settings?.toast_duration);
-  const duration = toastDuration ?? 5000;
 
   return (
-    <ToastProvider duration={duration}>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+    <ToastProvider>
+      {toasts.map(function ({ id, title, description, action, duration: _duration, ...props }) {
         return (
           <Toast key={id} {...props}>
             <div className="grid gap-1">

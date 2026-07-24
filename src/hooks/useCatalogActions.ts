@@ -95,7 +95,6 @@ export function useCatalogActions(
       const downloadId = await installVersion(build);
       const store = useAppStore.getState();
       store.updateDownloadProgress(build.build_number, build.backend, build.architecture, 0, downloadId, 'downloading');
-      toast({ title: 'Download started', description: `Downloading ${build.build_number} (${build.backend} ${build.architecture})...` });
     } catch (err: any) {
       toast({ title: 'Download failed', description: err.message || 'Could not start download.' });
       const store = useAppStore.getState();

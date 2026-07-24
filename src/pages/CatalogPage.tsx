@@ -116,7 +116,11 @@ export function CatalogPage() {
     if (filters.backend.length > 0) {
       setExpandedVersions(new Set(groupedBuilds.keys()));
     } else {
-      setExpandedVersions(new Set());
+      // Preserve previously expanded versions when groupedBuilds reference changes
+      // but version keys remain the same (e.g., after download completion or favorite toggle)
+      setExpandedVersions(prev => {
+        return new Set([...prev].filter(key => groupedBuilds.has(key)));
+      });
     }
   }, [filters.backend, groupedBuilds]);
 
