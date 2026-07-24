@@ -15,6 +15,7 @@ import {
   FolderOpen, Save, HardDrive, Palette, Bell,
   Info, Loader2, Eye, EyeOff,
   AlertCircle, X, Check, ChevronDown, Settings2,
+  Brain,
 } from 'lucide-react';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES, getThemeById } from '@/themes';
@@ -236,6 +237,79 @@ export function SettingsPage() {
                 )}
               </Button>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Models */}
+      <Card className="border-border/50 bg-card/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            Models
+          </CardTitle>
+          <CardDescription>
+            Configure the folder where your .gguf model files are stored.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Model Folder</Label>
+            <div className="flex gap-2">
+              <Input
+                value={settings?.model_folder || ''}
+                onChange={e => updateSetting('model_folder', e.target.value || undefined)}
+                placeholder="Select a folder containing .gguf files"
+                className="bg-background/50 font-mono text-sm"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                title="Browse for model folder"
+                onClick={async () => {
+                  try {
+                    const selected = await selectFolder();
+                    if (selected) {
+                      updateSetting('model_folder', selected);
+                      if (settings) {
+                        await saveSettings({ ...settings, model_folder: selected });
+                      }
+                      toast({
+                        title: 'Model folder updated',
+                        description: `Models will be scanned from ${selected}`,
+                      });
+                    }
+                  } catch (err) {
+                    toast({
+                      title: 'Error',
+                      description: String(err),
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                title="Save model folder setting"
+                onClick={async () => {
+                  if (settings) {
+                    await saveSettings(settings);
+                    toast({
+                      title: 'Model folder saved',
+                      description: 'Setting has been persisted.',
+                    });
+                  }
+                }}
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This folder is used to browse and select model files when creating launch configurations.
+            </p>
           </div>
         </CardContent>
       </Card>

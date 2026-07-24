@@ -34,6 +34,8 @@ impl SettingsManager {
             .and_then(|s| s.parse::<i64>().ok())
             .or(Some(5000)); // default 5000ms
 
+        let model_folder = map.remove("model_folder");
+
         Ok(AppSettings {
             storage_path,
             theme,
@@ -41,6 +43,7 @@ impl SettingsManager {
             auto_check_updates,
             font_family,
             toast_duration,
+            model_folder,
         })
     }
 
@@ -75,6 +78,15 @@ impl SettingsManager {
             }
             None => {
                 let _ = repo::delete_setting(&conn, "toast_duration");
+            }
+        }
+        // Save model_folder
+        match &settings.model_folder {
+            Some(folder) if !folder.is_empty() => {
+                repo::set_setting(&conn, "model_folder", folder)?;
+            }
+            _ => {
+                let _ = repo::delete_setting(&conn, "model_folder");
             }
         }
         Ok(())

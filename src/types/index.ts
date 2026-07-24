@@ -56,6 +56,7 @@ export interface AppSettings {
   auto_check_updates: boolean;
   toast_duration?: number; // milliseconds, default 5000
   font_family?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
+  model_folder?: string; // Folder containing .gguf model files
 }
 
 // Favorite build
@@ -77,11 +78,27 @@ export interface BuildFilters {
   installedOnly: boolean;
 }
 
-// Llama.cpp launch configuration
-export interface LlamaCppConfig {
+// Launch configuration argument (ordered, references LlamaCppArg.flag)
+export interface LaunchConfigArg {
+  argKey: string;    // references LlamaCppArg.flag
+  value: string;
+}
+
+// Full launch configuration
+export interface LaunchConfig {
   id: string;
   name: string;
-  createdAt: string;
-  args: Record<string, string | boolean | number>;
+  shellType: 'cmd' | 'powershell';
+  modelPath: string;
+  args: LaunchConfigArg[];
   description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Model file discovered by scanning
+export interface ModelFile {
+  path: string;
+  name: string;
+  size: number;
 }

@@ -92,6 +92,20 @@ impl DbManager {
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(download_url)
             );
+
+            CREATE TABLE IF NOT EXISTS launch_configs (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                shell_type TEXT NOT NULL DEFAULT 'cmd',
+                model_path TEXT NOT NULL DEFAULT '',
+                args_json TEXT NOT NULL DEFAULT '[]',
+                description TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_launch_configs_updated_at
+            ON launch_configs(updated_at);
             ",
         )?;
 

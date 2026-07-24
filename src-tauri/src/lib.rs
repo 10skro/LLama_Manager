@@ -5,6 +5,7 @@ mod db;
 mod download;
 mod file;
 mod github;
+mod launch_config;
 mod models;
 mod utils;
 mod version;
@@ -23,6 +24,7 @@ use crate::download::manager::DownloadManager;
 use crate::github::api::{FetchMode, GithubClient};
 use crate::models::types::{
     AppError, AppSettings, Build, DownloadProgress, FavoriteBuild, InstalledVersion,
+    ModelFile,
 };
 use crate::version::manager::VersionManager;
 
@@ -371,6 +373,80 @@ fn get_app_version(app: tauri::AppHandle) -> String {
     app.package_info().version.to_string()
 }
 
+// ─── Model File Scanning ─────────────────────────────────────────────────
+
+#[tauri::command]
+fn scan_model_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
+    let path = std::path::Path::new(&folder_path);
+
+    if !path.exists() {
+        return Err(format!("Folder does not exist: {}", folder_path));
+    }
+
+    if !path.is_dir() {
+        return Err(format!("Path is not a directory: {}", folder_path));
+    }
+
+    let mut files: Vec<ModelFile> = Vec::new();
+
+    for entry in std::fs::read_dir(path).map_err(|e| format!("Failed to read directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let file_path = entry.path();
+
+        // Non-recursive: only files directly in the folder
+        if !file_path.is_file() {
+            continue;
+        }
+
+        let extension = file_path.extension().and_then(|e| e.to_str());
+        if extension != Some("gguf") {
+            continue;
+        }
+
+        let metadata = entry.metadata().map_err(|e| format!("Failed to read metadata: {}", e))?;
+        let name = file_path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        files.push(ModelFile {
+            path: file_path.to_string_lossy().to_string(),
+            name,
+            size: metadata.len(),
+        });
+    }
+
+    // Sort by name for consistent ordering
+    files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+    Ok(files)
+}
+
+// ─── Launch Config Commands ──────────────────────────────────────────────
+
+#[tauri::command]
+fn save_launch_config(
+    state_db: tauri::State<'_, DbManager>,
+    config: serde_json::Value,
+) -> Result<String, String> {
+    launch_config::save_launch_config(&state_db, config).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_launch_configs(
+    state_db: tauri::State<'_, DbManager>,
+) -> Result<Vec<serde_json::Value>, String> {
+    launch_config::get_launch_configs(&state_db).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_launch_config(
+    state_db: tauri::State<'_, DbManager>,
+    id: String,
+) -> Result<bool, String> {
+    launch_config::delete_launch_config(&state_db, &id).map_err(|e| e.to_string())
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -436,6 +512,10 @@ pub fn run_tauri_app() {
             get_catalog_last_fetched,
             change_storage_path,
             get_app_version,
+            scan_model_files,
+            save_launch_config,
+            get_launch_configs,
+            delete_launch_config,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

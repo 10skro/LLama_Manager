@@ -18,7 +18,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { CreateConfigModal } from '@/components/CreateConfigModal';
+import { LaunchConfigModal } from '@/components/LaunchConfig';
 import {
   Package, FolderOpen, Trash2, Settings,
   Loader2,
@@ -60,7 +60,7 @@ export function DashboardPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCreateConfigOpen, setIsCreateConfigOpen] = useState(false);
+  const [isLaunchConfigOpen, setIsLaunchConfigOpen] = useState(false);
   // Card customizations per version (versionId -> { title, headerColor })
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
   // Which card's customize dropdown is open
@@ -102,14 +102,6 @@ export function DashboardPage() {
       setIsDeleting(false);
       setDeleteTarget(null);
     }
-  };
-
-  const handleCreateConfig = (name: string) => {
-    setIsCreateConfigOpen(false);
-    toast({
-      title: 'Configuration created',
-      description: `"${name}" has been created successfully.`,
-    });
   };
 
   const openCustomizeDropdown = (versionId: number) => {
@@ -171,9 +163,9 @@ export function DashboardPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsCreateConfigOpen(true)}>
+            <DropdownMenuItem onClick={() => setIsLaunchConfigOpen(true)}>
               <FileText className="h-4 w-4" />
-              Create Custom Config
+              Create Launch Config
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -435,11 +427,10 @@ export function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Config Modal */}
-      <CreateConfigModal
-        open={isCreateConfigOpen}
-        onOpenChange={setIsCreateConfigOpen}
-        onCreate={handleCreateConfig}
+      {/* Launch Config Modal */}
+      <LaunchConfigModal
+        open={isLaunchConfigOpen}
+        onOpenChange={setIsLaunchConfigOpen}
       />
     </div>
   );

@@ -65,6 +65,29 @@ pub struct AppSettings {
     pub font_family: Option<String>,
     #[serde(default)]
     pub toast_duration: Option<i64>, // milliseconds, default 5000
+    #[serde(default)]
+    pub model_folder: Option<String>, // folder containing .gguf model files
+}
+
+/// Model file discovered by scanning a folder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelFile {
+    pub path: String,
+    pub name: String,
+    pub size: u64,
+}
+
+/// Launch configuration for llama.cpp
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LaunchConfig {
+    pub id: String,
+    pub name: String,
+    pub shell_type: String,
+    pub model_path: String,
+    pub args_json: String, // JSON array of {argKey, value}
+    pub description: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 /// Version info detected from an installed directory
