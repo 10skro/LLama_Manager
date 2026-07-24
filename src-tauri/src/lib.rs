@@ -25,7 +25,7 @@ use crate::download::manager::DownloadManager;
 use crate::github::api::{FetchMode, GithubClient};
 use crate::models::types::{
     AppError, AppSettings, Build, CardCustomization, DownloadProgress, FavoriteBuild, InstalledVersion,
-    ModelFile,
+    ModelFile, VersionConfigLink,
 };
 use crate::version::manager::VersionManager;
 
@@ -531,6 +531,37 @@ fn delete_custom_command(
     custom_command::delete_custom_command(&state_db, &id).map_err(|e| e.to_string())
 }
 
+// ─── Version Config Link Commands ──────────────────────────────────────
+
+#[tauri::command]
+fn get_version_config_link(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+) -> Result<Option<VersionConfigLink>, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::get_version_config_link(&conn, version_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_version_config_link(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+    config_type: String,
+    config_id: String,
+) -> Result<i64, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::save_version_config_link(&conn, version_id, &config_type, &config_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_version_config_link(
+    state_db: tauri::State<'_, DbManager>,
+    version_id: i64,
+) -> Result<bool, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::delete_version_config_link(&conn, version_id).map_err(|e| e.to_string())
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -616,6 +647,9 @@ pub fn run_tauri_app() {
             save_custom_command,
             get_custom_commands,
             delete_custom_command,
+            get_version_config_link,
+            save_version_config_link,
+            delete_version_config_link,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

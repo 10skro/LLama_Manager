@@ -3,48 +3,32 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useStorageUsage } from '@/hooks/useStorageUsage';
 import { useLatestBuildInfo } from '@/hooks/useLatestBuildInfo';
+import { useVersionConfigLinks } from '@/hooks/useVersionConfigLinks';
 import { useConfigs } from '@/hooks/useConfigs';
 
 import { useToast } from '@/hooks/use-toast';
-import { uninstallVersion, openFolder, getCardCustomizations, saveCardCustomization, deleteCardCustomization } from '@/services/version';
+import { uninstallVersion, getCardCustomizations } from '@/services/version';
 import type { CardCustomization } from '@/types';
-import { getBackendColor } from '@/utils/backendColors';
 import { formatSize } from '@/utils/format';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { LaunchConfigModal } from '@/components/LaunchConfig';
 import { CustomCommandModal } from '@/components/CustomCommand';
+import { VersionCard } from '@/components/Dashboard/VersionCard';
 import {
-  Package, FolderOpen, Trash2, List,
+  Package, Trash2,
   Loader2,
   HardDrive, Cpu, Plus, FileText,
-  Pencil, Terminal, SlidersHorizontal,
+  Terminal,
 } from 'lucide-react';
 
-const HEADER_COLORS = [
-  { name: 'mauve', variable: 'hsl(var(--mauve))', label: 'Mauve' },
-  { name: 'red', variable: 'hsl(var(--red))', label: 'Red' },
-  { name: 'pink', variable: 'hsl(var(--pink))', label: 'Pink' },
-  { name: 'peach', variable: 'hsl(var(--peach))', label: 'Peach' },
-  { name: 'yellow', variable: 'hsl(var(--yellow))', label: 'Yellow' },
-  { name: 'green', variable: 'hsl(var(--green))', label: 'Green' },
-  { name: 'teal', variable: 'hsl(var(--teal))', label: 'Teal' },
-  { name: 'blue', variable: 'hsl(var(--blue))', label: 'Blue' },
-  { name: 'lavender', variable: 'hsl(var(--lavender))', label: 'Lavender' },
-  { name: 'love', variable: 'hsl(var(--love))', label: 'Love' },
-  { name: 'iris', variable: 'hsl(var(--iris))', label: 'Iris' },
-  { name: 'pine', variable: 'hsl(var(--pine))', label: 'Pine' },
-];
+import { Badge } from '@/components/ui/badge';
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
@@ -52,20 +36,29 @@ export function DashboardPage() {
   const { data: versions, isLoading } = useInstalledVersions();
   const { storageUsage, isLoading: storageLoading } = useStorageUsage();
   const { latestInstalled, latestAvailable, updateAvailable } = useLatestBuildInfo();
-  const { entries: configs, isLoading: configsLoading } = useConfigs();
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLaunchConfigOpen, setIsLaunchConfigOpen] = useState(false);
   const [isCustomCommandOpen, setIsCustomCommandOpen] = useState(false);
-  // Card customizations per version (versionId -> { title, headerColor, textColor })
+  // Card customizations per version (versionId -> customization)
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
-  // Which card's customize dropdown is open
+  // Shared editing state: only one card's customize dropdown can be open at a time
   const [editingDropdownId, setEditingDropdownId] = useState<number | null>(null);
-  // Temporary values being edited in the dropdown
   const [tempTitle, setTempTitle] = useState('');
   const [tempColor, setTempColor] = useState('');
   const [tempTextColor, setTempTextColor] = useState('');
+
+  // Lifted hooks: shared config links and configs across all version cards
+  const { getLink, setLink, removeLink, loadAll } = useVersionConfigLinks();
+  const { allEntries: configs, isLoading: configsLoading } = useConfigs();
+
+  // Load config links for all installed versions
+  useEffect(() => {
+    if (versions && versions.length > 0) {
+      loadAll(versions.map(v => v.id));
+    }
+  }, [versions, loadAll]);
 
   // Load customizations from backend on mount
   useEffect(() => {
@@ -83,18 +76,6 @@ export function DashboardPage() {
     };
     loadCustomizations();
   }, []);
-
-  const handleOpenFolder = async (path: string) => {
-    try {
-      await openFolder(path);
-    } catch (err) {
-      console.error('Failed to open folder:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to open folder.',
-      });
-    }
-  };
 
   const handleDelete = async () => {
     if (deleteTarget === null) return;
@@ -124,72 +105,16 @@ export function DashboardPage() {
     }
   };
 
-  const openCustomizeDropdown = (versionId: number) => {
-    const existing = cardCustomizations[versionId];
-    setEditingDropdownId(versionId);
-    setTempTitle(existing?.title ?? '');
-    setTempColor(existing?.header_color ?? '');
-    setTempTextColor(existing?.text_color ?? '');
-  };
-
-  const closeDropdown = () => {
-    setEditingDropdownId(null);
-    setTempTitle('');
-    setTempColor('');
-    setTempTextColor('');
-  };
-
-  const saveCustomization = async () => {
-    if (editingDropdownId === null) return;
-    const trimmed = tempTitle.trim();
-    try {
-      if (trimmed === '' && tempColor === '' && tempTextColor === '') {
-        await deleteCardCustomization(editingDropdownId);
-        setCardCustomizations(prev => {
-          const next = { ...prev };
-          delete next[editingDropdownId];
-          return next;
-        });
+  const handleCustomizationChange = (versionId: number, customization?: CardCustomization) => {
+    setCardCustomizations(prev => {
+      const next = { ...prev };
+      if (customization) {
+        next[versionId] = customization;
       } else {
-        await saveCardCustomization(editingDropdownId, trimmed, tempColor, tempTextColor);
-        setCardCustomizations(prev => {
-          const next = { ...prev };
-          next[editingDropdownId] = {
-            version_id: editingDropdownId,
-            title: trimmed,
-            header_color: tempColor,
-            text_color: tempTextColor,
-          };
-          return next;
-        });
+        delete next[versionId];
       }
-      closeDropdown();
-    } catch (err) {
-      console.error('Failed to save customization:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to save card customization.',
-      });
-    }
-  };
-
-  const resetCustomization = async () => {
-    if (editingDropdownId === null) return;
-    try {
-      await deleteCardCustomization(editingDropdownId);
-      setCardCustomizations(prev => {
-        const next = { ...prev };
-        delete next[editingDropdownId];
-        return next;
-      });
-      closeDropdown();
-    } catch (err) {
-      console.error('Failed to reset customization:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to reset card customization.',
-      });
-    }
+      return next;
+    });
   };
 
   return (
@@ -221,7 +146,6 @@ export function DashboardPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
@@ -284,220 +208,28 @@ export function DashboardPage() {
         </div>
       ) : versions && versions.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {versions.map((version) => {
-            // Determine display values: use temp values for live preview when editing this card
-            const isEditing = editingDropdownId === version.id;
-            const activeCustomization = isEditing
-              ? { title: tempTitle, header_color: tempColor, text_color: tempTextColor }
-              : cardCustomizations[version.id];
-            const headerColorObj = HEADER_COLORS.find(c => c.name === activeCustomization?.header_color);
-            const headerBg = headerColorObj?.variable ?? 'hsl(var(--secondary))';
-            const displayTitle = activeCustomization?.title || '\u00A0';
-            const displayTextColor = activeCustomization?.text_color || undefined;
-
-            return (
-              <Card
-                key={version.id}
-                className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden"
-              >
-                {/* Colored Header Bar */}
-                <div
-                  className="px-3 py-2 flex items-center justify-between rounded-t-xl"
-                  style={{ backgroundColor: headerBg }}
-                >
-                  <p
-                    className="text-sm font-medium text-foreground truncate flex-1"
-                    style={{ color: displayTextColor || undefined }}
-                  >
-                    {displayTitle}
-                  </p>
-                    <DropdownMenu
-                      open={editingDropdownId === version.id}
-                      onOpenChange={(open) => {
-                        if (open) {
-                          openCustomizeDropdown(version.id);
-                        } else {
-                          closeDropdown();
-                        }
-                      }}
-                    >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                      <DropdownMenuLabel>Customize Card</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-1.5">
-                        <Input
-                          value={tempTitle}
-                          onChange={(e) => setTempTitle(e.target.value)}
-                          placeholder="Enter title..."
-                          aria-label="Card title"
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-1">
-                        <p className="text-xs text-muted-foreground mb-1.5">Header Color</p>
-                        <div className="flex flex-wrap gap-2">
-                          {HEADER_COLORS.map(color => (
-                            <button
-                              key={color.name}
-                              onClick={() => setTempColor(color.name)}
-                              aria-label={color.label}
-                              className={`h-6 w-6 rounded-full border-2 transition-all ${
-                                tempColor === color.name ? 'border-white scale-110' : 'border-transparent'
-                              }`}
-                              style={{ backgroundColor: color.variable }}
-                              title={color.label}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-1">
-                        <p className="text-xs text-muted-foreground mb-1.5">Text Color</p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setTempTextColor('white')}
-                            className={`h-6 w-6 rounded-full border-2 bg-white shadow-md ring-1 ring-gray-300 transition-all ${tempTextColor === 'white' ? 'border-white scale-110' : 'border-border'}`}
-                            title="White"
-                          />
-                          <button
-                            onClick={() => setTempTextColor('black')}
-                            className={`h-6 w-6 rounded-full border-2 bg-black transition-all ${tempTextColor === 'black' ? 'border-white scale-110' : 'border-border'}`}
-                            title="Black"
-                          />
-                        </div>
-                      </div>
-                      <DropdownMenuSeparator />
-                      <div className="flex gap-2 px-2 pb-1">
-                        <DropdownMenuItem onClick={saveCustomization} className="flex-1 justify-center">
-                          Apply
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={resetCustomization} className="flex-1 justify-center">
-                          Reset
-                        </DropdownMenuItem>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <CardHeader className="pb-3 pt-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                      <Package className="h-5 w-5 text-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono font-semibold text-lg">
-                        {version.build_number}
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <Badge
-                          variant="outline"
-                          className={`border ${getBackendColor(version.backend)}`}
-                        >
-                          {version.backend}
-                        </Badge>
-                        <Badge variant="outline" className="border text-muted-foreground text-xs">
-                          {version.architecture}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex-1 gap-2">
-                          <List className="h-4 w-4" />
-                          Config
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-64">
-                        <DropdownMenuLabel>Select Config</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {configsLoading ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                            Loading...
-                          </div>
-                        ) : configs.length === 0 ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                            No configs
-                          </div>
-                        ) : (
-                          configs.map((config) => (
-                            <DropdownMenuItem
-                              key={`${config.type}-${config.id}`}
-                              onClick={() =>
-                                // TODO: Placeholder for future config loading functionality.
-                                // Currently only shows a toast; actual config application
-                                // (passing config to launch/override) is not yet implemented.
-                                toast({
-                                  title: config.name,
-                                  description: `Loaded: ${config.name}`,
-                                })
-                              }
-                            >
-                              {config.type === 'launch' ? (
-                                <FileText className="h-4 w-4" />
-                              ) : (
-                                <Terminal className="h-4 w-4" />
-                              )}
-                              <span className="truncate">{config.name}</span>
-                            </DropdownMenuItem>
-                          ))
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 opacity-60 hover:opacity-80"
-                      onClick={() =>
-                        toast({
-                          title: 'Override',
-                          description: 'Override settings are work in progress.',
-                        })
-                      }
-                    >
-                      <SlidersHorizontal className="h-4 w-4" />
-                      Override
-                    </Button>
-                  </div>
-
-                  <Separator className="border-border/50" />
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-2"
-                      onClick={() => handleOpenFolder(version.install_path)}
-                    >
-                      <FolderOpen className="h-4 w-4" />
-                      Open
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 text-red hover:text-red/80 hover:bg-red/10 border-red/20"
-                      onClick={() => setDeleteTarget(version.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {versions.map((version) => (
+            <VersionCard
+              key={version.id}
+              version={version}
+              customization={cardCustomizations[version.id]}
+              onCustomizationChange={handleCustomizationChange}
+              onDeleteClick={setDeleteTarget}
+              editingDropdownId={editingDropdownId}
+              onEditingDropdownChange={setEditingDropdownId}
+              tempTitle={tempTitle}
+              onTempTitleChange={setTempTitle}
+              tempColor={tempColor}
+              onTempColorChange={setTempColor}
+              tempTextColor={tempTextColor}
+              onTempTextColorChange={setTempTextColor}
+              configLink={getLink(version.id)}
+              configs={configs}
+              configsLoading={configsLoading}
+              onSetLink={setLink}
+              onRemoveLink={removeLink}
+            />
+          ))}
         </div>
       ) : (
         /* Empty State */

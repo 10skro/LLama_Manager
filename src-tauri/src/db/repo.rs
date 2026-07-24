@@ -1,7 +1,7 @@
 use rusqlite::{Connection, params};
 use chrono::Local;
 
-use crate::models::types::{AppError, Build, CardCustomization, CustomCommand, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig};
+use crate::models::types::{AppError, Build, CardCustomization, CustomCommand, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig, VersionConfigLink};
 
 // ─── Installed Versions ─────────────────────────────────────────────────
 
@@ -538,4 +538,48 @@ pub fn custom_command_exists(conn: &Connection, id: &str) -> Result<bool, AppErr
         |row| row.get(0),
     )?;
     Ok(exists)
+}
+
+// ─── Version Config Links ───────────────────────────────────────────────
+
+pub fn get_version_config_link(conn: &Connection, version_id: i64) -> Result<Option<VersionConfigLink>, AppError> {
+    let mut stmt = conn.prepare(
+        "SELECT version_id, config_type, config_id FROM version_config_links WHERE version_id = ?1",
+    )?;
+
+    let mut rows = stmt.query(params![version_id])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(VersionConfigLink {
+            version_id: row.get(0)?,
+            config_type: row.get(1)?,
+            config_id: row.get(2)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn save_version_config_link(
+    conn: &Connection,
+    version_id: i64,
+    config_type: &str,
+    config_id: &str,
+) -> Result<i64, AppError> {
+    conn.execute(
+        "INSERT INTO version_config_links (version_id, config_type, config_id)
+         VALUES (?1, ?2, ?3)
+         ON CONFLICT(version_id) DO UPDATE SET
+           config_type = excluded.config_type,
+           config_id = excluded.config_id",
+        params![version_id, config_type, config_id],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn delete_version_config_link(conn: &Connection, version_id: i64) -> Result<bool, AppError> {
+    let rows = conn.execute(
+        "DELETE FROM version_config_links WHERE version_id = ?1",
+        params![version_id],
+    )?;
+    Ok(rows > 0)
 }

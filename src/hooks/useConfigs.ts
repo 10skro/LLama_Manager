@@ -80,6 +80,7 @@ export function useConfigs() {
 
   return {
     entries: filtered,
+    allEntries: entries,
     isLoading,
     search,
     setSearch,

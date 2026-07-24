@@ -133,3 +133,10 @@ export type ConfigEntry = {
   // Command string (from both LaunchConfig and CustomCommand)
   command?: string;
 };
+
+// Link between an installed version and a configuration
+export interface VersionConfigLink {
+  version_id: number;
+  config_type: 'launch' | 'custom';
+  config_id: string;
+}

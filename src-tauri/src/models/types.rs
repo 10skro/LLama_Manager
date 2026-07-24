@@ -141,6 +141,14 @@ pub struct CustomCommand {
     pub updated_at: String,
 }
 
+/// Link between an installed version and a configuration (launch or custom).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionConfigLink {
+    pub version_id: i64,
+    pub config_type: String,  // "launch" or "custom"
+    pub config_id: String,    // UUID string matching LaunchConfig.id / CustomCommand.id
+}
+
 /// Application error type
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {

@@ -253,6 +253,20 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
         mark_applied(conn, 9, "Create custom_commands table")?;
     }
 
+    // V10: Create version_config_links table
+    if !is_applied(conn, 10)? {
+        log::info!("Applying migration v10: version_config_links table");
+        migrate_version_config_links_table(conn)?;
+        mark_applied(conn, 10, "Create version_config_links table")?;
+    }
+
+    // V11: Change config_id from INTEGER to TEXT to support UUID config IDs
+    if !is_applied(conn, 11)? {
+        log::info!("Applying migration v11: version_config_links config_id TEXT");
+        migrate_version_config_links_config_id_text(conn)?;
+        mark_applied(conn, 11, "Change config_id to TEXT in version_config_links")?;
+    }
+
     Ok(())
 }
 
@@ -624,6 +638,74 @@ fn migrate_installed_versions_download_id(conn: &Connection) -> Result<(), AppEr
         "
         DROP TABLE IF EXISTS installed_versions;
         ALTER TABLE installed_versions_new RENAME TO installed_versions;
+        ",
+    )?;
+
+    Ok(())
+}
+
+/// Create the version_config_links table for linking installed versions to configurations.
+fn migrate_version_config_links_table(conn: &Connection) -> Result<(), AppError> {
+    if table_exists(conn, "version_config_links")? {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "
+        CREATE TABLE version_config_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version_id INTEGER NOT NULL,
+            config_type TEXT NOT NULL CHECK(config_type IN ('launch', 'custom')),
+            config_id INTEGER NOT NULL,
+            FOREIGN KEY (version_id) REFERENCES installed_versions(id) ON DELETE CASCADE,
+            UNIQUE(version_id)
+        );
+        ",
+    )?;
+
+    Ok(())
+}
+
+/// Migrate version_config_links to change config_id from INTEGER to TEXT.
+/// This allows storing UUID-based config IDs (launch configs and custom commands use string UUIDs).
+fn migrate_version_config_links_config_id_text(conn: &Connection) -> Result<(), AppError> {
+    if !table_exists(conn, "version_config_links")? {
+        return Ok(());
+    }
+
+    // Check if config_id is already TEXT
+    let sql = table_sql(conn, "version_config_links")?;
+    if sql.contains("config_id TEXT") {
+        return Ok(());
+    }
+
+    // Recreate table with config_id as TEXT
+    conn.execute_batch(
+        "
+        CREATE TABLE version_config_links_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version_id INTEGER NOT NULL,
+            config_type TEXT NOT NULL CHECK(config_type IN ('launch', 'custom')),
+            config_id TEXT NOT NULL,
+            FOREIGN KEY (version_id) REFERENCES installed_versions(id) ON DELETE CASCADE,
+            UNIQUE(version_id)
+        );
+        ",
+    )?;
+
+    // Migrate existing data, converting integer config_id to text
+    conn.execute(
+        "INSERT INTO version_config_links_new (id, version_id, config_type, config_id)
+         SELECT id, version_id, config_type, CAST(config_id AS TEXT)
+         FROM version_config_links",
+        [],
+    )?;
+
+    // Drop old table and rename new one
+    conn.execute_batch(
+        "
+        DROP TABLE IF EXISTS version_config_links;
+        ALTER TABLE version_config_links_new RENAME TO version_config_links;
         ",
     )?;
 
