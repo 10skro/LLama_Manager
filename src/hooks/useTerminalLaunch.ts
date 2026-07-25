@@ -3,6 +3,63 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAppStore, useGetRunningSessionId } from '@/store/useAppStore';
 import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
 
+/**
+ * Replace or inject a flag (-m or --mmproj) in a command line string.
+ * Handles paths with double quotes, single quotes, or no quotes.
+ * Preserves all other arguments untouched.
+ *
+ * Strategy: tokenise the command respecting quoted strings,
+ * then replace the flag+value pair if found, otherwise insert
+ * RIGHT AFTER the executable (first token ending with .exe or similar).
+ */
+function applyOverrideFlag(
+  cmd: string,
+  flag: string,       // e.g. '-m' or '--mmproj'
+  newValue: string,    // the override path
+): string {
+  // Tokenise: split on whitespace but respect quoted strings
+  const tokens: string[] = [];
+  const re = /"[^"]*"|'[^']*'|\S+/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(cmd)) !== null) {
+    tokens.push(match[0]);
+  }
+
+  // Find the index of the flag token (exact match, case-sensitive)
+  const flagIdx = tokens.findIndex((t) => {
+    const bare = t.replace(/^["']/, '').replace(/["']$/, '');
+    return bare === flag;
+  });
+
+  if (flagIdx >= 0) {
+    // Replace the flag AND its value (next token, or the value is attached like -m"path")
+    // Case A: flag and value are separate tokens:  -m "path"
+    // Case B: flag and value are attached:         -m"path"
+    if (flagIdx < tokens.length && tokens[flagIdx].length > flag.length) {
+      // Case B: attached, e.g. -m"path" — replace just the flag token
+      tokens[flagIdx] = `${flag} "${newValue}"`;
+    } else if (flagIdx + 1 < tokens.length) {
+      // Case A: separate — replace flag and value tokens
+      tokens[flagIdx] = flag;
+      tokens[flagIdx + 1] = `"${newValue}"`;
+    } else {
+      // Flag at end with no value — replace and append new value
+      tokens[flagIdx] = flag;
+      tokens.push(`"${newValue}"`);
+    }
+    return tokens.join(' ');
+  }
+
+  // Flag not found — insert RIGHT AFTER the executable (first token)
+  // This ensures:  exe.exe -m "path" --other-args ...
+  const injection = `${flag} "${newValue}"`;
+  if (tokens.length === 0) {
+    return injection;
+  }
+  tokens.splice(1, 0, injection);
+  return tokens.join(' ');
+}
+
 interface UseTerminalLaunchParams {
   version: InstalledVersion;
   configLink: VersionConfigLink | null;
@@ -37,12 +94,17 @@ export function useTerminalLaunch({
 
     // Validate config exists BEFORE setting injectingRef
     const config = configs.find((c) => c.type === configLink.config_type && c.id === configLink.config_id);
+
     if (!config) {
+      console.error('[LAUNCH] ERROR: Linked configuration not found!');
+      console.error('[LAUNCH] Looking for type="' + configLink.config_type + '" id="' + configLink.config_id + '"');
+      console.error('[LAUNCH] Available config IDs:', configs.map(c => c.id));
       onError?.('Linked configuration not found. It may have been deleted.');
       return;
     }
 
     const startupCommand = config.command;
+
     // Auto-prepend llama-server.exe if command doesn't already start with an executable
     const needsPrefix = startupCommand && !startupCommand.trim().startsWith('llama-server') && !startupCommand.trim().startsWith('.\\') && !startupCommand.trim().startsWith('..\\');
     const fullCommand = needsPrefix
@@ -60,21 +122,14 @@ export function useTerminalLaunch({
         .filter(line => line.length > 0)
         .join(' ');
 
-      // Inject override model_path and mmproj_path if present
+       // Inject override model_path and mmproj_path if present
+      // Uses robust token-based replacement that handles quoted/unquoted paths
       if (override) {
         if (override.model_path) {
-          // Replace existing -m "<path>" or append -m "<path>"
-          singleLine = singleLine.replace(/-m\s+"[^"]*"/, `-m "${override.model_path}"`);
-          if (!singleLine.includes('-m')) {
-            singleLine = `-m "${override.model_path}" ${singleLine}`;
-          }
+          singleLine = applyOverrideFlag(singleLine, '-m', override.model_path);
         }
         if (override.mmproj_path) {
-          // Replace existing --mmproj "<path>" or append --mmproj "<path>"
-          singleLine = singleLine.replace(/--mmproj\s+"[^"]*"/, `--mmproj "${override.mmproj_path}"`);
-          if (!singleLine.includes('--mmproj')) {
-            singleLine = `${singleLine} --mmproj "${override.mmproj_path}"`;
-          }
+          singleLine = applyOverrideFlag(singleLine, '--mmproj', override.mmproj_path);
         }
       }
 

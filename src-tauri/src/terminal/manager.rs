@@ -57,10 +57,22 @@ impl TerminalManager {
         let session_id = uuid::Uuid::new_v4().to_string();
 
         // Build the command to run
-        let cmd_str = if let Some(sc) = startup_command {
-            format!("cmd /K {}", sc)
+        // Escape cmd.exe metacharacters to prevent command injection / truncation
+        let escaped = if let Some(sc) = &startup_command {
+            sc.replace('^', "^^")
+               .replace('&', "^&")
+               .replace('|', "^|")
+               .replace('>', "^>")
+               .replace('<', "^<")
+               .replace('%', "^%")
+               .replace('!', "^!")
         } else {
+            String::new()
+        };
+        let cmd_str = if escaped.is_empty() {
             "cmd /K".to_string()
+        } else {
+            format!("cmd /K {}", escaped)
         };
 
         log::info!("[TERMINAL] Spawning ConPTY: version_id={} | config_id={} | cmd={} | dir={} | sessions_before={}",
