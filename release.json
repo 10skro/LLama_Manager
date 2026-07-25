@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.36",
+  "tag_name": "v0.5.38",
   "target_commitish": "main",
-  "name": "v0.5.36",
-  "body": "## Changes\n\n### Features\n- Add per-version model and mmproj path overrides with visual badge\n- Add mmproj folder setting for browsing .mmproj project files\n- Add shell type selection (CMD/PowerShell) for custom commands with auto-detection\n- Add folder validation for path settings\n\n### Fixes\n- Use correct shell type when launching custom commands via terminal\n- Improve newline handling in terminal command injection\n\n### Refactoring\n- Extract shared file scanning utility for generic extension-based scanning\n- Extract launch command builder to dedicated utility module",
+  "name": "v0.5.38",
+  "body": "## Changes\n\n### Refactoring\n- Remove shell type selection, detection, and conversion from custom commands\n- Fix edit modal to load command data directly from entry instead of store",
   "draft": false,
   "prerelease": false
 }
