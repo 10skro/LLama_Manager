@@ -111,7 +111,6 @@ impl DbManager {
                 name TEXT NOT NULL,
                 command TEXT NOT NULL,
                 description TEXT DEFAULT '',
-                shell_type TEXT NOT NULL DEFAULT 'cmd',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );

@@ -35,7 +35,6 @@ export function useTerminalLaunch({
     }
 
     const startupCommand = cmd.command;
-    const shellType: 'cmd' | 'powershell' = cmd.shellType || 'cmd';
 
     // Only set injectingRef after validation passes
     injectingRef.current = true;
@@ -43,7 +42,6 @@ export function useTerminalLaunch({
     try {
       const sessionId = await invoke<string>('spawn_terminal', {
         configId: configLink.config_id,
-        shellType,
         workingDir: installPath,
       });
 
@@ -52,12 +50,9 @@ export function useTerminalLaunch({
 
       // Inject startup commands after shell initializes
       if (startupCommand) {
-        // Delay to let shell prompt appear (1000ms for PowerShell, 500ms for cmd)
-        const initialDelay = shellType.toLowerCase() === 'powershell' ? 1000 : 500;
-
+        // Delay to let shell prompt appear (500ms for cmd)
         setTimeout(async () => {
           try {
-            // For cmd, each line needs \r\n. For PowerShell, use \r\n too.
             const lines = startupCommand.split(/\r?\n/);
             for (const line of lines) {
               await invoke('write_terminal_input', {
@@ -70,7 +65,7 @@ export function useTerminalLaunch({
           } catch (err) {
             console.error('Failed to inject startup commands:', err);
           }
-        }, initialDelay);
+        }, 500);
       }
     } catch (err) {
       console.error('Failed to spawn terminal:', err);

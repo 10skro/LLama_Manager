@@ -100,7 +100,6 @@ export interface CustomCommand {
   name: string;
   command: string;
   description?: string;
-  shellType: 'cmd' | 'powershell';
   createdAt: string;
   updatedAt: string;
 }

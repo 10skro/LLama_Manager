@@ -118,11 +118,6 @@ pub struct CardCustomization {
     pub text_color: String,
 }
 
-/// Default shell type for custom commands.
-fn default_shell_type() -> String {
-    "cmd".to_string()
-}
-
 /// User custom command configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomCommand {
@@ -130,8 +125,6 @@ pub struct CustomCommand {
     pub name: String,
     pub command: String,
     pub description: Option<String>,
-    #[serde(default = "default_shell_type")]
-    pub shell_type: String,
     pub created_at: String,
     pub updated_at: String,
 }

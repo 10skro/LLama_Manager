@@ -410,13 +410,12 @@ pub fn delete_card_customization(conn: &Connection, version_id: i64) -> Result<b
 
 pub fn insert_custom_command(conn: &Connection, command: &CustomCommand) -> Result<(), AppError> {
     conn.execute(
-        "INSERT INTO custom_commands (id, name, command, description, shell_type, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO custom_commands (id, name, command, description, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         params![
             command.id,
             command.name,
             command.command,
             command.description,
-            command.shell_type,
             command.created_at,
             command.updated_at,
         ],
@@ -426,12 +425,11 @@ pub fn insert_custom_command(conn: &Connection, command: &CustomCommand) -> Resu
 
 pub fn update_custom_command(conn: &Connection, command: &CustomCommand) -> Result<(), AppError> {
     conn.execute(
-        "UPDATE custom_commands SET name = ?1, command = ?2, description = ?3, shell_type = ?4, updated_at = ?5 WHERE id = ?6",
+        "UPDATE custom_commands SET name = ?1, command = ?2, description = ?3, updated_at = ?4 WHERE id = ?5",
         params![
             command.name,
             command.command,
             command.description,
-            command.shell_type,
             command.updated_at,
             command.id,
         ],
@@ -441,7 +439,7 @@ pub fn update_custom_command(conn: &Connection, command: &CustomCommand) -> Resu
 
 pub fn get_all_custom_commands(conn: &Connection) -> Result<Vec<CustomCommand>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, command, description, shell_type, created_at, updated_at FROM custom_commands ORDER BY updated_at DESC",
+        "SELECT id, name, command, description, created_at, updated_at FROM custom_commands ORDER BY updated_at DESC",
     )?;
 
     let commands = stmt.query_map([], |row| {
@@ -450,9 +448,8 @@ pub fn get_all_custom_commands(conn: &Connection) -> Result<Vec<CustomCommand>, 
             name: row.get(1)?,
             command: row.get(2)?,
             description: row.get(3)?,
-            shell_type: row.get(4)?,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
         })
     })?;
 

@@ -24,23 +24,19 @@ impl TerminalManager {
         }
     }
 
-    /// Spawn a new terminal process (cmd.exe or powershell.exe).
+    /// Spawn a new terminal process (cmd.exe).
     /// Returns a session ID that can be used to interact with the terminal.
     pub fn spawn(
         &self,
         app: tauri::AppHandle,
         config_id: String,
-        shell_type: String,
         working_dir: String,
     ) -> Result<String, String> {
         let session_id = uuid::Uuid::new_v4().to_string();
 
-        // Determine shell executable and arguments
-        let (program, args) = if shell_type.to_lowercase() == "powershell" {
-            ("powershell.exe", vec!["-NoExit"])
-        } else {
-            ("cmd.exe", vec!["/K"])
-        };
+        // Always use cmd.exe
+        let program = "cmd.exe";
+        let args = vec!["/K"];
 
         let mut cmd = std::process::Command::new(program);
         let mut child = cmd

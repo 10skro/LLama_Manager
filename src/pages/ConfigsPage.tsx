@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import { useConfigs } from '@/hooks/useConfigs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,10 +24,14 @@ export function ConfigsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ConfigEntry | null>(null);
 
-  const customCommands = useAppStore((state) => state.customCommands);
-
   const editingCustomCommand = editingEntry
-    ? customCommands.find((c) => c.id === editingEntry!.id) ?? null
+    ? {
+        id: editingEntry.id,
+        name: editingEntry.name,
+        command: editingEntry.command || '',
+        description: editingEntry.description,
+        createdAt: editingEntry.createdAt,
+      }
     : null;
 
   const handleDelete = async () => {
