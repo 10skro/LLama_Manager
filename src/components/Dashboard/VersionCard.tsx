@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import { useTerminalLaunch } from '@/hooks/useTerminalLaunch';
-import { useAppStore } from '@/store/useAppStore';
 import type { InstalledVersion, CardCustomization, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
 import { Button } from '@/components/ui/button';
@@ -89,13 +88,12 @@ export function VersionCard({
   mmprojFolder,
 }: VersionCardProps) {
   const { toast } = useToast();
-  const customCommands = useAppStore((state) => state.customCommands);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
 
   const { handlePlay, hasConfig } = useTerminalLaunch({
     version,
     configLink,
-    customCommands,
+    configs,
     onError: (message: string) => {
       toast({
         variant: 'destructive',

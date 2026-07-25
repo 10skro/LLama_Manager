@@ -1,6 +1,6 @@
 [package]
 name = "llamacpp-manager"
-version = "0.5.38"
+version = "0.5.39"
 description = "A manager for llama.cpp versions"
 authors = ["openfox"]
 edition = "2021"
@@ -34,6 +34,7 @@ uuid = { version = "1", features = ["v4"] }
 regex = "1"
 futures = "0.3"
 url = "2.5"
+conpty = "0.1"
 
 [features]
 default = ["custom-protocol"]

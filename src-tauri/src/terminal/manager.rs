@@ -1,14 +1,25 @@
 use std::collections::HashMap;
-use std::io::{Read, Write};
-use std::process::{Child, Stdio};
+use std::io::Read;
 use std::sync::Mutex;
 
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
-/// Represents an active terminal session with access to all I/O streams.
+/// Wrapper around conpty::Process to make it Send + Sync.
+/// Safe because conpty::Process only holds Windows HANDLEs which are thread-safe.
+pub struct ConptyProcess(conpty::Process);
+
+unsafe impl Send for ConptyProcess {}
+unsafe impl Sync for ConptyProcess {}
+
+impl ConptyProcess {
+    pub fn new(process: conpty::Process) -> Self {
+        Self(process)
+    }
+}
+
+/// Represents an active terminal session using ConPTY.
 pub struct TerminalSession {
-    pub child: Child,
-    pub stdin: Option<std::process::ChildStdin>,
+    pub process: ConptyProcess,
     pub config_id: String,
 }
 
@@ -24,38 +35,38 @@ impl TerminalManager {
         }
     }
 
-    /// Spawn a new terminal process (cmd.exe).
+    /// Spawn a new terminal process using ConPTY (Windows Pseudo-Console).
     /// Returns a session ID that can be used to interact with the terminal.
     pub fn spawn(
         &self,
         app: tauri::AppHandle,
         config_id: String,
         working_dir: String,
+        startup_command: Option<String>,
     ) -> Result<String, String> {
         let session_id = uuid::Uuid::new_v4().to_string();
 
-        // Always use cmd.exe
-        let program = "cmd.exe";
-        let args = vec!["/K"];
+        // Build the command to run
+        let cmd_str = if let Some(sc) = startup_command {
+            format!("cmd /K {}", sc)
+        } else {
+            "cmd /K".to_string()
+        };
 
-        let mut cmd = std::process::Command::new(program);
-        let mut child = cmd
-            .args(&args)
+        log::info!("[TERMINAL] Spawning ConPTY: {} in {}", cmd_str, working_dir);
+
+        // Spawn process using ConPTY
+        let process = conpty::ProcAttr::cmd(cmd_str)
             .current_dir(&working_dir)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("Failed to spawn {}: {}", program, e))?;
+            .map_err(|e| format!("Failed to spawn ConPTY process: {}", e))?;
 
-        let stdin = child.stdin.take();
-        let stdout = child.stdout.take().ok_or("Failed to get stdout")?;
-        let stderr = child.stderr.take().ok_or("Failed to get stderr")?;
+        let pid = process.pid();
+        log::info!("[TERMINAL] Process spawned with pid={}", pid);
 
-        // Store session with stdin handle
+        // Store session
         let session = TerminalSession {
-            child,
-            stdin,
+            process: ConptyProcess(process),
             config_id: config_id.clone(),
         };
 
@@ -64,74 +75,81 @@ impl TerminalManager {
             .map_err(|e| format!("Mutex poisoned: {}", e))?
             .insert(session_id.clone(), session);
 
-        // Spawn stdout reader task - reads raw bytes to preserve ANSI escape sequences
-        let app_stdout = app.clone();
-        let sid_stdout = session_id.clone();
-        std::thread::spawn(move || {
-            let mut buffer = [0u8; 4096];
-            let mut stdout_reader = std::io::BufReader::new(stdout);
-            loop {
-                match stdout_reader.read(&mut buffer) {
-                    Ok(0) => break, // EOF
-                    Ok(n) => {
-                        let text = String::from_utf8_lossy(&buffer[..n]).to_string();
-                        let _ = app_stdout.emit("terminal-output", (sid_stdout.clone(), text));
-                    }
-                    Err(_) => break,
-                }
-            }
-            // Emit exit signal when stdout closes
-            let _ = app_stdout.emit("terminal-exit", sid_stdout.clone());
-        });
+        // Spawn output reader task
+        let app_handle = app.clone();
+        let sid = session_id.clone();
 
-        // Spawn stderr reader task - reads raw bytes to preserve ANSI escape sequences
-        let app_stderr = app.clone();
-        let sid_stderr = session_id.clone();
         std::thread::spawn(move || {
-            let mut buffer = [0u8; 4096];
-            let mut stderr_reader = std::io::BufReader::new(stderr);
-            loop {
-                match stderr_reader.read(&mut buffer) {
-                    Ok(0) => break, // EOF
-                    Ok(n) => {
-                        let text = String::from_utf8_lossy(&buffer[..n]).to_string();
-                        let _ = app_stderr.emit("terminal-output", (sid_stderr.clone(), text));
+            log::info!("[TERMINAL] ConPTY reader started for {}", sid);
+
+            // Get a reader from the session
+            let sessions = app_handle.state::<TerminalManager>();
+            let reader = {
+                let sess = sessions.sessions.lock().unwrap();
+                if let Some(session) = sess.get(&sid) {
+                    session.process.0.output().ok()
+                } else {
+                    None
+                }
+            };
+
+            if let Some(mut reader) = reader {
+                let mut buffer = [0u8; 4096];
+                loop {
+                    match reader.read(&mut buffer) {
+                        Ok(0) => {
+                            log::info!("[TERMINAL] ConPTY EOF for {}", sid);
+                            break;
+                        }
+                        Ok(n) => {
+                            let text = String::from_utf8_lossy(&buffer[..n]).to_string();
+                            log::info!(
+                                "[TERMINAL] ConPTY received {} bytes: {:?}",
+                                n,
+                                text.chars().take(80).collect::<String>()
+                            );
+                            let _ = app_handle.emit("terminal-output", (sid.clone(), text));
+                        }
+                        Err(e) => {
+                            log::warn!("[TERMINAL] ConPTY read error: {}", e);
+                            break;
+                        }
                     }
-                    Err(_) => break,
                 }
             }
+
+            let _ = app_handle.emit("terminal-exit", sid.clone());
         });
 
         Ok(session_id)
     }
 
-    /// Write input to a terminal session's stdin.
+    /// Write input to a terminal session's ConPTY.
     pub fn write_input(&self, session_id: &str, input: String) -> Result<(), String> {
-        let mut sessions = self
+        let sessions = self
             .sessions
             .lock()
             .map_err(|e| format!("Mutex poisoned: {}", e))?;
 
         let session = sessions
-            .get_mut(session_id)
+            .get(session_id)
             .ok_or_else(|| format!("Session not found: {}", session_id))?;
 
-        if let Some(ref mut stdin) = session.stdin {
-            // Write raw bytes (no extra newline - the frontend sends \r\n for Enter)
-            stdin
-                .write_all(input.as_bytes())
-                .map_err(|e| format!("Failed to write to stdin: {}", e))?;
-            stdin.flush().map_err(|e| format!("Failed to flush stdin: {}", e))?;
-        } else {
-            return Err("stdin not available for this session".to_string());
-        }
+        // Get a writer and write to it
+        let mut writer = session.process.0
+            .input()
+            .map_err(|e| format!("Failed to get input writer: {}", e))?;
+
+        use std::io::Write;
+        writer
+            .write_all(input.as_bytes())
+            .map_err(|e| format!("Failed to write to ConPTY: {}", e))?;
 
         Ok(())
     }
 
-    /// Kill a terminal session and wait for it to exit (prevents zombie processes).
+    /// Kill a terminal session.
     pub fn kill(&self, session_id: &str) -> Result<String, String> {
-        // Extract session from map to avoid holding lock during wait
         let session = {
             let mut sessions = self
                 .sessions
@@ -145,34 +163,24 @@ impl TerminalManager {
 
         let config_id = session.config_id.clone();
 
-        // Drop stdin first to close the pipe
-        let mut child = session.child;
-
-        child
-            .kill()
+        // Terminate the process
+        session.process.0.exit(1)
             .map_err(|e| format!("Failed to kill terminal: {}", e))?;
-
-        // Wait for process to exit to prevent zombie processes
-        let _ = child.wait();
 
         Ok(config_id)
     }
 
     /// Kill all terminal sessions (cleanup on app exit).
     pub fn kill_all(&self) {
-        // Extract all sessions to avoid holding lock during kill/wait
         let sessions: Vec<_> = match self.sessions.lock() {
             Ok(mut s) => s.drain().map(|(_id, s)| s).collect(),
             Err(_) => return,
         };
 
         for session in sessions {
-            let mut child = session.child;
-            if let Err(e) = child.kill() {
+            if let Err(e) = session.process.0.exit(1) {
                 log::warn!("Failed to kill terminal session: {}", e);
             }
-            // Wait for process to exit to prevent zombie processes
-            let _ = child.wait();
         }
     }
 

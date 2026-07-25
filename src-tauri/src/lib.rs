@@ -606,8 +606,9 @@ fn spawn_terminal(
     state_terminal: tauri::State<'_, TerminalManager>,
     config_id: String,
     working_dir: String,
+    startup_command: Option<String>,
 ) -> Result<String, String> {
-    state_terminal.spawn(app, config_id, working_dir)
+    state_terminal.spawn(app, config_id, working_dir, startup_command)
 }
 
 #[tauri::command]
