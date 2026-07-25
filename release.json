@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.38",
+  "tag_name": "v0.5.39",
   "target_commitish": "main",
-  "name": "v0.5.38",
-  "body": "## Changes\n\n### Refactoring\n- Remove shell type selection, detection, and conversion from custom commands\n- Fix edit modal to load command data directly from entry instead of store",
+  "name": "v0.5.39",
+  "body": "## Changes\n\n### Fixes\n- Migrate terminal to ConPTY for proper Windows console output",
   "draft": false,
   "prerelease": false
 }
