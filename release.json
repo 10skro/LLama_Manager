@@ -2,7 +2,7 @@
   "tag_name": "v0.5.39",
   "target_commitish": "main",
   "name": "v0.5.39",
-  "body": "## Changes\n\n### Fixes\n- Migrate terminal to ConPTY for proper Windows console output",
+  "body": "## Changes\n\n### Fixes\n- Replace Stdio::piped() with conpty crate (Windows Pseudo-Console)\n- Fix terminal panel showing blank output (cmd.exe requires real console)\n- Add ConptyProcess wrapper for Send+Sync safety\n- Auto-prepend llama-server.exe to custom commands\n- Convert multi-line commands to single-line before execution\n- Use fresh configs from useConfigs() instead of stale Zustand store",
   "draft": false,
   "prerelease": false
 }

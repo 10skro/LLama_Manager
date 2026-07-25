@@ -6,6 +6,15 @@ import App from './App';
 import { applyTheme, getThemeById, DEFAULT_THEME_ID } from './themes';
 import './index.css';
 
+// Global error handlers to catch silent crashes that freeze the UI
+window.addEventListener('error', (event) => {
+  console.error('[GlobalError]', event.error || event.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[UnhandledRejection]', event.reason);
+  event.preventDefault(); // Prevent Chrome from showing "A listener indicated an asynchronous error"
+});
+
 // Apply default theme immediately before React renders
 const defaultTheme = getThemeById(DEFAULT_THEME_ID);
 if (defaultTheme) {

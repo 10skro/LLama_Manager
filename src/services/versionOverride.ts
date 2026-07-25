@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { VersionOverride, ModelFile } from '@/types';
+import type { FileExtensionFilter } from '@/services/modelFiles';
 
 export async function getVersionOverride(versionId: number): Promise<VersionOverride | null> {
   const result = await invoke<VersionOverride | null>('get_version_override', { versionId });
@@ -22,6 +23,10 @@ export async function deleteVersionOverride(versionId: number): Promise<boolean>
   return invoke<boolean>('delete_version_override', { versionId });
 }
 
-export async function scanMmprojFiles(folderPath: string): Promise<ModelFile[]> {
-  return invoke<ModelFile[]>('scan_mmproj_files', { folderPath });
+export async function scanMmprojFiles(
+  folderPath: string,
+  extensions: FileExtensionFilter = 'all',
+): Promise<ModelFile[]> {
+  const extString = extensions === 'all' ? '' : extensions;
+  return invoke<ModelFile[]>('scan_mmproj_files', { folderPath, extensions: extString });
 }

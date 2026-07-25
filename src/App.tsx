@@ -35,6 +35,7 @@ function App() {
           toast_duration: settings.toast_duration ?? 5000,
           font_family: settings.font_family,
           model_folder: settings.model_folder,
+          mmproj_folder: settings.mmproj_folder,
         };
         useAppStore.getState().setSettings(merged);
 

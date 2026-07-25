@@ -1,12 +1,13 @@
 import { useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/store/useAppStore';
-import type { InstalledVersion, ConfigEntry, VersionConfigLink } from '@/types';
+import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
 
 interface UseTerminalLaunchParams {
   version: InstalledVersion;
   configLink: VersionConfigLink | null;
   configs: ConfigEntry[];
+  override?: VersionOverride | null;
   onError?: (message: string) => void;
 }
 
@@ -14,6 +15,7 @@ export function useTerminalLaunch({
   version,
   configLink,
   configs,
+  override,
   onError,
 }: UseTerminalLaunchParams) {
   const setTerminalVisible = useAppStore((state) => state.setTerminalVisible);
@@ -48,11 +50,30 @@ export function useTerminalLaunch({
 
     try {
       // Join all lines into one: remove ^ and newlines, replace with spaces
-      const singleLine = (fullCommand || '')
+      let singleLine = (fullCommand || '')
         .split(/\r?\n/)
         .map(line => line.replace(/\s*\^\s*$/, '').trim())
         .filter(line => line.length > 0)
         .join(' ');
+
+      // Inject override model_path and mmproj_path if present
+      if (override) {
+        if (override.model_path) {
+          // Replace existing -m "<path>" or append -m "<path>"
+          singleLine = singleLine.replace(/-m\s+"[^"]*"/, `-m "${override.model_path}"`);
+          if (!singleLine.includes('-m')) {
+            singleLine = `-m "${override.model_path}" ${singleLine}`;
+          }
+        }
+        if (override.mmproj_path) {
+          // Replace existing --mmproj "<path>" or append --mmproj "<path>"
+          singleLine = singleLine.replace(/--mmproj\s+"[^"]*"/, `--mmproj "${override.mmproj_path}"`);
+          if (!singleLine.includes('--mmproj')) {
+            singleLine = `${singleLine} --mmproj "${override.mmproj_path}"`;
+          }
+        }
+      }
+
       console.log('[PLAY] Spawning terminal with command:', singleLine);
 
       const sessionId = await invoke<string>('spawn_terminal', {
@@ -69,7 +90,7 @@ export function useTerminalLaunch({
     } finally {
       injectingRef.current = false;
     }
-  }, [version, configLink, configs, setActiveTerminalId, setTerminalVisible, onError]);
+  }, [version, configLink, configs, override, setActiveTerminalId, setTerminalVisible, onError]);
 
   const hasConfig = configLink !== null;
 

@@ -94,6 +94,7 @@ export function VersionCard({
     version,
     configLink,
     configs,
+    override,
     onError: (message: string) => {
       toast({
         variant: 'destructive',

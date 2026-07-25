@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Settings2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Settings2, Filter } from 'lucide-react';
 import {
   deleteVersionOverride,
   saveVersionOverride,
@@ -18,6 +19,13 @@ import {
 } from '@/services/versionOverride';
 import { scanModelFiles } from '@/services/modelFiles';
 import type { ModelFile, VersionOverride } from '@/types';
+import type { FileExtensionFilter } from '@/services/modelFiles';
+
+const EXTENSION_FILTERS: { value: FileExtensionFilter; label: string; ext: string }[] = [
+  { value: 'all', label: 'All', ext: '*' },
+  { value: 'gguf', label: '.gguf', ext: 'gguf' },
+  { value: 'safetensors', label: '.safetensors', ext: 'safetensors' },
+];
 
 interface OverrideDialogProps {
   open: boolean;
@@ -44,31 +52,48 @@ export default function OverrideDialog({
   const [mmprojFiles, setMmprojFiles] = useState<ModelFile[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedMmproj, setSelectedMmproj] = useState<string>('');
+  const [modelFilter, setModelFilter] = useState<FileExtensionFilter>('all');
+  const [mmprojFilter, setMmprojFilter] = useState<FileExtensionFilter>('all');
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
 
-  // Load files when dialog opens
+  // Scan files when dialog opens or filter changes
+  const scanFiles = useCallback(async (
+    folder: string | undefined,
+    filter: FileExtensionFilter,
+    setter: React.Dispatch<React.SetStateAction<ModelFile[]>>,
+    label: string,
+  ) => {
+    if (!folder) {
+      setter([]);
+      return;
+    }
+    try {
+      const files = await (label === 'model'
+        ? scanModelFiles(folder, filter)
+        : scanMmprojFiles(folder, filter)
+      );
+      setter(files);
+    } catch (e) {
+      console.error(`[OverrideDialog] ${label} scan error:`, e);
+      setter([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
-
     setScanning(true);
-    const loadFiles = async () => {
-      try {
-        const [models, mmprojs] = await Promise.all([
-          modelFolder ? scanModelFiles(modelFolder) : Promise.resolve([]),
-          mmprojFolder ? scanMmprojFiles(mmprojFolder) : Promise.resolve([]),
-        ]);
-        setModelFiles(models);
-        setMmprojFiles(mmprojs);
-      } catch (e) {
-        console.error('Failed to scan files:', e);
-      } finally {
-        setScanning(false);
-      }
-    };
+    let mounted = true;
 
-    loadFiles();
-  }, [open, modelFolder, mmprojFolder]);
+    Promise.all([
+      scanFiles(modelFolder, modelFilter, setModelFiles, 'model'),
+      scanFiles(mmprojFolder, mmprojFilter, setMmprojFiles, 'mmproj'),
+    ]).finally(() => {
+      if (mounted) setScanning(false);
+    });
+
+    return () => { mounted = false; };
+  }, [open, modelFolder, mmprojFolder, modelFilter, mmprojFilter, scanFiles]);
 
   // Sync current override to local state when dialog opens
   useEffect(() => {
@@ -118,8 +143,110 @@ export default function OverrideDialog({
 
   const hasOverride = currentOverride && (currentOverride.model_path || currentOverride.mmproj_path);
 
+  // Wrap onOpenChange to clean up Select state before dialog closes
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      setSelectedModel('');
+      setSelectedMmproj('');
+      setModelFiles([]);
+      setMmprojFiles([]);
+    }
+    onOpenChange(nextOpen);
+  }, [onOpenChange]);
+
+  // Extract file extension for badge display
+  const getFileExt = useCallback((name: string) => {
+    const match = name.match(/\.[a-z0-9]+$/i);
+    return match ? match[0].replace('.', '').toLowerCase() : '';
+  }, []);
+
+  const extBadgeColor = useMemo(() => (ext: string) => {
+    switch (ext) {
+      case 'gguf': return 'bg-violet-500/20 text-violet-300 border-violet-500/30';
+      case 'safetensors': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      default: return 'bg-secondary text-muted-foreground border-border';
+    }
+  }, []);
+
+  // File selector with filter
+  const FileSelector = ({
+    label,
+    folder,
+    files,
+    value,
+    onChange,
+    filter,
+    onFilterChange,
+    placeholder,
+    noFolderMessage,
+  }: {
+    label: string;
+    folder: string | undefined;
+    files: ModelFile[];
+    value: string;
+    onChange: (v: string) => void;
+    filter: FileExtensionFilter;
+    onFilterChange: (f: FileExtensionFilter) => void;
+    placeholder: string;
+    noFolderMessage: string;
+  }) => (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>{label}</Label>
+        {folder && (
+          <div className="flex items-center gap-1 bg-card border border-border/50 rounded-lg p-0.5">
+            <Filter className="h-3 w-3 text-muted-foreground mr-1 ml-1" />
+            {EXTENSION_FILTERS.map((f) => (
+              <Button
+                key={f.value}
+                variant={filter === f.value ? 'secondary' : 'ghost'}
+                size="sm"
+                className={`text-xs h-6 px-2.5 ${filter === f.value ? '' : 'hover:bg-secondary/50'}`}
+                onClick={() => onFilterChange(f.value)}
+              >
+                {f.label}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
+      <Select
+        value={value}
+        onValueChange={onChange}
+        disabled={!folder || scanning}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={folder ? placeholder : noFolderMessage} />
+        </SelectTrigger>
+        <SelectContent>
+          {scanning
+            ? <SelectItem value="__loading" disabled>Loading...</SelectItem>
+            : files.length === 0
+              ? <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                  No files found{filter !== 'all' ? ` (${filter})` : ''}
+                </div>
+              : files.map((file) => (
+                  <SelectItem key={file.path} value={file.path}>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate flex-1" title={file.path}>{file.name}</span>
+                      <Badge variant="outline" className={`text-[10px] h-5 px-1.5 shrink-0 ${extBadgeColor(getFileExt(file.name))}`}>
+                        {getFileExt(file.name)}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+        </SelectContent>
+      </Select>
+      {!folder && (
+        <p className="text-xs text-muted-foreground">
+          {noFolderMessage}
+        </p>
+      )}
+    </div>
+  );
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -131,69 +258,36 @@ export default function OverrideDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {scanning ? (
+        {scanning && modelFiles.length === 0 && mmprojFiles.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Scanning files...</p>
           </div>
         ) : (
           <div className="space-y-4 py-2">
-            {/* Model Path */}
-          <div className="space-y-2">
-            <Label htmlFor="model-select">Model Path (.gguf)</Label>
-            <Select
+            <FileSelector
+              label="Model Path"
+              folder={modelFolder}
+              files={modelFiles}
               value={selectedModel}
-              onValueChange={setSelectedModel}
-              disabled={!modelFolder || scanning}
-            >
-              <SelectTrigger id="model-select">
-                <SelectValue placeholder={modelFolder ? 'Select a model file...' : 'No model folder configured'} />
-              </SelectTrigger>
-              <SelectContent>
-                {scanning
-                  ? <SelectItem value="__loading" disabled>Loading...</SelectItem>
-                  : modelFiles.map((file) => (
-                      <SelectItem key={file.path} value={file.path}>
-                        {file.name}
-                      </SelectItem>
-                    ))}
-              </SelectContent>
-            </Select>
-            {!modelFolder && (
-              <p className="text-xs text-muted-foreground">
-                Configure a model folder in Settings to enable model selection.
-              </p>
-            )}
-          </div>
-
-          {/* Mmproj Path */}
-          <div className="space-y-2">
-            <Label htmlFor="mmproj-select">Mmproj Path (.mmproj)</Label>
-            <Select
+              onChange={setSelectedModel}
+              filter={modelFilter}
+              onFilterChange={setModelFilter}
+              placeholder="Select a model file..."
+              noFolderMessage="Configure a model folder in Settings to enable model selection."
+            />
+            <FileSelector
+              label="Mmproj Path"
+              folder={mmprojFolder}
+              files={mmprojFiles}
               value={selectedMmproj}
-              onValueChange={setSelectedMmproj}
-              disabled={!mmprojFolder || scanning}
-            >
-              <SelectTrigger id="mmproj-select">
-                <SelectValue placeholder={mmprojFolder ? 'Select a mmproj file...' : 'No mmproj folder configured'} />
-              </SelectTrigger>
-              <SelectContent>
-                {scanning
-                  ? <SelectItem value="__loading" disabled>Loading...</SelectItem>
-                  : mmprojFiles.map((file) => (
-                      <SelectItem key={file.path} value={file.path}>
-                        {file.name}
-                      </SelectItem>
-                    ))}
-              </SelectContent>
-            </Select>
-            {!mmprojFolder && (
-              <p className="text-xs text-muted-foreground">
-                Configure a mmproj folder in Settings to enable mmproj selection.
-              </p>
-            )}
+              onChange={setSelectedMmproj}
+              filter={mmprojFilter}
+              onFilterChange={setMmprojFilter}
+              placeholder="Select a mmproj file..."
+              noFolderMessage="Configure a mmproj folder in Settings to enable mmproj selection."
+            />
           </div>
-        </div>
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">

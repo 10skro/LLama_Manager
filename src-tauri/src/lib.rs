@@ -402,10 +402,11 @@ async fn get_storage_usage(
 
 // ─── Model File Scanning ─────────────────────────────────────────────────
 
-/// Shared utility: scan a folder for files matching a given extension.
+/// Shared utility: scan a folder for files matching given extensions.
 /// Non-recursive: only files directly in the folder.
 /// Returns files sorted by name (case-insensitive).
-fn scan_files(folder_path: &str, extension: &str) -> Result<Vec<ModelFile>, String> {
+/// If extensions is empty, all files are included.
+fn scan_files(folder_path: &str, extensions: &[&str]) -> Result<Vec<ModelFile>, String> {
     let path = std::path::Path::new(folder_path);
 
     if !path.exists() {
@@ -427,9 +428,12 @@ fn scan_files(folder_path: &str, extension: &str) -> Result<Vec<ModelFile>, Stri
             continue;
         }
 
-        let file_ext = file_path.extension().and_then(|e| e.to_str());
-        if file_ext != Some(extension) {
-            continue;
+        // Filter by extensions (empty = all files)
+        if !extensions.is_empty() {
+            let file_ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            if !extensions.contains(&file_ext) {
+                continue;
+            }
         }
 
         let metadata = entry.metadata().map_err(|e| format!("Failed to read metadata: {}", e))?;
@@ -451,14 +455,28 @@ fn scan_files(folder_path: &str, extension: &str) -> Result<Vec<ModelFile>, Stri
     Ok(files)
 }
 
+/// Scan for model files (.gguf, .safetensors, etc.)
+/// extensions: comma-separated list, e.g. "gguf,safetensors" or "" for all
 #[tauri::command]
-fn scan_model_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
-    scan_files(&folder_path, "gguf")
+fn scan_model_files(folder_path: String, extensions: String) -> Result<Vec<ModelFile>, String> {
+    let exts: Vec<&str> = if extensions.is_empty() {
+        Vec::new()
+    } else {
+        extensions.split(',').collect()
+    };
+    scan_files(&folder_path, &exts)
 }
 
+/// Scan for mmproj files (.gguf, .safetensors, .mmproj, etc.)
+/// extensions: comma-separated list, e.g. "gguf,safetensors" or "" for all
 #[tauri::command]
-fn scan_mmproj_files(folder_path: String) -> Result<Vec<ModelFile>, String> {
-    scan_files(&folder_path, "mmproj")
+fn scan_mmproj_files(folder_path: String, extensions: String) -> Result<Vec<ModelFile>, String> {
+    let exts: Vec<&str> = if extensions.is_empty() {
+        Vec::new()
+    } else {
+        extensions.split(',').collect()
+    };
+    scan_files(&folder_path, &exts)
 }
 
 /// Validate that a folder path exists and is accessible as a directory.
