@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.40",
+  "tag_name": "v0.5.42",
   "target_commitish": "main",
-  "name": "v0.5.40",
-  "body": "## Changes\n\n### Features\n- Multi-extension file scan (.gguf + .safetensors) in Rust backend and TypeScript\n- File type filter toggle in OverrideDialog (All / .gguf / .safetensors)\n- Extension badge on file items in dropdown selectors\n\n### Fixes\n- OverrideDialog freeze on close (state cleanup + mounted guard)\n- mmproj_folder missing from App.tsx startup settings merge\n- Override not injected into useTerminalLaunch command builder\n- scanModelFiles parameter name mismatch (folder vs folderPath)\n\n### Style\n- SelectContent backdrop-blur to match DropdownMenuContent glassmorphism\n\n### Chores\n- Remove debug console.log from OverrideDialog\n- Remove .agent/ directory files",
+  "name": "v0.5.42",
+  "body": "## Changes\n\n### Features\n- Robust override flag injection with token-based command parsing",
   "draft": false,
   "prerelease": false
 }
