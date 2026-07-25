@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Package, Trash2, List,
-  FileText, Terminal, SlidersHorizontal, Pencil,
+  Terminal, SlidersHorizontal, Pencil,
   Play,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
@@ -55,7 +55,7 @@ interface VersionCardProps {
   configLink: VersionConfigLink | null;
   configs: ConfigEntry[];
   configsLoading: boolean;
-  onSetLink: (versionId: number, configType: 'launch' | 'custom', configId: string) => Promise<void>;
+  onSetLink: (versionId: number, configType: 'custom', configId: string) => Promise<void>;
   onRemoveLink: (versionId: number) => Promise<void>;
   // Override state
   override: VersionOverride | null;
@@ -89,16 +89,13 @@ export function VersionCard({
   mmprojFolder,
 }: VersionCardProps) {
   const { toast } = useToast();
-  const launchConfigs = useAppStore((state) => state.launchConfigs);
   const customCommands = useAppStore((state) => state.customCommands);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
 
   const { handlePlay, hasConfig } = useTerminalLaunch({
     version,
     configLink,
-    launchConfigs,
     customCommands,
-    override,
     onError: (message: string) => {
       toast({
         variant: 'destructive',
@@ -394,11 +391,7 @@ export function VersionCard({
                     key={`${config.type}-${config.id}`}
                     onClick={() => handleSelectConfig(config)}
                   >
-                    {config.type === 'launch' ? (
-                      <FileText className="h-4 w-4" />
-                    ) : (
-                      <Terminal className="h-4 w-4" />
-                    )}
+                    <Terminal className="h-4 w-4" />
                     <span className="truncate">{config.name}</span>
                     {configLink?.config_type === config.type && configLink?.config_id === config.id && (
                       <span className="ml-auto text-xs text-green">Active</span>

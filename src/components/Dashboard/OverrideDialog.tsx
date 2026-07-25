@@ -16,7 +16,7 @@ import {
   saveVersionOverride,
   scanMmprojFiles,
 } from '@/services/versionOverride';
-import { scanModelFiles } from '@/services/launchConfig';
+import { scanModelFiles } from '@/services/modelFiles';
 import type { ModelFile, VersionOverride } from '@/types';
 
 interface OverrideDialogProps {
@@ -128,7 +128,6 @@ export default function OverrideDialog({
           </DialogTitle>
           <DialogDescription>
             Override the model and mmproj paths for <strong>{versionName}</strong>.
-            {' '}Overrides replace the values from the launch configuration.
           </DialogDescription>
         </DialogHeader>
 

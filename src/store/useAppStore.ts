@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BuildFilters, AppSettings, LaunchConfig, CustomCommand } from '@/types';
+import type { BuildFilters, AppSettings, CustomCommand } from '@/types';
 import { DEFAULT_THEME_ID } from '@/themes';
 import { makeKey } from '@/utils/buildKey';
 
@@ -41,13 +41,6 @@ interface AppState {
   // UI
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
-
-  // Launch Configs
-  launchConfigs: LaunchConfig[];
-  setLaunchConfigs: (configs: LaunchConfig[]) => void;
-  addLaunchConfig: (config: LaunchConfig) => void;
-  removeLaunchConfig: (id: string) => void;
-  updateLaunchConfig: (config: LaunchConfig) => void;
 
   // Custom Commands
   customCommands: CustomCommand[];
@@ -162,22 +155,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarCollapsed: false,
   toggleSidebar: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-
-  // Launch Configs
-  launchConfigs: [],
-  setLaunchConfigs: (configs) => set({ launchConfigs: configs }),
-  addLaunchConfig: (config) =>
-    set((state) => ({ launchConfigs: [...state.launchConfigs, config] })),
-  removeLaunchConfig: (id) =>
-    set((state) => ({
-      launchConfigs: state.launchConfigs.filter((c) => c.id !== id),
-    })),
-  updateLaunchConfig: (config) =>
-    set((state) => ({
-      launchConfigs: state.launchConfigs.map((c) =>
-        c.id === config.id ? config : c
-      ),
-    })),
 
   // Custom Commands
   customCommands: [],

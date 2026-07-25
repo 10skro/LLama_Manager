@@ -1,17 +1,18 @@
 import { useState } from 'react';
+import { useAppStore } from '@/store/useAppStore';
 import { useConfigs } from '@/hooks/useConfigs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  FileStack, Search, X, FileText, Terminal, Loader2, Trash2,
+  FileStack, Search, X, Terminal, Loader2, Trash2, Pencil,
 } from 'lucide-react';
+import { CustomCommandModal } from '@/components/CustomCommand/CustomCommandModal';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { deleteLaunchConfig } from '@/services/launchConfig';
 import { deleteCustomCommand } from '@/services/customCommand';
 import { useToast } from '@/hooks/use-toast';
 import { formatRelativeTime } from '@/utils/format';
@@ -22,16 +23,19 @@ export function ConfigsPage() {
   const { toast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<ConfigEntry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<ConfigEntry | null>(null);
+
+  const customCommands = useAppStore((state) => state.customCommands);
+
+  const editingCustomCommand = editingEntry
+    ? customCommands.find((c) => c.id === editingEntry!.id) ?? null
+    : null;
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      if (deleteTarget.type === 'launch') {
-        await deleteLaunchConfig(deleteTarget.id);
-      } else {
-        await deleteCustomCommand(deleteTarget.id);
-      }
+      await deleteCustomCommand(deleteTarget.id);
       toast({ title: 'Deleted', description: `"${deleteTarget.name}" has been removed.` });
       await refetch();
     } catch (err) {
@@ -77,7 +81,7 @@ export function ConfigsPage() {
 
         {/* Type Filter */}
         <div className="flex items-center gap-1 bg-card border border-border/50 rounded-lg p-1">
-          {(['all', 'launch', 'custom'] as const).map((f) => (
+          {(['all', 'custom'] as const).map((f) => (
             <Button
               key={f}
               variant={filter === f ? 'secondary' : 'ghost'}
@@ -85,7 +89,7 @@ export function ConfigsPage() {
               onClick={() => setFilter(f)}
               className="text-xs h-7 px-3"
             >
-              {f === 'all' ? 'All' : f === 'launch' ? 'Launch' : 'Custom'}
+              {f === 'all' ? 'All' : 'Custom'}
             </Button>
           ))}
         </div>
@@ -123,7 +127,7 @@ export function ConfigsPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Created</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -131,20 +135,13 @@ export function ConfigsPage() {
                 <TableRow key={`${entry.type}-${entry.id}`} className="border-border/50">
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      {entry.type === 'launch' ? (
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Terminal className="h-4 w-4 text-muted-foreground" />
-                      )}
+                      <Terminal className="h-4 w-4 text-muted-foreground" />
                       {entry.name}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={entry.type === 'launch' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {entry.type === 'launch' ? 'Launch Config' : 'Custom Command'}
+                    <Badge variant="secondary" className="text-xs">
+                      Custom Command
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-xs truncate">
@@ -153,7 +150,15 @@ export function ConfigsPage() {
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                     {formatRelativeTime(entry.createdAt)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingEntry(entry)}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -203,6 +208,18 @@ export function ConfigsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Custom Command Modal */}
+      <CustomCommandModal
+        open={editingEntry !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingEntry(null);
+            refetch();
+          }
+        }}
+        editingCommand={editingCustomCommand}
+      />
     </div>
   );
 }

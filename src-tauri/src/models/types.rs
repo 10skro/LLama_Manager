@@ -69,7 +69,6 @@ pub enum DownloadResult {
 pub struct AppSettings {
     pub storage_path: String,
     pub theme: String,
-    pub last_fetch: Option<String>,
     pub auto_check_updates: bool,
     #[serde(default)]
     pub font_family: Option<String>,
@@ -87,19 +86,6 @@ pub struct ModelFile {
     pub path: String,
     pub name: String,
     pub size: u64,
-}
-
-/// Launch configuration for llama.cpp
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LaunchConfig {
-    pub id: String,
-    pub name: String,
-    pub shell_type: String,
-    pub model_path: String,
-    pub args_json: String, // JSON array of {argKey, value}
-    pub description: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
 }
 
 /// Version info detected from an installed directory
@@ -151,7 +137,6 @@ pub struct CustomCommand {
 }
 
 /// Per-version override for model path and mmproj path.
-/// Replaces the config values when launching via LaunchConfig.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionOverride {
     pub version_id: i64,
@@ -159,12 +144,12 @@ pub struct VersionOverride {
     pub mmproj_path: Option<String>,
 }
 
-/// Link between an installed version and a configuration (launch or custom).
+/// Link between an installed version and a custom command configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionConfigLink {
     pub version_id: i64,
-    pub config_type: String,  // "launch" or "custom"
-    pub config_id: String,    // UUID string matching LaunchConfig.id / CustomCommand.id
+    pub config_type: String,  // "custom"
+    pub config_id: String,    // UUID string matching CustomCommand.id
 }
 
 /// Application error type

@@ -1,6 +1,6 @@
 [package]
 name = "llamacpp-manager"
-version = "0.5.36"
+version = "0.5.37"
 description = "A manager for llama.cpp versions"
 authors = ["openfox"]
 edition = "2021"
@@ -33,7 +33,6 @@ thiserror = "1"
 uuid = { version = "1", features = ["v4"] }
 regex = "1"
 futures = "0.3"
-keyring = { version = "3", features = ["windows-native"] }
 url = "2.5"
 
 [features]

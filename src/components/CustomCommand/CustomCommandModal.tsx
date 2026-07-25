@@ -11,14 +11,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Terminal, Loader2, Command } from 'lucide-react';
+import type { CustomCommand } from '@/types';
 
 interface CustomCommandModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editingCommand?: CustomCommand | null;
 }
 
-export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalProps) {
-  const { addCustomCommand } = useAppStore();
+export function CustomCommandModal({ open, onOpenChange, editingCommand }: CustomCommandModalProps) {
+  const { addCustomCommand, updateCustomCommand } = useAppStore();
   const { toast } = useToast();
 
   const [name, setName] = useState('');
@@ -36,12 +38,19 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
-      setName('');
-      setDescription('');
-      setCommand('');
-      setShellType('cmd');
+      if (editingCommand) {
+        setName(editingCommand.name);
+        setDescription(editingCommand.description || '');
+        setCommand(editingCommand.command);
+        setShellType(editingCommand.shellType || 'cmd');
+      } else {
+        setName('');
+        setDescription('');
+        setCommand('');
+        setShellType('cmd');
+      }
     }
-  }, [open]);
+  }, [open, editingCommand]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -57,21 +66,34 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
       // Convert the command to the target shell format before saving
       const trimmedCommand = command.trim();
       const convertedCommand = convertCommand(trimmedCommand, shellType);
-      const config = await saveCustomCommandApi({
+
+      const input: any = {
         name: name.trim(),
         command: convertedCommand,
         description: description.trim() || undefined,
         shellType,
-      });
-      addCustomCommand(config);
+      };
+      if (editingCommand) {
+        input.id = editingCommand.id;
+        input.createdAt = editingCommand.createdAt;
+      }
 
-      // Notify user if conversion happened
-      if (convertedCommand !== trimmedCommand) {
-        const shellLabel = shellType === 'cmd' ? 'CMD' : 'PowerShell';
-        toast({
-          title: 'Command converted',
-          description: `Command was converted to ${shellLabel} format and saved.`,
-        });
+      const config = await saveCustomCommandApi(input);
+
+      if (editingCommand) {
+        updateCustomCommand(config);
+        toast({ title: 'Command updated', description: `"${config.name}" has been updated.` });
+      } else {
+        addCustomCommand(config);
+
+        // Notify user if conversion happened
+        if (convertedCommand !== trimmedCommand) {
+          const shellLabel = shellType === 'cmd' ? 'CMD' : 'PowerShell';
+          toast({
+            title: 'Command converted',
+            description: `Command was converted to ${shellLabel} format and saved.`,
+          });
+        }
       }
 
       onOpenChange(false);
@@ -88,10 +110,10 @@ export function CustomCommandModal({ open, onOpenChange }: CustomCommandModalPro
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Terminal className="h-5 w-5" />
-            Create Custom Command
+            {editingCommand ? 'Edit Custom Command' : 'Create Custom Command'}
           </DialogTitle>
           <DialogDescription>
-            Write a custom command manually. This command can be copied and executed in your terminal.
+            {editingCommand ? 'Modify an existing custom command.' : 'Write a custom command manually. This command can be copied and executed in your terminal.'}
           </DialogDescription>
         </DialogHeader>
 

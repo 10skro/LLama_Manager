@@ -1,7 +1,7 @@
 use rusqlite::{Connection, params};
 use chrono::Local;
 
-use crate::models::types::{AppError, Build, CardCustomization, CustomCommand, FavoriteBuild, InstalledVersion, DownloadRecord, LaunchConfig, VersionConfigLink, VersionOverride};
+use crate::models::types::{AppError, Build, CardCustomization, CustomCommand, FavoriteBuild, InstalledVersion, DownloadRecord,  VersionConfigLink, VersionOverride};
 
 // ─── Installed Versions ─────────────────────────────────────────────────
 
@@ -359,76 +359,6 @@ pub fn toggle_favorite_build(conn: &mut Connection, build_number: &str, backend:
 
     tx.commit()?;
     Ok(!exists)
-}
-
-// ─── Launch Configs ─────────────────────────────────────────────────────
-
-pub fn insert_launch_config(conn: &Connection, config: &LaunchConfig) -> Result<(), AppError> {
-    conn.execute(
-        "INSERT INTO launch_configs (id, name, shell_type, model_path, args_json, description, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![
-            config.id,
-            config.name,
-            config.shell_type,
-            config.model_path,
-            config.args_json,
-            config.description,
-            config.created_at,
-            config.updated_at,
-        ],
-    )?;
-    Ok(())
-}
-
-pub fn update_launch_config(conn: &Connection, config: &LaunchConfig) -> Result<(), AppError> {
-    conn.execute(
-        "UPDATE launch_configs SET name = ?1, shell_type = ?2, model_path = ?3, args_json = ?4, description = ?5, updated_at = ?6 WHERE id = ?7",
-        params![
-            config.name,
-            config.shell_type,
-            config.model_path,
-            config.args_json,
-            config.description,
-            config.updated_at,
-            config.id,
-        ],
-    )?;
-    Ok(())
-}
-
-pub fn get_all_launch_configs(conn: &Connection) -> Result<Vec<LaunchConfig>, AppError> {
-    let mut stmt = conn.prepare(
-        "SELECT id, name, shell_type, model_path, args_json, description, created_at, updated_at FROM launch_configs ORDER BY updated_at DESC",
-    )?;
-
-    let configs = stmt.query_map([], |row| {
-        Ok(LaunchConfig {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            shell_type: row.get(2)?,
-            model_path: row.get(3)?,
-            args_json: row.get(4)?,
-            description: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-        })
-    })?;
-
-    Ok(configs.collect::<Result<Vec<_>, rusqlite::Error>>()?)
-}
-
-pub fn delete_launch_config_by_id(conn: &Connection, id: &str) -> Result<bool, AppError> {
-    let rows = conn.execute("DELETE FROM launch_configs WHERE id = ?1", params![id])?;
-    Ok(rows > 0)
-}
-
-pub fn launch_config_exists(conn: &Connection, id: &str) -> Result<bool, AppError> {
-    let exists: bool = conn.query_row(
-        "SELECT COUNT(*) > 0 FROM launch_configs WHERE id = ?1",
-        params![id],
-        |row| row.get(0),
-    )?;
-    Ok(exists)
 }
 
 // ─── Card Customizations ────────────────────────────────────────────────

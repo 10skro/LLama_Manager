@@ -6,7 +6,6 @@ mod db;
 mod download;
 mod file;
 mod github;
-mod launch_config;
 mod models;
 mod terminal;
 mod utils;
@@ -307,33 +306,37 @@ fn toggle_favorite_build(
 
 #[tauri::command]
 fn save_github_token(
+    state_db: tauri::State<'_, DbManager>,
     state_github: tauri::State<'_, GithubClient>,
     token: String,
 ) -> Result<(), String> {
     if token.is_empty() {
-        crate::config::credential::CredentialManager::delete_github_token()
-            .map_err(|e| e.to_string())?;
+        let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+        repo::delete_setting(&conn, "github_token").map_err(|e| e.to_string())?;
         state_github.set_token(None);
     } else {
-        crate::config::credential::CredentialManager::save_github_token(&token)
-            .map_err(|e| e.to_string())?;
+        let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+        repo::set_setting(&conn, "github_token", &token).map_err(|e| e.to_string())?;
         state_github.set_token(Some(token));
     }
     Ok(())
 }
 
 #[tauri::command]
-fn has_github_token() -> Result<bool, String> {
-    crate::config::credential::CredentialManager::has_github_token()
-        .map_err(|e| e.to_string())
+fn has_github_token(
+    state_db: tauri::State<'_, DbManager>,
+) -> Result<bool, String> {
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    Ok(repo::get_setting(&conn, "github_token").map_err(|e| e.to_string())?.is_some())
 }
 
 #[tauri::command]
 fn delete_github_token(
+    state_db: tauri::State<'_, DbManager>,
     state_github: tauri::State<'_, GithubClient>,
 ) -> Result<(), String> {
-    crate::config::credential::CredentialManager::delete_github_token()
-        .map_err(|e| e.to_string())?;
+    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
+    repo::delete_setting(&conn, "github_token").map_err(|e| e.to_string())?;
     state_github.set_token(None);
     Ok(())
 }
@@ -469,31 +472,6 @@ fn validate_folder(path: String) -> Result<bool, String> {
         return Err(format!("Path is not a directory: {}", path));
     }
     Ok(true)
-}
-
-// ─── Launch Config Commands ──────────────────────────────────────────────
-
-#[tauri::command]
-fn save_launch_config(
-    state_db: tauri::State<'_, DbManager>,
-    config: serde_json::Value,
-) -> Result<String, String> {
-    launch_config::save_launch_config(&state_db, config).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn get_launch_configs(
-    state_db: tauri::State<'_, DbManager>,
-) -> Result<Vec<serde_json::Value>, String> {
-    launch_config::get_launch_configs(&state_db).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn delete_launch_config(
-    state_db: tauri::State<'_, DbManager>,
-    id: String,
-) -> Result<bool, String> {
-    launch_config::delete_launch_config(&state_db, &id).map_err(|e| e.to_string())
 }
 
 // ─── Card Customization Commands ────────────────────────────────────────
@@ -675,9 +653,11 @@ pub fn run_tauri_app() {
             // Initialize default settings
             SettingsManager::init_defaults(&db).map_err(|e| e.to_string())?;
 
-            // Load GitHub token from secure keyring (not from settings DB)
-            let github_token = crate::config::credential::CredentialManager::get_github_token()
-                .map_err(|e| e.to_string())?;
+            // Load GitHub token from DB settings table
+            let github_token = {
+                let conn = db.lock_conn().ok();
+                conn.and_then(|c| repo::get_setting(&c, "github_token").ok().flatten())
+            };
 
             // Load persisted ETag from DB for conditional requests on startup
             let persisted_etag = {
@@ -736,9 +716,6 @@ pub fn run_tauri_app() {
             get_app_version,
             get_storage_usage,
             scan_model_files,
-            save_launch_config,
-            get_launch_configs,
-            delete_launch_config,
             get_card_customizations,
             save_card_customization,
             delete_card_customization,

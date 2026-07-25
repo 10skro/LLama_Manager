@@ -41,7 +41,7 @@ export function useVersionConfigLinks() {
     return links[versionId] ?? null;
   }, [links]);
 
-  const setLink = useCallback(async (versionId: number, configType: 'launch' | 'custom', configId: string) => {
+  const setLink = useCallback(async (versionId: number, configType: 'custom', configId: string) => {
     try {
       await saveVersionConfigLink(versionId, configType, configId);
       setLinks(prev => ({

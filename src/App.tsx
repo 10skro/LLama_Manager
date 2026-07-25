@@ -10,6 +10,8 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ConfigsPage } from './pages/ConfigsPage';
 import { fetchBuilds, getCatalogLastFetched } from './services/github';
 import { getSettings } from './services/settings';
+
+import { getCustomCommands } from './services/customCommand';
 import { getThemeById, DEFAULT_THEME_ID } from './themes';
 import { DEFAULT_FONT_FAMILY } from './fonts';
 import { useAppStore } from './store/useAppStore';
@@ -29,7 +31,6 @@ function App() {
         const merged: AppSettings = {
           storage_path: settings.storage_path ?? '',
           theme: settings.theme ?? DEFAULT_THEME_ID,
-          last_fetch: settings.last_fetch,
           auto_check_updates: settings.auto_check_updates ?? true,
           toast_duration: settings.toast_duration ?? 5000,
           font_family: settings.font_family,
@@ -53,6 +54,19 @@ function App() {
     };
 
     loadSettingsAndTheme();
+  }, []);
+
+  // Load custom commands into the store on startup
+  useEffect(() => {
+    const loadConfigs = async () => {
+      try {
+        const customCommands = await getCustomCommands().catch(() => []);
+        useAppStore.getState().setCustomCommands(customCommands);
+      } catch (err) {
+        console.error('Failed to load configs on startup:', err);
+      }
+    };
+    loadConfigs();
   }, []);
 
   // Intelligent startup check: always verify with GitHub via ETag

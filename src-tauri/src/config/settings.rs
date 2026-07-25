@@ -20,8 +20,6 @@ impl SettingsManager {
 
         let theme = map.remove("theme").unwrap_or_else(|| "dark".to_string());
 
-        let last_fetch = map.remove("last_fetch");
-
         let auto_check_str = map
             .remove("auto_check_updates")
             .unwrap_or_else(|| "true".to_string());
@@ -41,7 +39,6 @@ impl SettingsManager {
         Ok(AppSettings {
             storage_path,
             theme,
-            last_fetch,
             auto_check_updates,
             font_family,
             toast_duration,
@@ -55,11 +52,6 @@ impl SettingsManager {
         let conn = db.lock_conn()?;
         repo::set_setting(&conn, "storage_path", &settings.storage_path)?;
         repo::set_setting(&conn, "theme", &settings.theme)?;
-        repo::set_setting(
-            &conn,
-            "last_fetch",
-            &settings.last_fetch.clone().unwrap_or_default(),
-        )?;
         repo::set_setting(
             &conn,
             "auto_check_updates",

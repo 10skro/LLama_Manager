@@ -3,8 +3,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/hooks/use-toast';
-import { getSettings, saveSettings, selectFolder, changeStoragePath } from '@/services/settings';
+import { getSettings, saveSettings, selectFolder } from '@/services/settings';
 import { saveGithubToken, hasGithubToken, deleteGithubToken } from '@/services/github-token';
+import { getCatalogLastFetched } from '@/services/github';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,24 +34,15 @@ export function SettingsPage() {
   const { activeTheme, setActiveTheme } = useTheme();
   const { toast } = useToast();
   const [showToken, setShowToken] = useState(false);
-  const [isBrowsing, setIsBrowsing] = useState(false);
-  const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   // Local state for GitHub token (NOT in settings store)
   const [githubToken, setGithubToken] = useState('');
   const [hasToken, setHasToken] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('...');
+  const [lastFetched, setLastFetched] = useState<string | null>(null);
 
-  // Persisted storage path — tracks the last successfully committed path
-  const [persistedStoragePath, setPersistedStoragePath] = useState(() => settings?.storage_path || '');
-
-  // Debounce timer for model_folder auto-save
-  const modelSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Debounce timer for mmproj_folder auto-save
-  const mmprojSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Debounce timer for mmproj_folder validation
   const mmprojValidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // mmproj_folder validation state
@@ -66,15 +58,14 @@ export function SettingsPage() {
     invoke<string>('get_app_version').then(v => setAppVersion(v)).catch(() => {});
   }, []);
 
+  // Load last fetched timestamp on mount
+  useEffect(() => {
+    getCatalogLastFetched().then(ts => setLastFetched(ts)).catch(() => {});
+  }, []);
+
   // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
-      if (modelSaveTimerRef.current) {
-        clearTimeout(modelSaveTimerRef.current);
-      }
-      if (mmprojSaveTimerRef.current) {
-        clearTimeout(mmprojSaveTimerRef.current);
-      }
       if (mmprojValidateTimerRef.current) {
         clearTimeout(mmprojValidateTimerRef.current);
       }
@@ -88,6 +79,7 @@ export function SettingsPage() {
     try {
       await saveGithubToken(githubToken.trim());
       setHasToken(true);
+      setGithubToken('');
       toast({ title: 'Token saved', description: 'GitHub token saved securely.' });
     } catch (err) {
       toast({ title: 'Save failed', description: String(err), variant: 'destructive' });
@@ -114,8 +106,6 @@ export function SettingsPage() {
     try {
       const s = await getSettings();
       setSettings(s);
-      setPersistedStoragePath(s.storage_path || '');
-
       // Sync theme on settings load
       if (s.theme) {
         const theme = getThemeById(s.theme);
@@ -132,61 +122,6 @@ export function SettingsPage() {
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     if (!settings) return;
     setSettings({ ...settings, [key]: value });
-  };
-
-  const handleBrowse = async () => {
-    setIsBrowsing(true);
-    setError(null);
-    try {
-      const selected = await selectFolder();
-      if (selected) {
-        const oldPath = persistedStoragePath;
-        await changeStoragePath(oldPath, selected);
-        updateSetting('storage_path', selected);
-        setPersistedStoragePath(selected);
-        toast({
-          title: 'Storage path updated',
-          description: `Files migrated to ${selected}`,
-        });
-      }
-    } catch (err) {
-      console.error('Failed to change storage path:', err);
-      setError(String(err));
-      toast({
-        title: 'Migration failed',
-        description: String(err),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsBrowsing(false);
-    }
-  };
-
-  const handleApplyStoragePath = async () => {
-    const newPath = settings?.storage_path || '';
-    if (!newPath.trim()) return;
-
-    setIsApplying(true);
-    setError(null);
-    try {
-      const oldPath = persistedStoragePath;
-      await changeStoragePath(oldPath, newPath.trim());
-      setPersistedStoragePath(newPath.trim());
-      toast({
-        title: 'Storage path updated',
-        description: `Files migrated to ${newPath.trim()}`,
-      });
-    } catch (err) {
-      console.error('Failed to change storage path:', err);
-      setError(String(err));
-      toast({
-        title: 'Migration failed',
-        description: String(err),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsApplying(false);
-    }
   };
 
   return (
@@ -213,12 +148,13 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* Storage Path */}
+      {/* Storage Path — WIP */}
       <Card className="border-border/50 bg-card/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HardDrive className="h-5 w-5" />
             Storage
+            <Badge variant="outline" className="ml-auto text-amber-500 border-amber-500/30 bg-amber-500/10 text-xs">WIP</Badge>
           </CardTitle>
           <CardDescription>
             Manage where llama.cpp versions are stored.
@@ -226,39 +162,32 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Storage Path</Label>
+            <Label className="flex items-center gap-2">
+              Storage Path
+              <Badge variant="outline" className="text-amber-500 border-amber-500/30 bg-amber-500/10 text-xs">WIP</Badge>
+            </Label>
             <div className="flex gap-2">
               <Input
                 value={settings?.storage_path || ''}
-                onChange={e => updateSetting('storage_path', e.target.value)}
                 placeholder="Default: %LOCALAPPDATA%\llama-manager"
                 className="bg-background/50 font-mono text-sm"
+                disabled
               />
               <Button
                 variant="outline"
                 size="icon"
-                title="Browse for folder"
-                onClick={handleBrowse}
-                disabled={isBrowsing || isApplying}
+                title="Browse for folder (coming soon)"
+                disabled
               >
-                {isBrowsing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FolderOpen className="h-4 w-4" />
-                )}
+                <FolderOpen className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                title="Apply typed path"
-                onClick={handleApplyStoragePath}
-                disabled={isApplying || (settings?.storage_path || '').trim().length === 0}
+                title="Apply typed path (coming soon)"
+                disabled
               >
-                {isApplying ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
+                <Save className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -285,20 +214,6 @@ export function SettingsPage() {
                 onChange={e => {
                   const val = e.target.value;
                   updateSetting('model_folder', val || undefined);
-                  // Debounced auto-save
-                  if (modelSaveTimerRef.current) {
-                    clearTimeout(modelSaveTimerRef.current);
-                  }
-                  modelSaveTimerRef.current = setTimeout(async () => {
-                    if (settings) {
-                      const updated = { ...settings, model_folder: val || undefined };
-                      try {
-                        await saveSettings(updated);
-                      } catch (err) {
-                        console.error('Failed to save model_folder:', err);
-                      }
-                    }
-                  }, 800);
                 }}
                 placeholder="Select a folder containing .gguf files"
                 className="bg-background/50 font-mono text-sm"
@@ -374,20 +289,6 @@ export function SettingsPage() {
                 onChange={e => {
                   const val = e.target.value;
                   updateSetting('mmproj_folder', val || undefined);
-                  // Debounced auto-save
-                  if (mmprojSaveTimerRef.current) {
-                    clearTimeout(mmprojSaveTimerRef.current);
-                  }
-                  mmprojSaveTimerRef.current = setTimeout(async () => {
-                    if (settings) {
-                      const updated = { ...settings, mmproj_folder: val || undefined };
-                      try {
-                        await saveSettings(updated);
-                      } catch (err) {
-                        console.error('Failed to save mmproj_folder:', err);
-                      }
-                    }
-                  }, 800);
                   // Debounced folder validation
                   if (mmprojValidateTimerRef.current) {
                     clearTimeout(mmprojValidateTimerRef.current);
@@ -557,8 +458,6 @@ export function SettingsPage() {
                     style={{ fontFamily: font.cssFamily }}
                     onClick={() => {
                       updateSetting('font_family', font.cssFamily);
-                      // Apply font instantly
-                      document.documentElement.style.setProperty('--custom-font', font.cssFamily);
                       // Auto-save font choice (fire-and-forget)
                       if (settings) {
                         saveSettings({ ...settings, font_family: font.cssFamily }).catch(err => {
@@ -600,7 +499,10 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <div>
-              <Label>Auto-check for updates</Label>
+              <div className="flex items-center gap-2">
+                <Label>Auto-check for updates</Label>
+                <Badge variant="outline" className="text-[10px] font-normal bg-amber-500/10 text-amber-400 border-amber-500/30">WIP</Badge>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Automatically check for new builds on startup.
               </p>
@@ -608,25 +510,8 @@ export function SettingsPage() {
             <Button
               variant={settings?.auto_check_updates ? 'default' : 'outline'}
               size="sm"
-              onClick={() => {
-                const newValue = !settings?.auto_check_updates;
-                updateSetting('auto_check_updates', newValue);
-                toast({
-                  title: 'Auto-check updated',
-                  description: newValue ? 'Will check for updates on startup.' : 'Startup update check disabled.',
-                });
-                // Auto-save (fire-and-forget)
-                if (settings) {
-                  saveSettings({ ...settings, auto_check_updates: newValue }).catch(err => {
-                    console.error('Failed to auto-save auto_check_updates:', err);
-                    toast({
-                      title: 'Save failed',
-                      description: 'Could not persist setting. Changes will be lost on restart.',
-                      variant: 'destructive',
-                    });
-                  });
-                }
-              }}
+              disabled
+              title="Feature coming soon"
             >
               {settings?.auto_check_updates ? 'On' : 'Off'}
             </Button>
@@ -636,10 +521,13 @@ export function SettingsPage() {
 
           <div className="flex items-center gap-4">
             <div>
-              <Label>Last checked</Label>
+              <div className="flex items-center gap-2">
+                <Label>Last checked</Label>
+                <Badge variant="outline" className="text-[10px] font-normal bg-amber-500/10 text-amber-400 border-amber-500/30">WIP</Badge>
+              </div>
             </div>
             <Badge variant="outline" className="font-mono text-xs">
-              {settings?.last_fetch ? new Date(settings.last_fetch).toLocaleString() : 'Never'}
+              {lastFetched ? new Date(lastFetched).toLocaleString() : 'Never'}
             </Badge>
           </div>
 
@@ -778,7 +666,7 @@ export function SettingsPage() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Your token is stored securely in the Windows Credential Manager and only used for GitHub API requests.
+                    Your token is stored locally and only used for GitHub API requests.
                     Create a token at{' '}
                     <a
                       href="https://github.com/settings/tokens"

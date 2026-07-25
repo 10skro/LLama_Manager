@@ -7,7 +7,7 @@ export async function getVersionConfigLink(versionId: number): Promise<VersionCo
 
 export async function saveVersionConfigLink(
   versionId: number,
-  configType: 'launch' | 'custom',
+  configType: 'custom',
   configId: string,
 ): Promise<number> {
   return invoke<number>('save_version_config_link', {

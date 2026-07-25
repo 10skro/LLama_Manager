@@ -20,13 +20,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { LaunchConfigModal } from '@/components/LaunchConfig';
 import { CustomCommandModal } from '@/components/CustomCommand';
 import { VersionCard } from '@/components/Dashboard/VersionCard';
 import {
   Package, Trash2,
   Loader2,
-  HardDrive, Cpu, Plus, FileText,
+  HardDrive, Cpu, Plus,
   Terminal,
 } from 'lucide-react';
 
@@ -42,7 +41,6 @@ export function DashboardPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isLaunchConfigOpen, setIsLaunchConfigOpen] = useState(false);
   const [isCustomCommandOpen, setIsCustomCommandOpen] = useState(false);
   // Card customizations per version (versionId -> customization)
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
@@ -173,10 +171,6 @@ export function DashboardPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsLaunchConfigOpen(true)}>
-              <FileText className="h-4 w-4" />
-              Build Config
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setIsCustomCommandOpen(true)}>
               <Terminal className="h-4 w-4" />
               Create Custom Command
@@ -321,12 +315,6 @@ export function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Launch Config Modal */}
-      <LaunchConfigModal
-        open={isLaunchConfigOpen}
-        onOpenChange={setIsLaunchConfigOpen}
-      />
 
       {/* Custom Command Modal */}
       <CustomCommandModal

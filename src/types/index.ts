@@ -52,7 +52,6 @@ export interface DownloadProgress {
 export interface AppSettings {
   storage_path: string;
   theme: string; // Was: 'dark' | 'light' | 'system' - now flexible for named themes
-  last_fetch?: string;
   auto_check_updates: boolean;
   toast_duration?: number; // milliseconds, default 5000
   font_family?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
@@ -78,24 +77,6 @@ export interface BuildFilters {
   sortOrder: 'asc' | 'desc';
   favoritesOnly: boolean;
   installedOnly: boolean;
-}
-
-// Launch configuration argument (ordered, references LlamaCppArg.flag)
-export interface LaunchConfigArg {
-  argKey: string;    // references LlamaCppArg.flag
-  value: string;
-}
-
-// Full launch configuration
-export interface LaunchConfig {
-  id: string;
-  name: string;
-  shellType: 'cmd' | 'powershell';
-  modelPath: string;
-  args: LaunchConfigArg[];
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 // Model file discovered by scanning
@@ -126,20 +107,19 @@ export interface CustomCommand {
 
 // Unified config entry for the Configs page
 export type ConfigEntry = {
-  type: 'launch' | 'custom';
+  type: 'custom';
   id: string;
   name: string;
   description?: string;
   createdAt: string;
   updatedAt: string;
-  // Command string (from both LaunchConfig and CustomCommand)
   command?: string;
 };
 
 // Link between an installed version and a configuration
 export interface VersionConfigLink {
   version_id: number;
-  config_type: 'launch' | 'custom';
+  config_type: 'custom';
   config_id: string;
 }
 
