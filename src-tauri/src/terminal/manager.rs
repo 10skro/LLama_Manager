@@ -21,6 +21,15 @@ impl ConptyProcess {
 pub struct TerminalSession {
     pub process: ConptyProcess,
     pub config_id: String,
+    pub version_id: i64,
+}
+
+/// Public info about an active terminal session (serializable to frontend).
+#[derive(Clone, serde::Serialize)]
+pub struct ActiveTerminalInfo {
+    pub session_id: String,
+    pub config_id: String,
+    pub version_id: i64,
 }
 
 /// Terminal manager that tracks active terminal sessions.
@@ -41,6 +50,7 @@ impl TerminalManager {
         &self,
         app: tauri::AppHandle,
         config_id: String,
+        version_id: i64,
         working_dir: String,
         startup_command: Option<String>,
     ) -> Result<String, String> {
@@ -53,7 +63,8 @@ impl TerminalManager {
             "cmd /K".to_string()
         };
 
-        log::info!("[TERMINAL] Spawning ConPTY: {} in {}", cmd_str, working_dir);
+        log::info!("[TERMINAL] Spawning ConPTY: version_id={} | config_id={} | cmd={} | dir={} | sessions_before={}",
+            version_id, config_id, cmd_str, working_dir, self.session_count());
 
         // Spawn process using ConPTY
         let process = conpty::ProcAttr::cmd(cmd_str)
@@ -62,18 +73,21 @@ impl TerminalManager {
             .map_err(|e| format!("Failed to spawn ConPTY process: {}", e))?;
 
         let pid = process.pid();
-        log::info!("[TERMINAL] Process spawned with pid={}", pid);
+        log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}", session_id, pid, version_id, config_id);
 
         // Store session
         let session = TerminalSession {
             process: ConptyProcess(process),
             config_id: config_id.clone(),
+            version_id,
         };
 
         self.sessions
             .lock()
             .map_err(|e| format!("Mutex poisoned: {}", e))?
             .insert(session_id.clone(), session);
+
+        log::info!("[TERMINAL] sessions_after={}", self.session_count());
 
         // Spawn output reader task
         let app_handle = app.clone();
@@ -189,6 +203,41 @@ impl TerminalManager {
         match self.sessions.lock() {
             Ok(sessions) => sessions.len(),
             Err(_) => 0,
+        }
+    }
+
+    /// List all active terminal sessions.
+    pub fn list_active_sessions(&self) -> Vec<ActiveTerminalInfo> {
+        match self.sessions.lock() {
+            Ok(sessions) => sessions
+                .iter()
+                .map(|(session_id, session)| ActiveTerminalInfo {
+                    session_id: session_id.clone(),
+                    config_id: session.config_id.clone(),
+                    version_id: session.version_id,
+                })
+                .collect(),
+            Err(_) => Vec::new(),
+        }
+    }
+
+    /// Get the session ID for a given config_id.
+    /// Returns None if no active session for that config.
+    pub fn get_session_by_config_id(&self, config_id: &str) -> Option<String> {
+        match self.sessions.lock() {
+            Ok(sessions) => sessions
+                .iter()
+                .find(|(_, session)| session.config_id == config_id)
+                .map(|(session_id, _)| session_id.clone()),
+            Err(_) => None,
+        }
+    }
+
+    /// Check if a session is still alive (process hasn't exited).
+    pub fn is_session_alive(&self, session_id: &str) -> bool {
+        match self.sessions.lock() {
+            Ok(sessions) => sessions.contains_key(session_id),
+            Err(_) => false,
         }
     }
 }

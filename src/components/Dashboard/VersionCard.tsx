@@ -16,7 +16,7 @@ import {
 import {
   Package, Trash2, List,
   Terminal, SlidersHorizontal, Pencil,
-  Play,
+  Play, Square,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
@@ -90,7 +90,7 @@ export function VersionCard({
   const { toast } = useToast();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
 
-  const { handlePlay, hasConfig } = useTerminalLaunch({
+  const { handleToggle, isRunning, hasConfig } = useTerminalLaunch({
     version,
     configLink,
     configs,
@@ -341,6 +341,16 @@ export function VersionCard({
         </div>
       )}
 
+      {/* Running Badge */}
+      {isRunning && (
+        <div className="px-3 pb-1">
+          <Badge variant="outline" className="border-green/30 text-green text-xs gap-1 items-center">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
+            Running
+          </Badge>
+        </div>
+      )}
+
       <CardHeader className="pb-3 pt-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
@@ -424,16 +434,25 @@ export function VersionCard({
 
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant={isRunning ? "destructive" : "outline"}
             size="sm"
-            className="flex-1 gap-2"
-            onClick={handlePlay}
+            className={`flex-1 gap-2 ${isRunning ? '' : ''}`}
+            onClick={handleToggle}
             disabled={!hasConfig}
-            aria-label={hasConfig ? 'Run configuration in terminal' : 'Link a configuration first to enable Play'}
-            title={hasConfig ? 'Run configuration in terminal' : 'Link a configuration first to enable Play'}
+            aria-label={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
+            title={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
           >
-            <Play className="h-4 w-4" />
-            Play
+            {isRunning ? (
+              <>
+                <Square className="h-4 w-4" />
+                Stop
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                Play
+              </>
+            )}
           </Button>
           <Button
             variant="outline"

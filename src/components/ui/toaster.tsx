@@ -1,3 +1,4 @@
+import * as Portal from '@radix-ui/react-portal';
 import { useToast } from '@/hooks/use-toast';
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '@/components/ui/toast';
 
@@ -20,7 +21,9 @@ export function Toaster() {
           </Toast>
         );
       })}
-      <ToastViewport />
+      <Portal.Root>
+        <ToastViewport />
+      </Portal.Root>
     </ToastProvider>
   );
 }

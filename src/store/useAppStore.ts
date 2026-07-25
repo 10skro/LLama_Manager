@@ -56,6 +56,16 @@ interface AppState {
   setActiveTerminalId: (id: string | null) => void;
   toggleTerminal: () => void;
   resetTerminal: () => void;
+
+  // Running terminals tracking (version_id -> session_id)
+  // Each version card gets its own independent session, even if sharing the same config.
+  runningTerminals: Record<number, string>;
+  setRunningTerminal: (versionId: number, sessionId: string) => void;
+  removeRunningTerminal: (versionId: number) => void;
+  removeRunningTerminalBySessionId: (sessionId: string) => void;
+  isTerminalRunning: (versionId: number) => boolean;
+  getRunningSessionId: (versionId: number) => string | undefined;
+  syncRunningTerminals: (sessions: { sessionId: string; versionId: number }[]) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -180,5 +190,63 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleTerminal: () =>
     set((state) => ({ terminalVisible: !state.terminalVisible })),
   resetTerminal: () =>
-    set({ terminalVisible: false, activeTerminalId: null }),
+    set((state) => {
+      // Also remove from runningTerminals if the exiting session was tracked
+      const next = { ...state.runningTerminals };
+      if (state.activeTerminalId) {
+        // Find and remove the version_id that maps to this session_id
+        for (const [versionIdStr, sessionId] of Object.entries(next)) {
+          if (sessionId === state.activeTerminalId) {
+            delete next[Number(versionIdStr)];
+            break;
+          }
+        }
+      }
+      return { terminalVisible: false, activeTerminalId: null, runningTerminals: next };
+    }),
+
+  // Running terminals tracking (version_id -> session_id)
+  runningTerminals: {},
+  setRunningTerminal: (versionId, sessionId) =>
+    set((state) => ({
+      runningTerminals: { ...state.runningTerminals, [versionId]: sessionId },
+    })),
+  removeRunningTerminal: (versionId) =>
+    set((state) => {
+      const next = { ...state.runningTerminals };
+      delete next[versionId];
+      return { runningTerminals: next };
+    }),
+  removeRunningTerminalBySessionId: (sessionId) =>
+    set((state) => {
+      const next = { ...state.runningTerminals };
+      for (const [versionIdStr, sid] of Object.entries(next)) {
+        if (sid === sessionId) {
+          delete next[Number(versionIdStr)];
+          break;
+        }
+      }
+      return { runningTerminals: next };
+    }),
+  isTerminalRunning: () => false, // computed in getter below
+  getRunningSessionId: () => undefined, // computed in getter below
+  syncRunningTerminals: (sessions) =>
+    set(() => {
+      const map: Record<number, string> = {};
+      for (const s of sessions) {
+        map[s.versionId] = s.sessionId;
+      }
+      return { runningTerminals: map };
+    }),
 }));
+
+// Computed helpers (use directly in components)
+export function useIsTerminalRunning(versionId: number): boolean {
+  const runningTerminals = useAppStore((s) => s.runningTerminals);
+  return versionId in runningTerminals;
+}
+
+export function useGetRunningSessionId(versionId: number): string | undefined {
+  const runningTerminals = useAppStore((s) => s.runningTerminals);
+  return runningTerminals[versionId];
+}

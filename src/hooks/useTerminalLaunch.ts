@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore } from '@/store/useAppStore';
+import { useAppStore, useGetRunningSessionId } from '@/store/useAppStore';
 import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
 
 interface UseTerminalLaunchParams {
@@ -20,7 +20,14 @@ export function useTerminalLaunch({
 }: UseTerminalLaunchParams) {
   const setTerminalVisible = useAppStore((state) => state.setTerminalVisible);
   const setActiveTerminalId = useAppStore((state) => state.setActiveTerminalId);
+  const setRunningTerminal = useAppStore((state) => state.setRunningTerminal);
   const injectingRef = useRef(false);
+
+  // Check if this version's terminal is currently running
+  // IMPORTANT: Hook must be called unconditionally (Rules of Hooks)
+  // Tracking by version_id so multiple cards with the SAME config can run independently
+  const runningSessionId = useGetRunningSessionId(version.id);
+  const isRunning = !!runningSessionId && configLink !== null;
 
   const handlePlay = useCallback(async () => {
     // Guard: no config link or already injecting
@@ -29,10 +36,8 @@ export function useTerminalLaunch({
     const installPath = version.install_path;
 
     // Validate config exists BEFORE setting injectingRef
-    // Use fresh configs from useConfigs() instead of stale Zustand store
     const config = configs.find((c) => c.type === configLink.config_type && c.id === configLink.config_id);
     if (!config) {
-      console.error('Config not found:', configLink.config_id);
       onError?.('Linked configuration not found. It may have been deleted.');
       return;
     }
@@ -43,7 +48,6 @@ export function useTerminalLaunch({
     const fullCommand = needsPrefix
       ? `llama-server.exe ${startupCommand}`
       : startupCommand;
-    console.log('[PLAY] Config found:', config.name, 'Full command:', fullCommand);
 
     // Only set injectingRef after validation passes
     injectingRef.current = true;
@@ -74,28 +78,89 @@ export function useTerminalLaunch({
         }
       }
 
-      console.log('[PLAY] Spawning terminal with command:', singleLine);
-
       const sessionId = await invoke<string>('spawn_terminal', {
         configId: configLink.config_id,
+        versionId: version.id,
         workingDir: installPath,
         startupCommand: singleLine || null,
       });
 
+      // Track this running terminal by version_id (not config_id!)
+      // so multiple cards sharing the same config can run independently
+      setRunningTerminal(version.id, sessionId);
       setActiveTerminalId(sessionId);
       setTerminalVisible(true);
     } catch (err) {
-      console.error('Failed to spawn terminal:', err);
       onError?.(`Failed to spawn terminal: ${String(err)}`);
     } finally {
       injectingRef.current = false;
     }
-  }, [version, configLink, configs, override, setActiveTerminalId, setTerminalVisible, onError]);
+  }, [version, configLink, configs, override, setActiveTerminalId, setTerminalVisible, setRunningTerminal, onError]);
+
+  const handleStop = useCallback(async () => {
+    if (!configLink || injectingRef.current) return;
+    // Read current state at call time to avoid stale closure
+    // Track by version_id so each card is independent
+    const sessionId = useAppStore.getState().runningTerminals[version.id];
+    if (!sessionId) return;
+
+    injectingRef.current = true;
+    try {
+      await invoke<string>('kill_terminal', {
+        sessionId: sessionId,
+      });
+
+      // Remove from running terminals tracking by version_id
+      useAppStore.getState().removeRunningTerminal(version.id);
+
+      // If the killed session was the active terminal, reset the panel
+      const currentActive = useAppStore.getState().activeTerminalId;
+      if (currentActive === sessionId) {
+        useAppStore.getState().resetTerminal();
+      }
+    } catch (err) {
+      onError?.(`Failed to stop server: ${String(err)}`);
+    } finally {
+      injectingRef.current = false;
+    }
+  }, [configLink, onError]);
+
+  // Toggle: if running → stop, else → start
+  // Read current state at call time to avoid stale closure issues
+  const handleToggle = useCallback(async () => {
+    if (!configLink || injectingRef.current) return;
+    // Track by version_id so each card is independent
+    const currentSessionId = useAppStore.getState().runningTerminals[version.id];
+    if (currentSessionId) {
+      // Currently running → stop
+      injectingRef.current = true;
+      try {
+        await invoke<string>('kill_terminal', {
+          sessionId: currentSessionId,
+        });
+        useAppStore.getState().removeRunningTerminal(version.id);
+        const activeId = useAppStore.getState().activeTerminalId;
+        if (activeId === currentSessionId) {
+          useAppStore.getState().resetTerminal();
+        }
+      } catch (err) {
+        onError?.(`Failed to stop server: ${String(err)}`);
+      } finally {
+        injectingRef.current = false;
+      }
+    } else {
+      // Not running → play (reuse handlePlay)
+      await handlePlay();
+    }
+  }, [configLink, handlePlay, onError]);
 
   const hasConfig = configLink !== null;
 
   return {
     handlePlay,
+    handleStop,
+    handleToggle,
+    isRunning,
     hasConfig,
   };
 }

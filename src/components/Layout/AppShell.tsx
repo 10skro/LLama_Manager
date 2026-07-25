@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { DownloadPanel } from '@/components/Download/DownloadPanel';
@@ -11,6 +14,42 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { terminalVisible, activeTerminalId } = useAppStore();
+  const syncRunningTerminals = useAppStore((state) => state.syncRunningTerminals);
+  const removeRunningTerminalBySessionId = useAppStore((state) => state.removeRunningTerminalBySessionId);
+  const resetTerminal = useAppStore((state) => state.resetTerminal);
+
+  // On mount: sync running terminals from backend
+  useEffect(() => {
+    async function sync() {
+      try {
+        const sessions: { sessionId: string; versionId: number }[] = await invoke('list_active_terminals');
+        syncRunningTerminals(sessions);
+      } catch (err) {
+        console.error('Failed to sync running terminals:', err);
+      }
+    }
+    sync();
+  }, [syncRunningTerminals]);
+
+  // Global listener for terminal-exit events (handles background terminal exits)
+  useEffect(() => {
+    const unlisten = listen<string>('terminal-exit', (event) => {
+      const sessionId = event.payload;
+      console.log('[APP] terminal-exit event for session:', sessionId);
+
+      // Remove from running terminals tracking
+      removeRunningTerminalBySessionId(sessionId);
+
+      // If the exited session was the active terminal, reset the panel
+      if (activeTerminalId === sessionId) {
+        resetTerminal();
+      }
+    });
+
+    return () => {
+      unlisten.then((u) => u());
+    };
+  }, [activeTerminalId, removeRunningTerminalBySessionId, resetTerminal]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">

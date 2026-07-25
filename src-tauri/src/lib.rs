@@ -27,7 +27,7 @@ use crate::models::types::{
     AppError, AppSettings, Build, CardCustomization, DownloadProgress, FavoriteBuild, InstalledVersion,
     ModelFile, VersionConfigLink, VersionOverride,
 };
-use crate::terminal::manager::TerminalManager;
+use crate::terminal::manager::{TerminalManager, ActiveTerminalInfo};
 use crate::version::manager::VersionManager;
 
 const DEFAULT_RELEASE_LIMIT: usize = 50;
@@ -623,10 +623,11 @@ fn spawn_terminal(
     app: tauri::AppHandle,
     state_terminal: tauri::State<'_, TerminalManager>,
     config_id: String,
+    version_id: i64,
     working_dir: String,
     startup_command: Option<String>,
 ) -> Result<String, String> {
-    state_terminal.spawn(app, config_id, working_dir, startup_command)
+    state_terminal.spawn(app, config_id, version_id, working_dir, startup_command)
 }
 
 #[tauri::command]
@@ -644,6 +645,25 @@ fn kill_terminal(
     session_id: String,
 ) -> Result<String, String> {
     state_terminal.kill(&session_id)
+}
+
+/// List all active terminal sessions.
+/// Returns Vec<ActiveTerminalInfo> with session_id and config_id.
+#[tauri::command]
+fn list_active_terminals(
+    state_terminal: tauri::State<'_, TerminalManager>,
+) -> Vec<ActiveTerminalInfo> {
+    state_terminal.list_active_sessions()
+}
+
+/// Get the active terminal session for a given config_id.
+/// Returns the session_id if one exists, or null if not.
+#[tauri::command]
+fn get_terminal_by_config(
+    state_terminal: tauri::State<'_, TerminalManager>,
+    config_id: String,
+) -> Option<String> {
+    state_terminal.get_session_by_config_id(&config_id)
 }
 
 // ─── App Entry Point ───────────────────────────────────────────────────
@@ -751,6 +771,8 @@ pub fn run_tauri_app() {
             spawn_terminal,
             write_terminal_input,
             kill_terminal,
+            list_active_terminals,
+            get_terminal_by_config,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");
