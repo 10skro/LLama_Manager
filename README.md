@@ -36,7 +36,12 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
 
 ### From Source
 
-**Prerequisites:** Node.js 18+, Rust 1.70+, Git
+**Prerequisites:**
+
+- [Node.js 18+](https://nodejs.org/)
+- [Rust 1.77+](https://www.rust-lang.org/tools/install)
+- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Windows)
+- [Git](https://git-scm.com/)
 
 **PowerShell**
 
