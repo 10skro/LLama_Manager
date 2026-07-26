@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::Read;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use tauri::{Emitter, Manager};
 
@@ -147,15 +148,6 @@ impl TerminalManager {
         // Resize ConPTY to a reasonable size so cmd prompt output is captured properly
         let _ = process.resize(80, 30);
 
-        // DEBUG: write test string to verify ConPTY input/output works
-        {
-            use std::io::Write;
-            if let Ok(mut writer) = process.input() {
-                let _ = writer.write_all(b"echo CONPTY_TEST_OK\r\n");
-            }
-        }
-        std::thread::sleep(std::time::Duration::from_millis(500));
-
         let pid = process.pid();
         log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}", session_id, pid, version_id, config_id);
 
@@ -176,7 +168,10 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] sessions_after={}", self.session_count());
 
-        // Spawn output reader task
+        // Spawn output reader task using channel-based timeout approach.
+        // The conpty crate's PipeReader blocks on read() indefinitely.
+        // We use a worker thread for blocking reads + mpsc channel + recv_timeout
+        // so the main reader loop never blocks forever.
         let app_handle = app.clone();
         let sid = session_id.clone();
 
@@ -201,21 +196,40 @@ impl TerminalManager {
                 log::info!("{}", log_msg);
                 let _ = app_handle.emit("terminal-debug", log_msg);
 
-                let mut buf = [0u8; 4096];
+                // Channel for worker -> main reader communication
+                let (tx, rx) = std::sync::mpsc::channel();
+
+                // Worker thread: blocking reads on ConPTY output
+                std::thread::spawn(move || {
+                    let mut buf = [0u8; 4096];
+                    loop {
+                        match reader.read(&mut buf) {
+                            Ok(0) => break, // EOF
+                            Ok(n) => {
+                                let data = buf[..n].to_vec();
+                                if tx.send(Ok(data)).is_err() {
+                                    break; // receiver dropped
+                                }
+                            }
+                            Err(e) => {
+                                if tx.send(Err(e.to_string())).is_err() {
+                                    break;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                });
+
+                // Main reader loop: timeout-based receives from channel
                 let mut read_count: u64 = 0;
                 loop {
-                    match reader.read(&mut buf) {
-                        Ok(0) => {
-                            let log_msg = format!("[TERMINAL] ConPTY EOF for {} after {} reads", sid, read_count);
-                            log::info!("{}", log_msg);
-                            let _ = app_handle.emit("terminal-debug", log_msg);
-                            break;
-                        }
-                        Ok(n) => {
+                    match rx.recv_timeout(Duration::from_millis(200)) {
+                        Ok(Ok(data)) => {
                             read_count += 1;
-                            let text = String::from_utf8_lossy(&buf[..n]).to_string();
+                            let text = String::from_utf8_lossy(&data).to_string();
                             let preview = text.chars().take(120).collect::<String>();
-                            let log_msg = format!("[TERMINAL] ConPTY read #{}: {} bytes: {:?}", read_count, n, preview);
+                            let log_msg = format!("[TERMINAL] ConPTY read #{}: {} bytes: {:?}", read_count, data.len(), preview);
                             log::info!("{}", log_msg);
                             let _ = app_handle.emit("terminal-debug", log_msg.clone());
 
@@ -245,9 +259,29 @@ impl TerminalManager {
                                 }
                             }
                         }
-                        Err(e) => {
+                        Ok(Err(e)) => {
                             let log_msg = format!("[TERMINAL] ConPTY read error after {} reads: {}", read_count, e);
                             log::warn!("{}", log_msg);
+                            let _ = app_handle.emit("terminal-debug", log_msg);
+                            break;
+                        }
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                            // No data for 200ms - check if process is still alive
+                            let sessions = app_handle.state::<TerminalManager>();
+                            let alive = {
+                                let sess = sessions.sessions.lock().unwrap();
+                                sess.get(&sid).map(|s| s.process.is_alive()).unwrap_or(false)
+                            };
+                            if !alive {
+                                let log_msg = format!("[TERMINAL] ConPTY EOF for {} after {} reads", sid, read_count);
+                                log::info!("{}", log_msg);
+                                let _ = app_handle.emit("terminal-debug", log_msg);
+                                break;
+                            }
+                        }
+                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                            let log_msg = format!("[TERMINAL] ConPTY channel disconnected for {} after {} reads", sid, read_count);
+                            log::info!("{}", log_msg);
                             let _ = app_handle.emit("terminal-debug", log_msg);
                             break;
                         }
