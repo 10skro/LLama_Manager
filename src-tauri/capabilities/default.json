@@ -1,10 +1,11 @@
 {
   "identifier": "default",
-  "description": "Default capability for the main window - grants all required permissions",
-  "windows": ["main"],
+  "description": "Default capability for the main and terminal windows - grants all required permissions",
+  "windows": ["main", "terminal"],
   "permissions": [
     "core:default",
     "core:event:allow-listen",
+    "core:webview:allow-internal-toggle-devtools",
     "shell:allow-open",
     "fs:default",
     "dialog:default",

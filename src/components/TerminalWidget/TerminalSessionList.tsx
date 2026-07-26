@@ -36,7 +36,7 @@ export function TerminalSessionList({ sessions, selectedId, onSelect }: Terminal
                 : 'text-white/60 hover:bg-white/5 hover:text-white/80'
             }`}
           >
-            <span className="text-xs font-mono truncate">{session.sessionId.slice(0, 8)}</span>
+            <span className="text-xs font-mono truncate">{session.sessionId ? session.sessionId.slice(0, 8) : session.sessionId}</span>
             <span className="text-xs text-white/30 flex-shrink-0">v{session.versionId}</span>
           </button>
         ))}

@@ -66,6 +66,7 @@ pub struct TerminalSession {
 
 /// Public info about an active terminal session (serializable to frontend).
 #[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ActiveTerminalInfo {
     pub session_id: String,
     pub config_id: String,
