@@ -158,6 +158,16 @@ impl TerminalManager {
         } else {
             cmd.arg("/K");
         }
+
+        // On Windows, use CREATE_NO_WINDOW to prevent cmd.exe from
+        // spawning a visible console window (output goes to our pipes instead).
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+
         let child = cmd
             .current_dir(&working_dir)
             .stdout(Stdio::piped())
