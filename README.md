@@ -28,29 +28,25 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
 
 > **Windows only.** Llama Manager is a native Windows desktop application.
 
-### Quick Install
+### Installer
 
 1. Download the latest `.exe` installer from the [Releases](https://github.com/10skro/LLama_Manager/releases) page.
 2. Run the installer and follow the prompts.
 3. Launch **Llama Manager** from your Start menu or desktop.
 
-### PowerShell
+### Command Line (no installer)
+
+**PowerShell**
 
 ```powershell
-# Download the latest installer
 Invoke-WebRequest -Uri "https://github.com/10skro/LLama_Manager/releases/latest/download/Llama.Manager_x64-setup.exe" -OutFile "Llama.Manager-setup.exe"
-
-# Run the installer
 .\Llama.Manager-setup.exe
 ```
 
-### CMD
+**CMD**
 
 ```cmd
-:: Download the latest installer
 bitsadmin /transfer "LlamaManager" "https://github.com/10skro/LLama_Manager/releases/latest/download/Llama.Manager_x64-setup.exe" "%TEMP%\Llama.Manager-setup.exe"
-
-:: Run the installer
 %TEMP%\Llama.Manager-setup.exe
 ```
 
