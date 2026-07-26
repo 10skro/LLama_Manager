@@ -388,21 +388,28 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
     match updater.check().await {
         Ok(Some(update)) => {
             log::info!("Update available: {} (current: {})", update.version, app.package_info().version);
+            log::info!("Raw date from updater: {:?}", update.date);
+            log::info!("Raw body from updater: {:?}", update.body.as_ref().map(|b| b.as_str()));
+
             let date_str = update.date.map(|d| {
-                // Format: "2026-07-27 00:00"
-                let s = d.to_string(); // "2026-07-27T00:00:00.000000000+00:00:00"
-                if let Some(idx) = s.find('T') {
-                    let date_part = &s[..idx];
-                    let time_part = &s[idx+1..];
+                // Handle both ISO8601 ("2026-07-27T00:00:00...") and time crate format ("2026-07-27 0:00:00.0 +00:00:00")
+                let s = d.to_string();
+                // Split on 'T' or space to separate date from time
+                let parts: Vec<&str> = s.split(['T', ' ']).collect();
+                if parts.len() >= 2 {
+                    let date_part = parts[0];
+                    let time_part = parts[1];
+                    // Extract hours only (before first ':')
                     if let Some(colon) = time_part.find(':') {
                         format!("{} {}", date_part, &time_part[..colon])
                     } else {
-                        s
+                        format!("{} {}", date_part, time_part)
                     }
                 } else {
                     s
                 }
             });
+            log::info!("Formatted date: {:?}", date_str);
             Ok(serde_json::json!({
                 "available": true,
                 "version": update.version.to_string(),
