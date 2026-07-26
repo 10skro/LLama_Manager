@@ -388,7 +388,21 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
     match updater.check().await {
         Ok(Some(update)) => {
             log::info!("Update available: {} (current: {})", update.version, app.package_info().version);
-            let date_str = update.date.map(|d| d.to_string());
+            let date_str = update.date.map(|d| {
+                // Format: "2026-07-27 00:00"
+                let s = d.to_string(); // "2026-07-27T00:00:00.000000000+00:00:00"
+                if let Some(idx) = s.find('T') {
+                    let date_part = &s[..idx];
+                    let time_part = &s[idx+1..];
+                    if let Some(colon) = time_part.find(':') {
+                        format!("{} {}", date_part, &time_part[..colon])
+                    } else {
+                        s
+                    }
+                } else {
+                    s
+                }
+            });
             Ok(serde_json::json!({
                 "available": true,
                 "version": update.version.to_string(),
