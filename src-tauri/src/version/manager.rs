@@ -35,16 +35,14 @@ impl VersionManager {
         storage_base: PathBuf,
         progress_tx: mpsc::Sender<DownloadProgress>,
     ) -> Result<(i64, InstallPaths, oneshot::Receiver<DownloadResult>), AppError> {
-        // 1. Check if already installed
+        // 1. Check if already installed (any row with matching build/backend/arch)
         {
             let conn = db.lock_conn()?;
-            if let Some(existing) = repo::get_version_by_build(&conn, &build.build_number, &build.backend, &build.architecture)? {
-                if existing.status == "installed" {
-                    return Err(AppError::AlreadyInstalled(format!(
-                        "{} ({} {})",
-                        build.build_number, build.backend, build.architecture
-                    )));
-                }
+            if repo::version_build_exists(&conn, &build.build_number, &build.backend, &build.architecture)? {
+                return Err(AppError::AlreadyInstalled(format!(
+                    "{} ({} {})",
+                    build.build_number, build.backend, build.architecture
+                )));
             }
         }
 
@@ -229,7 +227,7 @@ impl VersionManager {
         Ok(InstalledVersion { id: version_id, ..version })
     }
 
-    /// Uninstall a version: delete files and DB record.
+    /// Uninstall a version: delete DB record and files (only if no other version shares the path).
     pub fn uninstall_version(db: &DbManager, version_id: i64) -> Result<(), AppError> {
         // 1. Get version from DB by ID (avoids loading the entire table)
         let version = {
@@ -241,8 +239,21 @@ impl VersionManager {
             AppError::NotFound(format!("Version with ID {} not found", version_id))
         })?;
 
-        // 2. Delete files from disk
-        FileManager::remove_version(&version.install_path)?;
+        // 2. Safe-delete: only remove files if this is the last version using this install_path
+        let should_delete_files = {
+            let conn = db.lock_conn()?;
+            let count = repo::count_versions_by_install_path(&conn, &version.install_path)?;
+            count <= 1 // Only this version uses the path
+        };
+
+        if should_delete_files {
+            FileManager::remove_version(&version.install_path)?;
+        } else {
+            log::info!(
+                "Skipping file deletion for version {} — install_path is shared by other versions",
+                version_id
+            );
+        }
 
         // 3. Remove from DB
         {
@@ -252,6 +263,61 @@ impl VersionManager {
         }
 
         Ok(())
+    }
+
+    /// Duplicate an installed version, creating an independent card that shares the same binary files.
+    /// If `with_settings` is true, also copies customization, config link, and override.
+    /// Returns the new version's ID.
+    pub fn duplicate_version(db: &DbManager, source_id: i64, with_settings: bool) -> Result<i64, AppError> {
+        let conn = db.lock_conn()?;
+
+        // 1. Get source version
+        let source = repo::get_version_by_id(&conn, source_id)?
+            .ok_or_else(|| AppError::NotFound(format!("Version with ID {} not found", source_id)))?;
+
+        // 2. Insert new version row (same build/backend/arch/path, new timestamp)
+        let new_version = InstalledVersion {
+            id: 0,
+            build_number: source.build_number.clone(),
+            backend: source.backend.clone(),
+            architecture: source.architecture.clone(),
+            install_path: source.install_path.clone(),
+            installed_at: chrono::Local::now().to_rfc3339(),
+            status: source.status.clone(),
+            download_id: None, // Clone doesn't have a download record
+        };
+
+        let new_id = repo::insert_version(&conn, &new_version)?;
+
+        if with_settings {
+            // 3a. Copy card customization
+            if let Ok(Some(custom)) = repo::get_card_customization_by_version_id(&conn, source_id) {
+                let new_custom = crate::models::types::CardCustomization {
+                    version_id: new_id,
+                    title: custom.title,
+                    header_color: custom.header_color,
+                    text_color: custom.text_color,
+                };
+                let _ = repo::upsert_card_customization(&conn, &new_custom);
+            }
+
+            // 3b. Copy version config link
+            if let Ok(Some(link)) = repo::get_version_config_link(&conn, source_id) {
+                let _ = repo::save_version_config_link(&conn, new_id, &link.config_type, &link.config_id);
+            }
+
+            // 3c. Copy version override
+            if let Ok(Some(override_val)) = repo::get_version_override(&conn, source_id) {
+                let _ = repo::save_version_override(
+                    &conn,
+                    new_id,
+                    override_val.model_path,
+                    override_val.mmproj_path,
+                );
+            }
+        }
+
+        Ok(new_id)
     }
 
     /// List all installed versions.

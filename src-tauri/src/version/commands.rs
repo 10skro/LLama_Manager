@@ -196,4 +196,15 @@ pub fn delete_version_override(
     repo::delete_version_override(&conn, version_id).map_err(|e| e.to_string())
 }
 
+/// Duplicate a version: creates an independent card sharing the same binary files.
+/// If `with_settings` is true, also copies customization, config link, and override.
+/// Returns the new version's ID.
+pub fn duplicate_version(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+    with_settings: bool,
+) -> Result<i64, String> {
+    VersionManager::duplicate_version(&state_db, version_id, with_settings).map_err(|e| e.to_string())
+}
+
 

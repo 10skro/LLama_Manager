@@ -97,6 +97,27 @@ pub fn get_version_by_id(conn: &Connection, id: i64) -> Result<Option<InstalledV
     }
 }
 
+/// Count how many installed versions share the same install_path.
+/// Used by safe-delete to avoid removing shared binary files.
+pub fn count_versions_by_install_path(conn: &Connection, install_path: &str) -> Result<i64, AppError> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM installed_versions WHERE install_path = ?1",
+        rusqlite::params![install_path],
+        |row| row.get(0),
+    )?;
+    Ok(count)
+}
+
+/// Check if any installed version matches the given build (for duplicate detection during install).
+pub fn version_build_exists(conn: &Connection, build: &str, backend: &str, architecture: &str) -> Result<bool, AppError> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM installed_versions WHERE build_number = ?1 AND backend = ?2 AND architecture = ?3",
+        rusqlite::params![build, backend, architecture],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
 // ─── Downloads ──────────────────────────────────────────────────────────
 
 pub fn insert_download(conn: &Connection, download: &DownloadRecord) -> Result<i64, AppError> {
@@ -362,6 +383,24 @@ pub fn toggle_favorite_build(conn: &mut Connection, build_number: &str, backend:
 }
 
 // ─── Card Customizations ────────────────────────────────────────────────
+
+pub fn get_card_customization_by_version_id(conn: &Connection, version_id: i64) -> Result<Option<CardCustomization>, AppError> {
+    let mut stmt = conn.prepare(
+        "SELECT version_id, title, header_color, text_color FROM card_customizations WHERE version_id = ?1",
+    )?;
+
+    let mut rows = stmt.query(rusqlite::params![version_id])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(CardCustomization {
+            version_id: row.get(0)?,
+            title: row.get(1)?,
+            header_color: row.get(2)?,
+            text_color: row.get(3)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
 
 pub fn get_all_card_customizations(conn: &Connection) -> Result<Vec<CardCustomization>, AppError> {
     let mut stmt = conn.prepare(

@@ -16,7 +16,7 @@ import {
 import {
   Package, Trash2, List,
   Terminal, SlidersHorizontal, Pencil,
-  Play, Square,
+  Play, Square, Settings, Copy, CopyCheck,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
@@ -41,6 +41,7 @@ interface VersionCardProps {
   customization?: CardCustomization;
   onCustomizationChange: (versionId: number, customization?: CardCustomization) => void;
   onDeleteClick: (versionId: number) => void;
+  onDuplicateClick: (versionId: number, withSettings: boolean) => void;
   // Shared state for editing dropdown (only one card can edit at a time)
   editingDropdownId: number | null;
   onEditingDropdownChange: (id: number | null) => void;
@@ -69,6 +70,7 @@ export function VersionCard({
   customization,
   onCustomizationChange,
   onDeleteClick,
+  onDuplicateClick,
   editingDropdownId,
   onEditingDropdownChange,
   tempTitle,
@@ -454,14 +456,38 @@ export function VersionCard({
               </>
             )}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 text-red hover:text-red/80 hover:bg-red/10 border-red/20"
-            onClick={() => onDeleteClick(version.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                title="Actions"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onDuplicateClick(version.id, false)}>
+                <Copy className="h-4 w-4" />
+                <span>Clone</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicateClick(version.id, true)}>
+                <CopyCheck className="h-4 w-4" />
+                <span>Clone with Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red focus:text-red focus:bg-red/10"
+                onClick={() => onDeleteClick(version.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
 

@@ -49,9 +49,11 @@ impl DbManager {
                 installed_at TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'installed' CHECK(status IN ('installed', 'corrupt', 'pending')),
                 download_id INTEGER,
-                FOREIGN KEY (download_id) REFERENCES downloads(id),
-                UNIQUE(build_number, backend, architecture)
+                FOREIGN KEY (download_id) REFERENCES downloads(id)
             );
+
+            CREATE INDEX IF NOT EXISTS idx_installed_versions_build
+            ON installed_versions(build_number, backend, architecture);
 
             CREATE TABLE IF NOT EXISTS downloads (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

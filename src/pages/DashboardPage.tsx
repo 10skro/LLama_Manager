@@ -7,7 +7,7 @@ import { useVersionConfigLinks } from '@/hooks/useVersionConfigLinks';
 import { useConfigs } from '@/hooks/useConfigs';
 
 import { useToast } from '@/hooks/use-toast';
-import { uninstallVersion, getCardCustomizations } from '@/services/version';
+import { uninstallVersion, getCardCustomizations, duplicateVersion } from '@/services/version';
 import { getVersionOverride } from '@/services/versionOverride';
 import type { CardCustomization, VersionOverride } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -147,6 +147,36 @@ export function DashboardPage() {
     });
   };
 
+  const handleDuplicate = async (versionId: number, withSettings: boolean) => {
+    try {
+      await duplicateVersion(versionId, withSettings);
+      // Reload customizations so the cloned card's settings appear immediately
+      if (withSettings) {
+        const customs = await getCardCustomizations();
+        const record: Record<number, CardCustomization> = {};
+        for (const c of customs) {
+          record[c.version_id] = c;
+        }
+        setCardCustomizations(record);
+      }
+      // Invalidate installed-versions: triggers reload of versions, config links, and overrides
+      await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+      toast({
+        title: withSettings ? 'Cloned with settings' : 'Cloned',
+        description: withSettings
+          ? 'A copy with your current settings has been created.'
+          : 'A clean copy has been created.',
+      });
+    } catch (err) {
+      console.error('Failed to duplicate version:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Clone failed',
+        description: 'Could not duplicate this version.',
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
       {/* Header */}
@@ -227,6 +257,7 @@ export function DashboardPage() {
               customization={cardCustomizations[version.id]}
               onCustomizationChange={handleCustomizationChange}
               onDeleteClick={setDeleteTarget}
+              onDuplicateClick={handleDuplicate}
               editingDropdownId={editingDropdownId}
               onEditingDropdownChange={setEditingDropdownId}
               tempTitle={tempTitle}

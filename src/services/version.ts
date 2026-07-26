@@ -38,3 +38,10 @@ export async function deleteCardCustomization(versionId: number): Promise<boolea
 export async function getStorageUsage(): Promise<number> {
   return invoke<number>('get_storage_usage') as Promise<number>;
 }
+
+export async function duplicateVersion(versionId: number, withSettings: boolean): Promise<number> {
+  return invoke<number>('duplicate_version', {
+    versionId,
+    withSettings,
+  }) as Promise<number>;
+}

@@ -163,6 +163,14 @@ fn delete_version_override(
 ) -> Result<bool, String> {
     version::commands::delete_version_override(state_db, version_id)
 }
+#[tauri::command]
+fn duplicate_version(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+    with_settings: bool,
+) -> Result<i64, String> {
+    version::commands::duplicate_version(state_db, version_id, with_settings)
+}
 
 // Download management
 #[tauri::command]
@@ -481,6 +489,7 @@ pub fn run_tauri_app() {
             get_version_override,
             save_version_override,
             delete_version_override,
+            duplicate_version,
             // Download management
             cancel_download,
             get_download_status,
