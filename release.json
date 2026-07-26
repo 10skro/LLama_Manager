@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.42",
+  "tag_name": "v0.5.43",
   "target_commitish": "main",
-  "name": "v0.5.42",
-  "body": "## Changes\n\n### Features\n- Robust override flag injection with token-based command parsing",
+  "name": "v0.5.43",
+  "body": "## Changes\n\n### Features\n- Replace embedded terminal panel with floating multi-window widget\n- Add list and grid view modes for terminal sessions with read-only xterm.js\n- Auto-sync terminal sessions across windows via Tauri events\n- Terminal window survives main app minimize as independent OS window",
   "draft": false,
   "prerelease": false
 }
