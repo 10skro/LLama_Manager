@@ -15,6 +15,14 @@ impl ConptyProcess {
     pub fn new(process: conpty::Process) -> Self {
         Self(process)
     }
+
+    pub fn resize(&self, x: i16, y: i16) {
+        let _ = self.0.resize(x, y);
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.0.is_alive()
+    }
 }
 
 /// Payload emitted on the "terminal-output" Tauri event.
@@ -178,19 +186,23 @@ impl TerminalManager {
             };
 
             if let Some(mut reader) = reader {
+                log::info!("[TERMINAL] ConPTY reader handle obtained for {}", sid);
                 let mut buf = [0u8; 4096];
+                let mut read_count: u64 = 0;
                 loop {
                     match reader.read(&mut buf) {
                         Ok(0) => {
-                            log::info!("[TERMINAL] ConPTY EOF for {}", sid);
+                            log::info!("[TERMINAL] ConPTY EOF for {} after {} reads", sid, read_count);
                             break;
                         }
                         Ok(n) => {
+                            read_count += 1;
                             let text = String::from_utf8_lossy(&buf[..n]).to_string();
                             log::info!(
-                                "[TERMINAL] ConPTY received {} bytes: {:?}",
+                                "[TERMINAL] ConPTY read #{:?}: {} bytes: {:?}",
+                                read_count,
                                 n,
-                                text.chars().take(80).collect::<String>()
+                                text.chars().take(120).collect::<String>()
                             );
                             // Store in circular buffer for late-joining viewers
                             {
@@ -202,19 +214,25 @@ impl TerminalManager {
                                     }
                                 }
                             }
-                            let _ = app_handle.emit("terminal-output", TerminalOutputEvent {
+                            match app_handle.emit("terminal-output", TerminalOutputEvent {
                                 session_id: sid.clone(),
                                 text: text.clone(),
-                            });
+                            }) {
+                                Ok(()) => log::info!("[TERMINAL] emit OK for {}", sid),
+                                Err(e) => log::error!("[TERMINAL] emit FAILED for {}: {}", sid, e),
+                            }
                         }
                         Err(e) => {
-                            log::warn!("[TERMINAL] ConPTY read error: {}", e);
+                            log::warn!("[TERMINAL] ConPTY read error after {} reads: {}", read_count, e);
                             break;
                         }
                     }
                 }
+            } else {
+                log::error!("[TERMINAL] ConPTY reader handle NOT obtained for {}", sid);
             }
 
+            log::info!("[TERMINAL] ConPTY reader exiting for {}", sid);
             let _ = app_handle.emit("terminal-exit", sid.clone());
         });
 
