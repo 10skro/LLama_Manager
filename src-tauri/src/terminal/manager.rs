@@ -500,10 +500,3 @@ impl Default for TerminalManager {
         Self::new()
     }
 }
-
-impl Drop for TerminalManager {
-    fn drop(&mut self) {
-        log::info!("[TERMINAL] TerminalManager dropped: killing all sessions");
-        self.kill_all();
-    }
-}
