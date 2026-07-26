@@ -16,8 +16,9 @@ import {
   FolderOpen, Save, HardDrive, Palette, Bell,
   Info, Loader2, Eye, EyeOff,
   AlertCircle, X, Check, ChevronDown, Settings2,
-  Brain,
+  Brain, RefreshCw, Download,
 } from 'lucide-react';
+import { useAppUpdate } from '@/hooks/useAppUpdate';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES, getThemeById } from '@/themes';
 import { AVAILABLE_FONTS } from '@/fonts';
@@ -33,6 +34,7 @@ export function SettingsPage() {
   const { settings, setSettings } = useAppStore();
   const { activeTheme, setActiveTheme } = useTheme();
   const { toast } = useToast();
+  const { updateInfo, isChecking, isInstalling, checkUpdate, installUpdate } = useAppUpdate();
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Local state for GitHub token (NOT in settings store)
@@ -42,6 +44,7 @@ export function SettingsPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('...');
   const [lastFetched, setLastFetched] = useState<string | null>(null);
+  const [hasCheckedManually, setHasCheckedManually] = useState(false);
 
   // Debounce timer for mmproj_folder validation
   const mmprojValidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -498,20 +501,28 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Label>Auto-check for updates</Label>
-                <Badge variant="outline" className="text-[10px] font-normal bg-yellow/10 text-yellow border-yellow/30">WIP</Badge>
-              </div>
+            <div className="flex-1">
+              <Label>Auto-check for updates</Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Automatically check for new builds on startup.
+                Automatically check for new app versions on startup.
               </p>
             </div>
             <Button
               variant={settings?.auto_check_updates ? 'default' : 'outline'}
               size="sm"
-              disabled
-              title="Feature coming soon"
+              onClick={() => {
+                if (settings) {
+                  const val = !settings.auto_check_updates;
+                  updateSetting('auto_check_updates', val);
+                  saveSettings({ ...settings, auto_check_updates: val }).catch(err => {
+                    console.error('Failed to save auto_check_updates:', err);
+                  });
+                  toast({
+                    title: val ? 'Auto-check enabled' : 'Auto-check disabled',
+                    description: val ? 'Will check for updates on startup.' : 'Won\'t check for updates on startup.',
+                  });
+                }
+              }}
             >
               {settings?.auto_check_updates ? 'On' : 'Off'}
             </Button>
@@ -520,11 +531,38 @@ export function SettingsPage() {
           <Separator className="border-border/50" />
 
           <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Label>Show update modal on startup</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Display changelog dialog when a new version is available.
+              </p>
+            </div>
+            <Button
+              variant={settings?.show_update_modal ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                if (settings) {
+                  const val = !settings.show_update_modal;
+                  updateSetting('show_update_modal', val);
+                  saveSettings({ ...settings, show_update_modal: val }).catch(err => {
+                    console.error('Failed to save show_update_modal:', err);
+                  });
+                  toast({
+                    title: val ? 'Update modal enabled' : 'Update modal disabled',
+                    description: val ? 'Will show changelog on startup when update available.' : 'Won\'t show changelog modal on startup.',
+                  });
+                }
+              }}
+            >
+              {settings?.show_update_modal ? 'On' : 'Off'}
+            </Button>
+          </div>
+
+          <Separator className="border-border/50" />
+
+          <div className="flex items-center gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <Label>Last checked</Label>
-                <Badge variant="outline" className="text-[10px] font-normal bg-yellow/10 text-yellow border-yellow/30">WIP</Badge>
-              </div>
+              <Label>Last checked</Label>
             </div>
             <Badge variant="outline" className="font-mono text-xs">
               {lastFetched ? new Date(lastFetched).toLocaleString() : 'Never'}
@@ -693,10 +731,68 @@ export function SettingsPage() {
             About
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p><strong className="text-foreground">Llama Manager</strong> {appVersion ? `v${appVersion}` : '...'}</p>
-          <p>A modern Windows application for managing llama.cpp builds.</p>
-          <p>Built with Tauri, React, and Rust.</p>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Llama Manager</strong>{' '}
+              {appVersion ? `v${appVersion}` : '...'}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                setHasCheckedManually(true);
+                await checkUpdate();
+              }}
+              disabled={isChecking || isInstalling}
+            >
+              {isChecking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Check for update
+            </Button>
+          </div>
+
+          {hasCheckedManually && !isChecking && !updateInfo.available && (
+            <p className="text-sm text-green flex items-center gap-1.5">
+              <Check className="h-4 w-4" />
+              You are up to date.
+            </p>
+          )}
+
+          {hasCheckedManually && updateInfo.available && (
+            <div className="rounded-lg border border-orange/30 bg-orange/10 p-3 space-y-2">
+              <p className="text-sm text-orange flex items-center gap-1.5">
+                <Download className="h-4 w-4" />
+                Version {updateInfo.version} is available
+              </p>
+              {updateInfo.date && (
+                <p className="text-xs text-muted-foreground">{updateInfo.date}</p>
+              )}
+              <Button
+                size="sm"
+                onClick={() => installUpdate()}
+                disabled={isInstalling}
+                className="text-orange-600"
+              >
+                {isInstalling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {isInstalling ? 'Installing...' : 'Install & Restart'}
+              </Button>
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            A modern Windows application for managing llama.cpp builds.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Built with Tauri, React, and Rust.
+          </p>
         </CardContent>
       </Card>
       </div> {/* end max-w-3xl mx-auto wrapper */}

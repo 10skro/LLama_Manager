@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/Layout/AppShell';
@@ -17,11 +17,32 @@ import { DEFAULT_FONT_FAMILY } from './fonts';
 import { useAppStore } from './store/useAppStore';
 import { useRefreshStore } from './store/useRefreshStore';
 import { useTheme } from './hooks/useTheme';
+import { useAppUpdate } from './hooks/useAppUpdate';
+import { UpdateModal } from './components/UpdateModal';
 import type { AppSettings, Build } from './types';
 
 function App() {
   const queryClient = useQueryClient();
   useTheme(); // Apply theme reactively
+  const { updateInfo } = useAppUpdate();
+  const { settings } = useAppStore();
+  const [showModal, setShowModal] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+
+  // Show update modal on startup if update available and setting is enabled
+  useEffect(() => {
+    if (!initialCheckDone) {
+      // Wait a bit for settings to load and update check to complete
+      const timer = setTimeout(() => {
+        setInitialCheckDone(true);
+        const shouldShow = updateInfo.available && (settings?.show_update_modal ?? true);
+        if (shouldShow) {
+          setShowModal(true);
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [initialCheckDone, updateInfo.available, settings?.show_update_modal]);
 
   // Load settings and restore saved theme on app startup
   // Theme is already applied by inline script in index.html from __INITIAL_THEME__ (injected by Rust)
@@ -33,6 +54,7 @@ function App() {
           storage_path: settings.storage_path ?? '',
           theme: settings.theme ?? DEFAULT_THEME_ID,
           auto_check_updates: settings.auto_check_updates ?? true,
+          show_update_modal: settings.show_update_modal ?? true,
           toast_duration: settings.toast_duration ?? 5000,
           font_family: settings.font_family,
           model_folder: settings.model_folder,
@@ -99,6 +121,7 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </AppShell>
+      <UpdateModal open={showModal} onOpenChange={setShowModal} />
       <Toaster />
     </ErrorBoundary>
   );

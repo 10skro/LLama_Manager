@@ -84,6 +84,7 @@ const defaultSettings: AppSettings = {
   storage_path: '',
   theme: initialTheme,
   auto_check_updates: true,
+  show_update_modal: true,
   toast_duration: 5000,
 };
 

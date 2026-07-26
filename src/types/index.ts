@@ -53,6 +53,7 @@ export interface AppSettings {
   storage_path: string;
   theme: string; // Was: 'dark' | 'light' | 'system' - now flexible for named themes
   auto_check_updates: boolean;
+  show_update_modal: boolean; // Show changelog modal on startup when update available
   toast_duration?: number; // milliseconds, default 5000
   font_family?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
   model_folder?: string; // Folder containing .gguf model files

@@ -70,6 +70,8 @@ pub struct AppSettings {
     pub storage_path: String,
     pub theme: String,
     pub auto_check_updates: bool,
+    #[serde(default = "default_show_update_modal")]
+    pub show_update_modal: bool, // show changelog modal on startup when update available
     #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
@@ -78,6 +80,10 @@ pub struct AppSettings {
     pub model_folder: Option<String>, // folder containing .gguf model files
     #[serde(default)]
     pub mmproj_folder: Option<String>, // folder containing .mmproj project files
+}
+
+fn default_show_update_modal() -> bool {
+    true
 }
 
 /// Model file discovered by scanning a folder

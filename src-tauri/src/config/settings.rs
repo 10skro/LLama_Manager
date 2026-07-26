@@ -25,6 +25,11 @@ impl SettingsManager {
             .unwrap_or_else(|| "true".to_string());
         let auto_check_updates = auto_check_str == "true";
 
+        let show_update_modal_str = map
+            .remove("show_update_modal")
+            .unwrap_or_else(|| "true".to_string());
+        let show_update_modal = show_update_modal_str == "true";
+
         let font_family = map.remove("font_family");
 
         let toast_duration_str = map.remove("toast_duration");
@@ -40,6 +45,7 @@ impl SettingsManager {
             storage_path,
             theme,
             auto_check_updates,
+            show_update_modal,
             font_family,
             toast_duration,
             model_folder,
@@ -56,6 +62,11 @@ impl SettingsManager {
             &conn,
             "auto_check_updates",
             &settings.auto_check_updates.to_string(),
+        )?;
+        repo::set_setting(
+            &conn,
+            "show_update_modal",
+            &settings.show_update_modal.to_string(),
         )?;
         // Save font_family
         match &settings.font_family {
@@ -109,6 +120,9 @@ impl SettingsManager {
         }
         if repo::get_setting(&conn, "auto_check_updates").ok().flatten().is_none() {
             repo::set_setting(&conn, "auto_check_updates", "true")?;
+        }
+        if repo::get_setting(&conn, "show_update_modal").ok().flatten().is_none() {
+            repo::set_setting(&conn, "show_update_modal", "true")?;
         }
         if repo::get_setting(&conn, "font_family").ok().flatten().is_none() {
             repo::set_setting(&conn, "font_family", "Instrument Sans")?;

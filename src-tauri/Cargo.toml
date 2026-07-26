@@ -1,6 +1,6 @@
 [package]
 name = "llamacpp-manager"
-version = "0.6.11"
+version = "0.6.12"
 description = "A manager for llama.cpp versions"
 authors = ["openfox"]
 edition = "2021"
@@ -18,6 +18,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-http = "2"
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.31", features = ["bundled"] }

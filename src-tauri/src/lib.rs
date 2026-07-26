@@ -27,6 +27,7 @@ use crate::models::types::AppError;
 use crate::terminal::manager::TerminalManager;
 use crate::theme::colors::theme_to_color;
 use crate::theme::inject::build_initialization_script;
+use tauri_plugin_updater::UpdaterExt;
 
 // ─── Tauri Command Wrappers ─────────────────────────────────────────────
 // #[tauri::command] must be in this module so generate_handler! can see
@@ -373,6 +374,41 @@ async fn open_terminal_window(app: tauri::AppHandle) -> Result<(), String> {
     terminal::commands::open_terminal_window(app).await
 }
 
+// App Update
+#[tauri::command]
+async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    
+    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
+        let date_str = update.date.map(|d| d.to_string());
+        Ok(serde_json::json!({
+            "available": true,
+            "version": update.version.to_string(),
+            "date": date_str,
+            "body": update.body,
+        }))
+    } else {
+        Ok(serde_json::json!({
+            "available": false,
+            "version": null,
+            "date": null,
+            "body": null,
+        }))
+    }
+}
+
+#[tauri::command]
+async fn install_app_update(app: tauri::AppHandle) -> Result<(), String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    
+    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
+        update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("No update available".to_string())
+    }
+}
+
 // Theme
 #[tauri::command]
 async fn persist_theme_change(
@@ -391,6 +427,7 @@ pub fn run_tauri_app() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let app_dir = app
                 .path()
@@ -528,6 +565,9 @@ pub fn run_tauri_app() {
             open_terminal_window,
             // Theme
             persist_theme_change,
+            // App Update
+            check_app_update,
+            install_app_update,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");
