@@ -1,6 +1,6 @@
 {
   "version": "v0.6.15",
-  "body": "# v0.6.15\n\n## Bug Fixes\n- Kill all terminal sessions on app close\n- Close terminal widget window on app exit\n\n## Features\n- Dev mode banner on debug builds",
+  "long_description": "# v0.6.15\n\n## Bug Fixes\n- Kill all terminal sessions on app close\n- Close terminal widget window on app exit\n\n## Features\n- Dev mode banner on debug builds",
   "pub_date": "2026-07-27T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
