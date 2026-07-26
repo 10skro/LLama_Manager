@@ -1,7 +1,7 @@
 {
-  "tag_name": "v0.6.0",
+  "tag_name": "v0.6.10",
   "target_commitish": "main",
-  "name": "v0.6.0",
+  "name": "v0.6.10",
   "body": "## Changes\n\n### Features\n\n- Clone version cards: create independent cards sharing the same binaries\n- Clone with settings option: duplicate card with customization, config link, and override\n- Safe-delete: version files are only removed when no other card shares the install path\n\n### UI / UX Improvements\n\n- Gear icon dropdown menu on version cards with Clone, Clone with Settings, and Delete actions\n\n### Maintenance\n\n- Removed UNIQUE constraint on installed_versions table to support multiple cards per build\n- Removed migration system (app not yet public)",
   "draft": false,
   "prerelease": false
