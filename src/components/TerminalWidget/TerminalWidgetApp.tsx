@@ -1,5 +1,29 @@
+import { useEffect, useRef } from 'react';
+import { listen } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@tauri-apps/api/event';
+import { getThemeById, applyTheme } from '@/themes';
 import { TerminalWidget } from './TerminalWidget';
 
 export default function TerminalWidgetApp() {
+  const unlistenRef = useRef<UnlistenFn | null>(null);
+
+  // Listen for theme changes from the main window and apply them
+  useEffect(() => {
+    listen<{ themeId: string }>('theme-changed', (event) => {
+      const theme = getThemeById(event.payload.themeId);
+      if (theme) {
+        applyTheme(theme);
+      }
+    }).then((unlisten) => {
+      unlistenRef.current = unlisten;
+    }).catch(() => {});
+
+    return () => {
+      if (unlistenRef.current) {
+        unlistenRef.current();
+      }
+    };
+  }, []);
+
   return <TerminalWidget />;
 }

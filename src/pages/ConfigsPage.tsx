@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  FileStack, Search, X, Terminal, Loader2, Trash2, Pencil,
+  FileStack, Search, X, Terminal, Loader2, Trash2, Pencil, Plus,
 } from 'lucide-react';
 import { CustomCommandModal } from '@/components/CustomCommand/CustomCommandModal';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -23,6 +26,7 @@ export function ConfigsPage() {
   const [deleteTarget, setDeleteTarget] = useState<ConfigEntry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ConfigEntry | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const editingCustomCommand = editingEntry
     ? {
@@ -59,6 +63,20 @@ export function ConfigsPage() {
             Browse and manage your saved configurations.
           </p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Config
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setIsCreateOpen(true)}>
+              <Terminal className="h-4 w-4" />
+              Create Custom Command
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filter Bar */}
@@ -117,7 +135,7 @@ export function ConfigsPage() {
             <p className="text-sm text-muted-foreground text-center max-w-sm">
               {search || filter !== 'all'
                 ? 'Try adjusting your search or filter.'
-                : 'Create your first config from the Dashboard using "Create Config".'}
+                : 'Click "Create Config" above to add your first configuration.'}
             </p>
           </CardContent>
         </Card>
@@ -211,6 +229,15 @@ export function ConfigsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Custom Command Modal */}
+      <CustomCommandModal
+        open={isCreateOpen}
+        onOpenChange={(open) => {
+          if (!open) refetch();
+          setIsCreateOpen(open);
+        }}
+      />
 
       {/* Edit Custom Command Modal */}
       <CustomCommandModal

@@ -17,16 +17,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
-import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
-import { CustomCommandModal } from '@/components/CustomCommand';
 import { VersionCard } from '@/components/Dashboard/VersionCard';
 import {
   Package, Trash2,
   Loader2,
-  HardDrive, Cpu, Plus,
-  Terminal,
+  HardDrive, Cpu,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +36,6 @@ export function DashboardPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCustomCommandOpen, setIsCustomCommandOpen] = useState(false);
   // Card customizations per version (versionId -> customization)
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
   // Version overrides per version (versionId -> override)
@@ -163,20 +157,6 @@ export function DashboardPage() {
             Overview of your installed llama.cpp builds.
           </p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Config
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsCustomCommandOpen(true)}>
-              <Terminal className="h-4 w-4" />
-              Create Custom Command
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       {/* Stats Row */}
@@ -316,11 +296,6 @@ export function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Custom Command Modal */}
-      <CustomCommandModal
-        open={isCustomCommandOpen}
-        onOpenChange={setIsCustomCommandOpen}
-      />
     </div>
   );
 }
