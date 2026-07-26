@@ -73,7 +73,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
       <DialogContent className="max-w-md" onCloseAutoFocus={() => {}}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5 text-orange-600" />
+            <Download className="h-5 w-5 text-peach" />
             Mise à jour disponible
           </DialogTitle>
           <DialogDescription>

@@ -56,7 +56,7 @@ export function Header() {
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               {hasNotifications && (
-                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-orange-500" />
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-peach" />
               )}
             </Button>
           </DropdownMenuTrigger>
@@ -77,7 +77,7 @@ export function Header() {
                 <DropdownMenuItem
                   onClick={() => installUpdate()}
                   disabled={isInstalling}
-                  className="gap-2 text-orange-600 focus:text-orange-600"
+                  className="gap-2 text-peach focus:text-peach"
                 >
                   {isInstalling ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

@@ -46,6 +46,9 @@ export function SettingsPage() {
   const [lastFetched, setLastFetched] = useState<string | null>(null);
   const [hasCheckedManually, setHasCheckedManually] = useState(false);
 
+  // Debounce timers for folder auto-save
+  const modelFolderSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mmprojFolderSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Debounce timer for mmproj_folder validation
   const mmprojValidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // mmproj_folder validation state
@@ -66,9 +69,15 @@ export function SettingsPage() {
     getCatalogLastFetched().then(ts => setLastFetched(ts)).catch(() => {});
   }, []);
 
-  // Cleanup debounce timer on unmount
+  // Cleanup debounce timers on unmount
   useEffect(() => {
     return () => {
+      if (modelFolderSaveTimerRef.current) {
+        clearTimeout(modelFolderSaveTimerRef.current);
+      }
+      if (mmprojFolderSaveTimerRef.current) {
+        clearTimeout(mmprojFolderSaveTimerRef.current);
+      }
       if (mmprojValidateTimerRef.current) {
         clearTimeout(mmprojValidateTimerRef.current);
       }
@@ -217,6 +226,17 @@ export function SettingsPage() {
                 onChange={e => {
                   const val = e.target.value;
                   updateSetting('model_folder', val || undefined);
+                  // Debounced auto-save
+                  if (modelFolderSaveTimerRef.current) {
+                    clearTimeout(modelFolderSaveTimerRef.current);
+                  }
+                  if (settings) {
+                    modelFolderSaveTimerRef.current = setTimeout(() => {
+                      saveSettings({ ...settings, model_folder: val || undefined }).catch(err => {
+                        console.error('Failed to auto-save model_folder:', err);
+                      });
+                    }, 800);
+                  }
                 }}
                 placeholder="Select a folder containing .gguf files"
                 className="bg-background/50 font-mono text-sm"
@@ -249,32 +269,6 @@ export function SettingsPage() {
               >
                 <FolderOpen className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                title="Save model folder setting"
-                onClick={async () => {
-                  if (settings) {
-                    try {
-                      await saveSettings(settings);
-                      toast({
-                        title: 'Model folder saved',
-                        description: settings.model_folder
-                          ? `Saved: ${settings.model_folder}`
-                          : 'Model folder cleared.',
-                      });
-                    } catch (err) {
-                      toast({
-                        title: 'Save failed',
-                        description: String(err),
-                        variant: 'destructive',
-                      });
-                    }
-                  }
-                }}
-              >
-                <Save className="h-4 w-4" />
-              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               This folder is used to browse and select model files when creating launch configurations.
@@ -292,6 +286,17 @@ export function SettingsPage() {
                 onChange={e => {
                   const val = e.target.value;
                   updateSetting('mmproj_folder', val || undefined);
+                  // Debounced auto-save
+                  if (mmprojFolderSaveTimerRef.current) {
+                    clearTimeout(mmprojFolderSaveTimerRef.current);
+                  }
+                  if (settings) {
+                    mmprojFolderSaveTimerRef.current = setTimeout(() => {
+                      saveSettings({ ...settings, mmproj_folder: val || undefined }).catch(err => {
+                        console.error('Failed to auto-save mmproj_folder:', err);
+                      });
+                    }, 800);
+                  }
                   // Debounced folder validation
                   if (mmprojValidateTimerRef.current) {
                     clearTimeout(mmprojValidateTimerRef.current);
@@ -346,32 +351,6 @@ export function SettingsPage() {
                 }}
               >
                 <FolderOpen className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                title="Save mmproj folder setting"
-                onClick={async () => {
-                  if (settings) {
-                    try {
-                      await saveSettings(settings);
-                      toast({
-                        title: 'Mmproj folder saved',
-                        description: settings.mmproj_folder
-                          ? `Saved: ${settings.mmproj_folder}`
-                          : 'Mmproj folder cleared.',
-                      });
-                    } catch (err) {
-                      toast({
-                        title: 'Save failed',
-                        description: String(err),
-                        variant: 'destructive',
-                      });
-                    }
-                  }
-                }}
-              >
-                <Save className="h-4 w-4" />
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -571,6 +550,76 @@ export function SettingsPage() {
 
           <Separator className="border-border/50" />
 
+          {/* Manual check for update */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Check for updates</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Manually check for a new app version.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setHasCheckedManually(true);
+                  await checkUpdate();
+                }}
+                disabled={isChecking || isInstalling}
+              >
+                {isChecking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Check for update
+              </Button>
+            </div>
+
+            {hasCheckedManually && updateError && (
+              <p className="text-sm text-red flex items-center gap-1.5">
+                <X className="h-4 w-4" />
+                Update check failed: {updateError}
+              </p>
+            )}
+
+            {hasCheckedManually && !isChecking && !updateInfo.available && !updateError && (
+              <p className="text-sm text-green flex items-center gap-1.5">
+                <Check className="h-4 w-4" />
+                You are up to date.
+              </p>
+            )}
+
+            {hasCheckedManually && updateInfo.available && (
+              <div className="rounded-lg border border-peach/30 bg-peach/10 p-3 space-y-2">
+                <p className="text-sm text-peach flex items-center gap-1.5">
+                  <Download className="h-4 w-4" />
+                  Version {updateInfo.version} is available
+                </p>
+                {updateInfo.date && (
+                  <p className="text-xs text-muted-foreground">{updateInfo.date}</p>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => installUpdate()}
+                  disabled={isInstalling}
+                  className="text-peach border-peach/30 hover:bg-peach/10 hover:text-peach"
+                >
+                  {isInstalling ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isInstalling ? 'Installing...' : 'Install & Restart'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Separator className="border-border/50" />
+
           <div className="flex items-center gap-4">
             <div>
               <Label>Toast notification duration</Label>
@@ -732,67 +781,10 @@ export function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Llama Manager</strong>{' '}
-              {appVersion ? `v${appVersion}` : '...'}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                setHasCheckedManually(true);
-                await checkUpdate();
-              }}
-              disabled={isChecking || isInstalling}
-            >
-              {isChecking ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Check for update
-            </Button>
-          </div>
-
-          {hasCheckedManually && updateError && (
-            <p className="text-sm text-red flex items-center gap-1.5">
-              <X className="h-4 w-4" />
-              Update check failed: {updateError}
-            </p>
-          )}
-
-          {hasCheckedManually && !isChecking && !updateInfo.available && !updateError && (
-            <p className="text-sm text-green flex items-center gap-1.5">
-              <Check className="h-4 w-4" />
-              You are up to date.
-            </p>
-          )}
-
-          {hasCheckedManually && updateInfo.available && (
-            <div className="rounded-lg border border-orange/30 bg-orange/10 p-3 space-y-2">
-              <p className="text-sm text-orange flex items-center gap-1.5">
-                <Download className="h-4 w-4" />
-                Version {updateInfo.version} is available
-              </p>
-              {updateInfo.date && (
-                <p className="text-xs text-muted-foreground">{updateInfo.date}</p>
-              )}
-              <Button
-                size="sm"
-                onClick={() => installUpdate()}
-                disabled={isInstalling}
-                className="text-orange-600"
-              >
-                {isInstalling ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                {isInstalling ? 'Installing...' : 'Install & Restart'}
-              </Button>
-            </div>
-          )}
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">Llama Manager</strong>{' '}
+            {appVersion ? `v${appVersion}` : '...'}
+          </p>
 
           <p className="text-sm text-muted-foreground">
             A modern Windows application for managing llama.cpp builds.
