@@ -16,7 +16,7 @@ mod version;
 
 use std::path::PathBuf;
 
-use tauri::{Listener, Manager, State};
+use tauri::{Manager, State};
 
 use crate::config::settings::SettingsManager;
 use crate::db::connection::DbManager;
@@ -493,21 +493,12 @@ pub fn run_tauri_app() {
             app.manage(GithubClient::new(github_token, persisted_etag));
             app.manage(TerminalManager::new());
 
-            // Cleanup terminal sessions on app close
-            {
-                let app_handle = app.app_handle().clone();
-                app_handle.clone().listen("tauri://destroy", move |_| {
-                    let terminal = app_handle.state::<TerminalManager>();
-                    terminal.kill_all();
-                });
-            }
-
             // Build initialization script for the main window (runs BEFORE HTML is parsed)
             let init_script = build_initialization_script(&initial_theme);
 
             // Create main window with theme injection via initialization_script
             let bg_color = theme_to_color(&initial_theme);
-            tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
+            let main_window = tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
                 .title("Llama Manager")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(900.0, 600.0)
@@ -519,6 +510,16 @@ pub fn run_tauri_app() {
                 .initialization_script(&init_script)
                 .build()
                 .expect("Failed to create main window");
+
+            // Cleanup terminal sessions on app close
+            let app_handle = app.handle().clone();
+            main_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    log::info!("[APP] CloseRequested: killing all terminal sessions");
+                    let terminal = app_handle.state::<TerminalManager>();
+                    terminal.kill_all();
+                }
+            });
 
             Ok(())
         })
