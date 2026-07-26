@@ -511,7 +511,7 @@ pub fn run_tauri_app() {
 
             // Create main window with theme injection via initialization_script
             let bg_color = theme_to_color(&initial_theme);
-            tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
+            let main_window = tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
                 .title("Llama Manager")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(900.0, 600.0)
