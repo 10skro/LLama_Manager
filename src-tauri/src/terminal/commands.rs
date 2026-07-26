@@ -84,6 +84,8 @@ pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
 
     // Build initialization script (runs BEFORE HTML is parsed)
     let init_script = build_initialization_script(&theme);
+    let dev_mode = cfg!(debug_assertions);
+    let dev_script = format!(r#"window.__DEV_MODE__={};"#, dev_mode);
     let bg_color = theme_to_color(&theme);
 
     // Fire-and-forget: spawn on tokio so the command returns immediately
@@ -98,6 +100,7 @@ pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
             .theme(Some(tauri::Theme::Dark))
             .background_color(bg_color)
             .initialization_script(&init_script)
+            .initialization_script(&dev_script)
             .build();
 
         if let Err(e) = result {

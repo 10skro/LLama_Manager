@@ -505,6 +505,10 @@ pub fn run_tauri_app() {
             // Build initialization script for the main window (runs BEFORE HTML is parsed)
             let init_script = build_initialization_script(&initial_theme);
 
+            // Inject dev mode flag for frontend banner
+            let dev_mode = cfg!(debug_assertions);
+            let dev_script = format!(r#"window.__DEV_MODE__={};"#, dev_mode);
+
             // Create main window with theme injection via initialization_script
             let bg_color = theme_to_color(&initial_theme);
             tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
@@ -517,8 +521,23 @@ pub fn run_tauri_app() {
                 .theme(Some(tauri::Theme::Dark))
                 .background_color(bg_color)
                 .initialization_script(&init_script)
+                .initialization_script(&dev_script)
                 .build()
                 .expect("Failed to create main window");
+
+            // Cleanup terminal sessions on app close
+            let app_handle = app.handle().clone();
+            main_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    log::info!("[APP] CloseRequested: killing all terminal sessions");
+                    let terminal = app_handle.state::<TerminalManager>();
+                    terminal.kill_all();
+                    // Close the floating terminal widget window
+                    if let Some(widget) = app_handle.get_webview_window("terminal") {
+                        let _ = widget.close();
+                    }
+                }
+            });
 
             Ok(())
         })
