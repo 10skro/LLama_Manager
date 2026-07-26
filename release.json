@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.47",
+  "tag_name": "v0.5.50",
   "target_commitish": "main",
-  "name": "v0.5.47",
-  "body": "## Changes\n\n### Fixes\n- Kill entire process tree on server stop to prevent orphaned llama-server.exe",
+  "name": "v0.5.50",
+  "body": "## Changes\n\n### Bug Fixes\n\n- Terminal widget UI now adapts correctly to all themes including light themes (Rosé Pine Dawn)\n- xterm.js terminal background re-themes reactively when theme is changed from main window",
   "draft": false,
   "prerelease": false
 }
