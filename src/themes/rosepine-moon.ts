@@ -1,30 +1,5 @@
 import type { Theme } from './index';
-
-// Fonction pour convertir hex vers HSL string
-function hexToHSL(hex: string): string {
-  // Guard clause: validate hex format
-  if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-    console.warn(`Invalid hex color: ${hex}, using fallback`);
-    return '0 0% 50%';
-  }
-  // Convert hex to rgb, then rgb to hsl, return "h s% l%"
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
-  const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
-    }
-  }
-  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-}
+import { hexToHSL } from './utils';
 
 // Définir les couleurs Rosé Pine Moon (15 couleurs officielles)
 const rosepineMoonColors: Record<string, string> = {
@@ -58,15 +33,15 @@ export const rosepineMoon: Theme = {
     '--popover': hexToHSL(rosepineMoonColors.surface),
     '--popover-foreground': hexToHSL(rosepineMoonColors.subtle),
     '--primary': hexToHSL(rosepineMoonColors.pine),
-    '--primary-foreground': hexToHSL(rosepineMoonColors.surface),
+    '--primary-foreground': hexToHSL(rosepineMoonColors.text),
     '--secondary': hexToHSL(rosepineMoonColors.overlay),
     '--secondary-foreground': hexToHSL(rosepineMoonColors.text),
     '--muted': hexToHSL(rosepineMoonColors.overlay),
     '--muted-foreground': hexToHSL(rosepineMoonColors.muted),
     '--accent': hexToHSL(rosepineMoonColors.iris),
-    '--accent-foreground': hexToHSL(rosepineMoonColors.surface),
+    '--accent-foreground': hexToHSL(rosepineMoonColors.text),
     '--destructive': hexToHSL(rosepineMoonColors.love),
-    '--destructive-foreground': hexToHSL(rosepineMoonColors.surface),
+    '--destructive-foreground': hexToHSL(rosepineMoonColors.text),
     '--border': hexToHSL(rosepineMoonColors['highlight-med']),
     '--input': hexToHSL(rosepineMoonColors['highlight-low']),
     '--ring': hexToHSL(rosepineMoonColors.pine),
@@ -87,5 +62,25 @@ export const rosepineMoon: Theme = {
     '--overlay': hexToHSL(rosepineMoonColors.overlay),
     '--muted-color': hexToHSL(rosepineMoonColors.muted),
     '--subtle': hexToHSL(rosepineMoonColors.subtle),
+    // Catppuccin-compatible variables (mapped to Rosé Pine equivalents)
+    '--rosewater': hexToHSL(rosepineMoonColors.subtle),
+    '--flamingo': hexToHSL(rosepineMoonColors.rose),
+    '--pink': hexToHSL(rosepineMoonColors.love),
+    '--mauve': hexToHSL(rosepineMoonColors.iris),
+    '--red': hexToHSL(rosepineMoonColors.love),
+    '--maroon': hexToHSL(rosepineMoonColors.love),
+    '--peach': hexToHSL(rosepineMoonColors.gold),
+    '--green': hexToHSL(rosepineMoonColors.foam),
+    '--teal': hexToHSL(rosepineMoonColors.foam),
+    '--sky': hexToHSL(rosepineMoonColors.foam),
+    '--sapphire': hexToHSL(rosepineMoonColors.pine),
+    '--blue': hexToHSL(rosepineMoonColors.pine),
+    '--lavender': hexToHSL(rosepineMoonColors.iris),
+    '--surface-0': hexToHSL(rosepineMoonColors['highlight-low']),
+    '--surface-1': hexToHSL(rosepineMoonColors.overlay),
+    '--surface-2': hexToHSL(rosepineMoonColors['highlight-high']),
+    '--overlay-0': hexToHSL(rosepineMoonColors.muted),
+    '--overlay-1': hexToHSL(rosepineMoonColors.subtle),
+    '--overlay-2': hexToHSL(rosepineMoonColors.text),
   },
 };

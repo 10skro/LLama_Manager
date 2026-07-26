@@ -139,9 +139,9 @@ export function SettingsPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-          <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
-          <p className="text-sm text-red-300 flex-1">{error}</p>
+        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+          <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+          <p className="text-sm text-destructive flex-1">{error}</p>
           <Button variant="ghost" size="sm" onClick={() => setError(null)}>
             <X className="h-4 w-4" />
           </Button>
@@ -154,7 +154,7 @@ export function SettingsPage() {
           <CardTitle className="flex items-center gap-2">
             <HardDrive className="h-5 w-5" />
             Storage
-            <Badge variant="outline" className="ml-auto text-amber-500 border-amber-500/30 bg-amber-500/10 text-xs">WIP</Badge>
+            <Badge variant="outline" className="ml-auto text-yellow border-yellow/30 bg-yellow/10 text-xs">WIP</Badge>
           </CardTitle>
           <CardDescription>
             Manage where llama.cpp versions are stored.
@@ -164,7 +164,7 @@ export function SettingsPage() {
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               Storage Path
-              <Badge variant="outline" className="text-amber-500 border-amber-500/30 bg-amber-500/10 text-xs">WIP</Badge>
+              <Badge variant="outline" className="text-yellow border-yellow/30 bg-yellow/10 text-xs">WIP</Badge>
             </Label>
             <div className="flex gap-2">
               <Input
@@ -375,13 +375,13 @@ export function SettingsPage() {
               This folder is used to browse and select .mmproj files for model overrides.
             </p>
             {mmprojValidation === 'invalid' && (
-              <p className="text-xs text-red-400 flex items-center gap-1">
+              <p className="text-xs text-destructive flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 Folder does not exist or is not accessible.
               </p>
             )}
             {mmprojValidation === 'valid' && (
-              <p className="text-xs text-green-400 flex items-center gap-1">
+              <p className="text-xs text-green flex items-center gap-1">
                 <Check className="h-3 w-3" />
                 Folder exists and is accessible.
               </p>
@@ -501,7 +501,7 @@ export function SettingsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <Label>Auto-check for updates</Label>
-                <Badge variant="outline" className="text-[10px] font-normal bg-amber-500/10 text-amber-400 border-amber-500/30">WIP</Badge>
+                <Badge variant="outline" className="text-[10px] font-normal bg-yellow/10 text-yellow border-yellow/30">WIP</Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Automatically check for new builds on startup.
@@ -523,7 +523,7 @@ export function SettingsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <Label>Last checked</Label>
-                <Badge variant="outline" className="text-[10px] font-normal bg-amber-500/10 text-amber-400 border-amber-500/30">WIP</Badge>
+                <Badge variant="outline" className="text-[10px] font-normal bg-yellow/10 text-yellow border-yellow/30">WIP</Badge>
               </div>
             </div>
             <Badge variant="outline" className="font-mono text-xs">
@@ -578,7 +578,7 @@ export function SettingsPage() {
       </Card>
 
       {/* Advanced (collapsible) */}
-      <Card className="border-amber-500/20 bg-card/50">
+      <Card className="border-yellow/20 bg-card/50">
         <CardHeader className="cursor-pointer" onClick={() => setAdvancedOpen(v => !v)}>
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
