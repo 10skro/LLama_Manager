@@ -119,13 +119,18 @@ impl TerminalManager {
         log::info!("[TERMINAL] Spawning process: version_id={} | config_id={} | cmd={} | dir={} | sessions_before={}",
             version_id, config_id, cmd_str, working_dir, self.session_count());
 
-        // Spawn process with stdout/stderr redirected to pipes
+        // Spawn process with stdout/stderr redirected to pipes.
+        // Use /C with "exit" to ensure cmd.exe exits after the command finishes.
+        // Actually use /K to keep cmd alive, but pass command as separate arg.
         let mut cmd = std::process::Command::new("cmd");
-        cmd.arg("/K");
         if let Some(sc) = &startup_command {
             if !sc.is_empty() {
-                cmd.arg(sc);
+                cmd.args(&["/K", sc]);
+            } else {
+                cmd.arg("/K");
             }
+        } else {
+            cmd.arg("/K");
         }
         let child = cmd
             .current_dir(&working_dir)
