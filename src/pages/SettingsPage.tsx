@@ -44,7 +44,7 @@ export function SettingsPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('...');
   const [lastFetched, setLastFetched] = useState<string | null>(null);
-  const [hasCheckedManually, setHasCheckedManually] = useState(false);
+  const [hasChecked, setHasChecked] = useState(true);
 
   // Debounce timers for folder auto-save
   const modelFolderSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -563,7 +563,7 @@ export function SettingsPage() {
                 variant="outline"
                 size="sm"
                 onClick={async () => {
-                  setHasCheckedManually(true);
+                  setHasChecked(true);
                   await checkUpdate();
                 }}
                 disabled={isChecking || isInstalling}
@@ -577,21 +577,21 @@ export function SettingsPage() {
               </Button>
             </div>
 
-            {hasCheckedManually && updateError && (
+            {hasChecked && updateError && (
               <p className="text-sm text-red flex items-center gap-1.5">
                 <X className="h-4 w-4" />
                 Update check failed: {updateError}
               </p>
             )}
 
-            {hasCheckedManually && !isChecking && !updateInfo.available && !updateError && (
+            {hasChecked && !isChecking && !updateInfo.available && !updateError && (
               <p className="text-sm text-green flex items-center gap-1.5">
                 <Check className="h-4 w-4" />
                 You are up to date.
               </p>
             )}
 
-            {hasCheckedManually && updateInfo.available && (
+            {hasChecked && updateInfo.available && (
               <div className="rounded-lg border border-peach/30 bg-peach/10 p-3 space-y-2">
                 <p className="text-sm text-peach flex items-center gap-1.5">
                   <Download className="h-4 w-4" />
