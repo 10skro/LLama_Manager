@@ -147,6 +147,15 @@ impl TerminalManager {
         // Resize ConPTY to a reasonable size so cmd prompt output is captured properly
         let _ = process.resize(80, 30);
 
+        // DEBUG: write test string to verify ConPTY input/output works
+        {
+            use std::io::Write;
+            if let Ok(mut writer) = process.input() {
+                let _ = writer.write_all(b"echo CONPTY_TEST_OK\r\n");
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
         let pid = process.pid();
         log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}", session_id, pid, version_id, config_id);
 
