@@ -76,6 +76,7 @@ unsafe impl Sync for OutputBuffer {}
 /// Represents an active terminal session using pipe-based I/O.
 pub struct TerminalSession {
     pub child: Mutex<Child>,
+    pub pid: u32,
     pub config_id: String,
     pub version_id: i64,
     pub output_buffer: OutputBuffer,
@@ -174,6 +175,7 @@ impl TerminalManager {
 
         let session = TerminalSession {
             child: Mutex::new(child),
+            pid,
             config_id: config_id.clone(),
             version_id,
             output_buffer,
@@ -363,7 +365,11 @@ impl TerminalManager {
         Err("Input writing is not supported with pipe-based terminal".to_string())
     }
 
-    /// Kill a terminal session.
+    /// Kill a terminal session and ALL its child processes (including llama-server.exe).
+    ///
+    /// On Windows, calling child.kill() on cmd.exe does NOT terminate child processes
+    /// like llama-server.exe. They survive as orphan processes.
+    /// We use `taskkill /T /F /PID` to forcefully kill the entire process tree.
     pub fn kill(&self, session_id: &str) -> Result<String, String> {
         let session = {
             let mut sessions = self
@@ -377,16 +383,30 @@ impl TerminalManager {
         };
 
         let config_id = session.config_id.clone();
+        let pid = session.pid;
 
-        // Terminate the process
-        let mut child = session.child.lock().unwrap();
-        child.kill()
-            .map_err(|e| format!("Failed to kill terminal: {}", e))?;
+        log::info!("[TERMINAL] Killing process tree: session={} | pid={}", session_id, pid);
+
+        // Use taskkill /T /F to kill the entire process tree (cmd.exe + all children like llama-server.exe)
+        // /T = kill child processes tree
+        // /F = force termination
+        let taskkill_result = std::process::Command::new("taskkill")
+            .args(&["/T", "/F", "/PID", &pid.to_string()])
+            .output()
+            .map_err(|e| format!("Failed to execute taskkill for PID {}: {}", pid, e))?;
+
+        if taskkill_result.status.success() {
+            log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", session_id, pid);
+        } else {
+            let stderr = String::from_utf8_lossy(&taskkill_result.stderr);
+            log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
+                session_id, pid, stderr);
+        }
 
         Ok(config_id)
     }
 
-    /// Kill all terminal sessions (cleanup on app exit).
+    /// Kill all terminal sessions and their child processes (cleanup on app exit).
     pub fn kill_all(&self) {
         let sessions: Vec<_> = match self.sessions.lock() {
             Ok(mut s) => s.drain().map(|(_id, s)| s).collect(),
@@ -394,10 +414,15 @@ impl TerminalManager {
         };
 
         for session in sessions {
-            if let Ok(mut child) = session.child.lock() {
-                if let Err(e) = child.kill() {
-                    log::warn!("Failed to kill terminal session: {}", e);
-                }
+            let pid = session.pid;
+            log::info!("[TERMINAL] kill_all: killing process tree pid={}", pid);
+
+            // Use taskkill /T /F to kill the entire process tree
+            if let Err(e) = std::process::Command::new("taskkill")
+                .args(&["/T", "/F", "/PID", &pid.to_string()])
+                .output()
+            {
+                log::warn!("[TERMINAL] kill_all: failed to execute taskkill for PID {}: {}", pid, e);
             }
         }
     }
