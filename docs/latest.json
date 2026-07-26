@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.12",
-  "long_description": "# v0.6.12\n\n## Features\n- Tauri native auto-update system\n- Bell icon notification for available updates\n- Update changelog modal on startup\n- Check for update button in Settings\n- Notification toggles (auto-check + show modal)\n- Custom multi-size app icons (16x16 to 256x256)\n\n## Technical\n- Added tauri-plugin-updater\n- GitHub Pages hosted latest.json for update checks\n- Minisign signature verification for secure updates",
-  "pub_date": "2026-07-26T18:35:43Z",
+  "version": "v0.6.13",
+  "long_description": "# v0.6.13\n\n## Bug Fixes\n- Model and Mmproj folders now auto-save with 800ms debounce on input change\n- Update-related UI now uses correct theme colors (peach instead of orange)\n- Update check button moved to Notifications section in Settings\n- Update error messages now displayed in Settings UI\n\n## Maintenance\n- Removed test release artifacts from repository\n- Updated .gitignore to exclude signing artifacts",
+  "pub_date": "2026-07-26T19:00:33Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.12/Llama.Manager_0.6.12_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMjJXSEJqNlRRYjJVL3pEQTFIRUZQQm5VeTQvWS9wYkdvKzdRcXVJU21mRnZxRzhXZTFoMVJ6SzUvcjRjdjkrWFdDZDVNOUZhOGZjTDJNV1Mza3FuN0JmNGdyVGs5UHdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDk0MzI4CWZpbGU6TGxhbWEuTWFuYWdlcl8wLjYuMTJfeDY0LXNldHVwLmV4ZQpZUlVJN011b3lOWHByQTVQdmd3UTNFd21xQ0YzbllLeU1SbGhQZnhJcnhyY1BHdW1pUk1qejlaTDhDeHJ3MzZyZ2w3SHBtVzEwVDYzUGh5SGI5amNCQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.13/Llama.Manager_0.6.13_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMjJXSEJqNlRRYnpuOFVnL1ZyMk1XbWxFeWNhd0pOTEdmaXhmcFNUTjVOYzdTL280anZzZEFFYnUwc1dEVjk2dmhDWmVaVFhsb3FUZUI1MUZlQVRpTVgrRnZVYzJGUHdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDk2NDMzCWZpbGU6TGxhbWEuTWFuYWdlcl8wLjYuMTNfeDY0LXNldHVwLmV4ZQpuRHBiV0w3ZFQ5czl6VXBSWGtScXA2djBObTBNUGFBdkxPendJLy9pMEIzcXhwYkYvM1J1Ui84MXV3Qk9SMUVaTVB6N2dVeUxKbHhCQWt0c3V2WEFEQT09Cg=="
     }
   }
 }
