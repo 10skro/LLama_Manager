@@ -43,17 +43,6 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
 - [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Windows)
 - [Git](https://git-scm.com/)
 
-**PowerShell**
-
-```powershell
-git clone https://github.com/10skro/LLama_Manager.git
-cd LLama_Manager
-npm install
-npm run tauri dev
-```
-
-**CMD**
-
 ```cmd
 git clone https://github.com/10skro/LLama_Manager.git
 cd LLama_Manager
@@ -63,7 +52,7 @@ npm run tauri dev
 
 **Build release**
 
-```powershell
+```cmd
 npm run tauri build
 ```
 
