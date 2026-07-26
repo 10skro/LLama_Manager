@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.45",
+  "tag_name": "v0.5.46",
   "target_commitish": "main",
-  "name": "v0.5.45",
-  "body": "## Changes\n\n### Fixes\n- Fix llama-server 'Invalid argument' error on Windows: strip quotes from file path arguments before passing to cmd /K\n- TypeScript: applyOverrideFlag no longer wraps model/mmproj paths in double quotes\n- Rust: new strip_path_quotes() function cleans quoted file paths (.gguf, .safetensors, .exe, etc.) in startup commands\n",
+  "name": "v0.5.46",
+  "body": "## Changes\n\n### Refactoring\n- Complete anti-white-flash system overhaul with guaranteed pre-HTML theme injection\n- Terminal Widget is now fully reactive to global theme changes\n- Zustand store hydrates from Rust-injected theme before React renders\n- Theme colors are generated at build time from TypeScript definitions\n- Removed hardcoded theme fallbacks in favor of native Tauri background color",
   "draft": false,
   "prerelease": false
 }
