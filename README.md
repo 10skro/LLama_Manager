@@ -34,20 +34,32 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
 2. Run the installer and follow the prompts.
 3. Launch **Llama Manager** from your Start menu or desktop.
 
-### Command Line (no installer)
+### From Source
+
+**Prerequisites:** Node.js 18+, Rust 1.70+, Git
 
 **PowerShell**
 
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/10skro/LLama_Manager/releases/latest/download/Llama.Manager_x64-setup.exe" -OutFile "Llama.Manager-setup.exe"
-.\Llama.Manager-setup.exe
+git clone https://github.com/10skro/LLama_Manager.git
+cd LLama_Manager
+npm install
+npm run tauri dev
 ```
 
 **CMD**
 
 ```cmd
-bitsadmin /transfer "LlamaManager" "https://github.com/10skro/LLama_Manager/releases/latest/download/Llama.Manager_x64-setup.exe" "%TEMP%\Llama.Manager-setup.exe"
-%TEMP%\Llama.Manager-setup.exe
+git clone https://github.com/10skro/LLama_Manager.git
+cd LLama_Manager
+npm install
+npm run tauri dev
+```
+
+**Build release**
+
+```powershell
+npm run tauri build
 ```
 
 ---
