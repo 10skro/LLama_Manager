@@ -496,6 +496,10 @@ pub fn run_tauri_app() {
             // Build initialization script for the main window (runs BEFORE HTML is parsed)
             let init_script = build_initialization_script(&initial_theme);
 
+            // Inject dev mode flag for frontend banner
+            let dev_mode = cfg!(debug_assertions);
+            let dev_script = format!(r#"window.__DEV_MODE__={};"#, dev_mode);
+
             // Create main window with theme injection via initialization_script
             let bg_color = theme_to_color(&initial_theme);
             let main_window = tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
@@ -508,6 +512,7 @@ pub fn run_tauri_app() {
                 .theme(Some(tauri::Theme::Dark))
                 .background_color(bg_color)
                 .initialization_script(&init_script)
+                .initialization_script(&dev_script)
                 .build()
                 .expect("Failed to create main window");
 

@@ -6,6 +6,7 @@ import { useTerminalSessions } from '@/hooks/useTerminalSessions';
 import { TerminalSessionList } from './TerminalSessionList';
 import { TerminalSessionGrid } from './TerminalSessionGrid';
 import { TerminalSessionItem } from './TerminalSessionItem';
+import { DevBanner } from '@/components/DevBanner';
 
 type ViewMode = 'list' | 'grid';
 
@@ -51,6 +52,7 @@ export function TerminalWidget() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground">
+      <DevBanner />
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-sidebar">
         <span className="text-sm font-semibold text-foreground/80">Terminals</span>
