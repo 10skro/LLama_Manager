@@ -4,7 +4,8 @@
   "pub_date": "2026-07-26T19:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.13/Llama.Manager_0.6.13_x64-setup.exe"
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.13/Llama.Manager_0.6.13_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMjJXSEJqNlRRYi9wTzM3c0grVEg1V25uMmhYYk9YM09LamhkNzVqR0UzZzFuUjlqYmlOcXVVQUdhRTNMVUZoeDFRdzljbGhkanhNZks2d3FVRWVsTXVLY3Ntam5jbkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDkyNzU2CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMTJfeDY0LXNldHVwLmV4ZQpoQU9PSDdTTFBCSlZ1cDRsNEU1d2g1SHBFcFdQL21jSTRxU3hUWXdDbU4zWHJtTjBIUGl1N0R5VTBVUFV2ZnlGS1dOK0lIRng0NzhpR0FUR0srZmpBUT09Cg=="
     }
   }
 }
