@@ -1,6 +1,6 @@
 {
   "name": "llamacpp-manager",
-  "version": "0.5.47",
+  "version": "0.5.49",
   "private": true,
   "type": "module",
   "scripts": {
