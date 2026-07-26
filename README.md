@@ -19,6 +19,9 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
 - [Getting Started](#getting-started)
 - [License](#license)
 
+<img width="1009" height="556" alt="image" src="https://github.com/user-attachments/assets/dd6f8963-24a4-4c3e-90e7-52812cb9dd69" />
+
+
 ---
 
 ## Installation
