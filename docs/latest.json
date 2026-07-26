@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.13",
-  "long_description": "# v0.6.13\n\n## Bug Fixes\n- Model and Mmproj folders now auto-save with 800ms debounce on input change\n- Update-related UI now uses correct theme colors (peach instead of orange)\n- Update check button moved to Notifications section in Settings\n- Update error messages now displayed in Settings UI\n\n## Maintenance\n- Removed test release artifacts from repository\n- Updated .gitignore to exclude signing artifacts",
-  "pub_date": "2026-07-26T19:00:33Z",
+  "version": "v0.6.14",
+  "long_description": "# v0.6.14\n\n## Bug Fixes\n- Hide unwanted CMD console window on Windows using CREATE_NO_WINDOW flag\n- Fix folder auto-save, theme colors, and update check placement\n\n## Features\n- Tauri auto-update system with signature verification\n- Custom app icons\n- Notification settings\n\n## Documentation\n- Complete README rewrite with installation-first structure\n- Updated prerequisites with correct versions and links\n- Simplified installation instructions (CMD only)",
+  "pub_date": "2026-07-26T20:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.13/Llama.Manager_0.6.13_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMjJXSEJqNlRRYnpuOFVnL1ZyMk1XbWxFeWNhd0pOTEdmaXhmcFNUTjVOYzdTL280anZzZEFFYnUwc1dEVjk2dmhDWmVaVFhsb3FUZUI1MUZlQVRpTVgrRnZVYzJGUHdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDk2NDMzCWZpbGU6TGxhbWEuTWFuYWdlcl8wLjYuMTNfeDY0LXNldHVwLmV4ZQpuRHBiV0w3ZFQ5czl6VXBSWGtScXA2djBObTBNUGFBdkxPendJLy9pMEIzcXhwYkYvM1J1Ui84MXV3Qk9SMUVaTVB6N2dVeUxKbHhCQWt0c3V2WEFEQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.14/Llama.Manager_0.6.14_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUcjI4OGYrRTR6aFR5dG1oK1c2YnJpUUZwWUZSYTVhRjBXUU9yTTR0dTJEUDkvRTNCRXYxTUV6bEtQcXFmdzIzc1A2TW9vNjErZk5QZWpvRTU3RjRqYkNkNzlKSXpPdmcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDk4NzQwCWZpbGU6TGxhbWEuTWFuYWdlcl8wLjYuMTRfeDY0LXNldHVwLmV4ZQpEUS8yN0VtS3F1aHpXVzhFYmdkaUlWMmZBd1RqVVJpRnUrT1EyOUNOaGdXVG9pdDF1M2tubll0eG54UVZibllMb1ZJSURnTUdESFhuK0g4ajkwMWlDUT09Cg=="
     }
   }
 }
