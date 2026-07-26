@@ -50,3 +50,7 @@ opencode.jsonc
 # Tauri updater signing keys (private!)
 src-tauri/updater.key
 src-tauri/updater.key.pub
+
+# Tauri updater signing artifacts (temporary copies for signing)
+Llama.Manager_*.exe
+Llama.Manager_*.exe.sig
