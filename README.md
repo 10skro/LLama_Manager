@@ -99,6 +99,9 @@ Create and manage custom startup commands to launch llama.cpp servers.
 
 ### Terminals
 
+<img width="1288" height="478" alt="image" src="https://github.com/user-attachments/assets/bd44a574-0136-48dd-b599-c2ed20a8521a" />
+
+
 A floating window dedicated to managing running llama.cpp servers.
 
 - **Multiple sessions** — Run several servers simultaneously, each in its own terminal.
