@@ -42,6 +42,7 @@ function applyOverrideFlag(
     } else if (flagIdx + 1 < tokens.length) {
       // Case A: separate — replace flag and value tokens
       tokens[flagIdx] = flag;
+      // Strip existing quotes from the value token before re-quoting
       tokens[flagIdx + 1] = `"${newValue}"`;
     } else {
       // Flag at end with no value — replace and append new value
