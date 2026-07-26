@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { X, Grid, LayoutList } from 'lucide-react';
@@ -12,7 +12,14 @@ type ViewMode = 'list' | 'grid';
 export function TerminalWidget() {
   const { sessions, refreshSessions } = useTerminalSessions();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [selectedId, setSelectedId] = useState<string | null>(sessions[0]?.sessionId ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Auto-select first session when sessions arrive (fixes null selectedId on mount)
+  useEffect(() => {
+    if (sessions.length > 0 && !sessions.some((s) => s.sessionId === selectedId)) {
+      setSelectedId(sessions[0].sessionId);
+    }
+  }, [sessions, selectedId]);
 
   const handleClose = async (sessionId: string) => {
     await invoke('kill_terminal', { sessionId }).catch((err) => {

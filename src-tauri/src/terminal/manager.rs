@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io::Read;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use tauri::{Emitter, Manager};
 
@@ -17,11 +17,51 @@ impl ConptyProcess {
     }
 }
 
+/// Circular buffer that keeps the last ~4 KB of terminal output.
+/// Shared between the reader thread and the command thread.
+pub struct OutputBuffer {
+    inner: Arc<Mutex<VecDeque<char>>>,
+    max_len: usize,
+}
+
+impl OutputBuffer {
+    pub fn new(max_len: usize) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(VecDeque::new())),
+            max_len,
+        }
+    }
+
+    pub fn push(&self, text: &str) {
+        let mut buf = self.inner.lock().unwrap();
+        for c in text.chars() {
+            buf.push_back(c);
+            if buf.len() > self.max_len {
+                buf.pop_front();
+            }
+        }
+    }
+
+    pub fn snapshot(&self) -> String {
+        let buf = self.inner.lock().unwrap();
+        buf.iter().collect()
+    }
+
+    /// Clone the Arc so the reader thread can share the same buffer.
+    pub fn clone_arc(&self) -> Arc<Mutex<VecDeque<char>>> {
+        self.inner.clone()
+    }
+}
+
+unsafe impl Send for OutputBuffer {}
+unsafe impl Sync for OutputBuffer {}
+
 /// Represents an active terminal session using ConPTY.
 pub struct TerminalSession {
     pub process: ConptyProcess,
     pub config_id: String,
     pub version_id: i64,
+    pub output_buffer: OutputBuffer,
 }
 
 /// Public info about an active terminal session (serializable to frontend).
@@ -87,11 +127,14 @@ impl TerminalManager {
         let pid = process.pid();
         log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}", session_id, pid, version_id, config_id);
 
-        // Store session
+        // Store session with output buffer (4 KB circular buffer)
+        let output_buffer = OutputBuffer::new(4096);
+        let buffer_arc = output_buffer.clone_arc();
         let session = TerminalSession {
             process: ConptyProcess(process),
             config_id: config_id.clone(),
             version_id,
+            output_buffer,
         };
 
         self.sessions
@@ -120,21 +163,31 @@ impl TerminalManager {
             };
 
             if let Some(mut reader) = reader {
-                let mut buffer = [0u8; 4096];
+                let mut buf = [0u8; 4096];
                 loop {
-                    match reader.read(&mut buffer) {
+                    match reader.read(&mut buf) {
                         Ok(0) => {
                             log::info!("[TERMINAL] ConPTY EOF for {}", sid);
                             break;
                         }
                         Ok(n) => {
-                            let text = String::from_utf8_lossy(&buffer[..n]).to_string();
+                            let text = String::from_utf8_lossy(&buf[..n]).to_string();
                             log::info!(
                                 "[TERMINAL] ConPTY received {} bytes: {:?}",
                                 n,
                                 text.chars().take(80).collect::<String>()
                             );
-                            let _ = app_handle.emit("terminal-output", (sid.clone(), text));
+                            // Store in circular buffer for late-joining viewers
+                            {
+                                let mut b = buffer_arc.lock().unwrap();
+                                for c in text.chars() {
+                                    b.push_back(c);
+                                    if b.len() > 4096 {
+                                        b.pop_front();
+                                    }
+                                }
+                            }
+                            let _ = app_handle.emit("terminal-output", (sid.clone(), &text));
                         }
                         Err(e) => {
                             log::warn!("[TERMINAL] ConPTY read error: {}", e);
@@ -242,6 +295,20 @@ impl TerminalManager {
                 .find(|(_, session)| session.config_id == config_id)
                 .map(|(session_id, _)| session_id.clone()),
             Err(_) => None,
+        }
+    }
+
+    /// Get the buffered output for a session (for late-joining viewers).
+    pub fn get_output_buffer(&self, session_id: &str) -> String {
+        match self.sessions.lock() {
+            Ok(sessions) => {
+                if let Some(session) = sessions.get(session_id) {
+                    session.output_buffer.snapshot()
+                } else {
+                    String::new()
+                }
+            }
+            Err(_) => String::new(),
         }
     }
 

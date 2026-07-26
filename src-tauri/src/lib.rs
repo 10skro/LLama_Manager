@@ -666,6 +666,16 @@ fn get_terminal_by_config(
     state_terminal.get_session_by_config_id(&config_id)
 }
 
+/// Get the buffered output for a terminal session.
+/// Returns the last ~4KB of output for late-joining viewers.
+#[tauri::command]
+fn get_terminal_buffer(
+    state_terminal: tauri::State<'_, TerminalManager>,
+    session_id: String,
+) -> String {
+    state_terminal.get_output_buffer(&session_id)
+}
+
 /// Open (or focus) the floating terminal window.
 /// Creates the window if it doesn't exist, or focuses it if already open.
 #[tauri::command]
@@ -803,6 +813,7 @@ pub fn run_tauri_app() {
             kill_terminal,
             list_active_terminals,
             get_terminal_by_config,
+            get_terminal_buffer,
             open_terminal_window,
         ])
         .run(tauri::generate_context!())

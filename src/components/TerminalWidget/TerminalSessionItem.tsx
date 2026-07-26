@@ -73,6 +73,15 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
     });
     resizeObserver.observe(terminalRef.current);
 
+    // Fetch and replay buffered output for late-joining viewers
+    invoke<string>('get_terminal_buffer', { sessionId })
+      .then((buffer) => {
+        if (buffer && xtermRef.current) {
+          xtermRef.current.write(buffer);
+        }
+      })
+      .catch(() => {});
+
     const unlistenOutput = listen<{ sessionId: string; text: string }>('terminal-output', (event) => {
       if (event.payload.sessionId === sessionId && xtermRef.current) {
         xtermRef.current.write(event.payload.text);
