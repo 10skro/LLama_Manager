@@ -34,16 +34,6 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
 2. Run the installer and follow the prompts.
 3. Launch **Llama Manager** from your Start menu or desktop.
 
-### Manual Install
-
-```powershell
-# Download the latest installer
-Invoke-WebRequest -Uri "https://github.com/10skro/LLama_Manager/releases/latest/download/Llama.Manager_x64-setup.exe" -OutFile "Llama.Manager-setup.exe"
-
-# Run the installer
-.\Llama.Manager-setup.exe
-```
-
 ---
 
 ## Features
