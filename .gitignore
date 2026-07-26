@@ -54,3 +54,6 @@ src-tauri/updater.key.pub
 # Tauri updater signing artifacts (temporary copies for signing)
 Llama.Manager_*.exe
 Llama.Manager_*.exe.sig
+
+# Local backup of signing keys (never commit these!)
+backups/
