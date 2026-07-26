@@ -17,6 +17,14 @@ impl ConptyProcess {
     }
 }
 
+/// Payload emitted on the "terminal-output" Tauri event.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalOutputEvent {
+    pub session_id: String,
+    pub text: String,
+}
+
 /// Circular buffer that keeps the last ~4 KB of terminal output.
 /// Shared between the reader thread and the command thread.
 pub struct OutputBuffer {
@@ -188,7 +196,10 @@ impl TerminalManager {
                                     }
                                 }
                             }
-                            let _ = app_handle.emit("terminal-output", (sid.clone(), &text));
+                            let _ = app_handle.emit("terminal-output", TerminalOutputEvent {
+                                session_id: sid.clone(),
+                                text: text.clone(),
+                            });
                         }
                         Err(e) => {
                             log::warn!("[TERMINAL] ConPTY read error: {}", e);
