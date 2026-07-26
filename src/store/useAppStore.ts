@@ -49,14 +49,6 @@ interface AppState {
   removeCustomCommand: (id: string) => void;
   updateCustomCommand: (command: CustomCommand) => void;
 
-  // Terminal
-  terminalVisible: boolean;
-  setTerminalVisible: (visible: boolean) => void;
-  activeTerminalId: string | null;
-  setActiveTerminalId: (id: string | null) => void;
-  toggleTerminal: () => void;
-  resetTerminal: () => void;
-
   // Running terminals tracking (version_id -> session_id)
   // Each version card gets its own independent session, even if sharing the same config.
   runningTerminals: Record<number, string>;
@@ -181,29 +173,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         c.id === command.id ? command : c
       ),
     })),
-
-  // Terminal
-  terminalVisible: false,
-  setTerminalVisible: (visible) => set({ terminalVisible: visible }),
-  activeTerminalId: null,
-  setActiveTerminalId: (id) => set({ activeTerminalId: id }),
-  toggleTerminal: () =>
-    set((state) => ({ terminalVisible: !state.terminalVisible })),
-  resetTerminal: () =>
-    set((state) => {
-      // Also remove from runningTerminals if the exiting session was tracked
-      const next = { ...state.runningTerminals };
-      if (state.activeTerminalId) {
-        // Find and remove the version_id that maps to this session_id
-        for (const [versionIdStr, sessionId] of Object.entries(next)) {
-          if (sessionId === state.activeTerminalId) {
-            delete next[Number(versionIdStr)];
-            break;
-          }
-        }
-      }
-      return { terminalVisible: false, activeTerminalId: null, runningTerminals: next };
-    }),
 
   // Running terminals tracking (version_id -> session_id)
   runningTerminals: {},

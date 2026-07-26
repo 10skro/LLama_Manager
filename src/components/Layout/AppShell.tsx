@@ -5,7 +5,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { DownloadPanel } from '@/components/Download/DownloadPanel';
-import { EmbeddedTerminal } from '@/components/Terminal/EmbeddedTerminal';
 import { useAppStore } from '@/store/useAppStore';
 
 interface AppShellProps {
@@ -13,10 +12,8 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const { terminalVisible, activeTerminalId } = useAppStore();
   const syncRunningTerminals = useAppStore((state) => state.syncRunningTerminals);
   const removeRunningTerminalBySessionId = useAppStore((state) => state.removeRunningTerminalBySessionId);
-  const resetTerminal = useAppStore((state) => state.resetTerminal);
 
   // On mount: sync running terminals from backend
   useEffect(() => {
@@ -36,20 +33,14 @@ export function AppShell({ children }: AppShellProps) {
     const unlisten = listen<string>('terminal-exit', (event) => {
       const sessionId = event.payload;
       console.log('[APP] terminal-exit event for session:', sessionId);
-
       // Remove from running terminals tracking
       removeRunningTerminalBySessionId(sessionId);
-
-      // If the exited session was the active terminal, reset the panel
-      if (activeTerminalId === sessionId) {
-        resetTerminal();
-      }
     });
 
     return () => {
       unlisten.then((u) => u());
     };
-  }, [activeTerminalId, removeRunningTerminalBySessionId, resetTerminal]);
+  }, [removeRunningTerminalBySessionId]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
@@ -61,19 +52,6 @@ export function AppShell({ children }: AppShellProps) {
             {children}
           </main>
         </div>
-        {/* Terminal Panel - kept mounted to preserve process when toggled */}
-        {activeTerminalId && (
-          <div
-            className={`border-t border-border/50 flex flex-col transition-all duration-200 ${
-              terminalVisible ? 'min-h-32 max-h-[50vh] h-72' : 'h-0 min-h-0 overflow-hidden'
-            }`}
-          >
-            <EmbeddedTerminal
-              sessionId={activeTerminalId}
-              onClose={() => {}}
-            />
-          </div>
-        )}
       </div>
       <DownloadPanel />
     </div>

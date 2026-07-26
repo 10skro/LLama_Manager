@@ -30,12 +30,30 @@ const queryClient = new QueryClient({
   },
 });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
-  </React.StrictMode>,
-);
+// Detect if this is the floating terminal window
+const isTerminalWindow = new URLSearchParams(window.location.search).get('window') === 'terminal';
+
+if (isTerminalWindow) {
+  // Render the terminal widget app (no router, no query provider needed)
+  const root = document.getElementById('root')!;
+  const renderTerminalApp = async () => {
+    const { default: TerminalWidgetApp } = await import('./components/TerminalWidget/TerminalWidgetApp');
+    ReactDOM.createRoot(root).render(
+      <React.StrictMode>
+        <TerminalWidgetApp />
+      </React.StrictMode>,
+    );
+  };
+  renderTerminalApp();
+} else {
+  // Render the main application
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </React.StrictMode>,
+  );
+}

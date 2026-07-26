@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore, useGetRunningSessionId } from '@/store/useAppStore';
+import { emit } from '@tauri-apps/api/event';
 import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
 
 /**
@@ -75,8 +76,6 @@ export function useTerminalLaunch({
   override,
   onError,
 }: UseTerminalLaunchParams) {
-  const setTerminalVisible = useAppStore((state) => state.setTerminalVisible);
-  const setActiveTerminalId = useAppStore((state) => state.setActiveTerminalId);
   const setRunningTerminal = useAppStore((state) => state.setRunningTerminal);
   const injectingRef = useRef(false);
 
@@ -143,14 +142,14 @@ export function useTerminalLaunch({
       // Track this running terminal by version_id (not config_id!)
       // so multiple cards sharing the same config can run independently
       setRunningTerminal(version.id, sessionId);
-      setActiveTerminalId(sessionId);
-      setTerminalVisible(true);
+      // Notify floating terminal window of session changes
+      emit('terminal-sessions-update', null).catch(() => {});
     } catch (err) {
       onError?.(`Failed to spawn terminal: ${String(err)}`);
     } finally {
       injectingRef.current = false;
     }
-  }, [version, configLink, configs, override, setActiveTerminalId, setTerminalVisible, setRunningTerminal, onError]);
+  }, [version, configLink, configs, override, setRunningTerminal, onError]);
 
   const handleStop = useCallback(async () => {
     if (!configLink || injectingRef.current) return;
@@ -167,12 +166,8 @@ export function useTerminalLaunch({
 
       // Remove from running terminals tracking by version_id
       useAppStore.getState().removeRunningTerminal(version.id);
-
-      // If the killed session was the active terminal, reset the panel
-      const currentActive = useAppStore.getState().activeTerminalId;
-      if (currentActive === sessionId) {
-        useAppStore.getState().resetTerminal();
-      }
+      // Notify floating terminal window of session changes
+      emit('terminal-sessions-update', null).catch(() => {});
     } catch (err) {
       onError?.(`Failed to stop server: ${String(err)}`);
     } finally {
@@ -194,10 +189,8 @@ export function useTerminalLaunch({
           sessionId: currentSessionId,
         });
         useAppStore.getState().removeRunningTerminal(version.id);
-        const activeId = useAppStore.getState().activeTerminalId;
-        if (activeId === currentSessionId) {
-          useAppStore.getState().resetTerminal();
-        }
+        // Notify floating terminal window of session changes
+        emit('terminal-sessions-update', null).catch(() => {});
       } catch (err) {
         onError?.(`Failed to stop server: ${String(err)}`);
       } finally {

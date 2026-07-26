@@ -14,7 +14,7 @@ mod version;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use tauri::{Emitter, Listener, Manager};
+use tauri::{Emitter, Listener, Manager, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
 use crate::config::settings::SettingsManager;
@@ -666,6 +666,36 @@ fn get_terminal_by_config(
     state_terminal.get_session_by_config_id(&config_id)
 }
 
+/// Open (or focus) the floating terminal window.
+/// Creates the window if it doesn't exist, or focuses it if already open.
+#[tauri::command]
+async fn open_terminal_window(app: tauri::AppHandle) -> Result<(), String> {
+    let window_label = "terminal";
+
+    // Check if window already exists
+    if let Some(existing) = app.get_webview_window(window_label) {
+        existing.minimize().ok();
+        existing.unminimize().ok();
+        existing.set_focus().ok();
+        return Ok(());
+    }
+
+    // Fire-and-forget: spawn on tokio so the command returns immediately
+    // and doesn't block the main app's IPC thread.
+    let app_handle = app.clone();
+    tokio::spawn(async move {
+        let _ = WebviewWindow::builder(&app_handle, window_label, tauri::WebviewUrl::App("index.html?window=terminal".into()))
+            .title("Terminals")
+            .inner_size(900.0, 600.0)
+            .min_inner_size(600.0, 400.0)
+            .decorations(true)
+            .theme(Some(tauri::Theme::Dark))
+            .build();
+    });
+
+    Ok(())
+}
+
 // ─── App Entry Point ───────────────────────────────────────────────────
 
 pub fn run_tauri_app() {
@@ -773,6 +803,7 @@ pub fn run_tauri_app() {
             kill_terminal,
             list_active_terminals,
             get_terminal_by_config,
+            open_terminal_window,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");
