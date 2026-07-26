@@ -518,6 +518,10 @@ pub fn run_tauri_app() {
                     log::info!("[APP] CloseRequested: killing all terminal sessions");
                     let terminal = app_handle.state::<TerminalManager>();
                     terminal.kill_all();
+                    // Close the floating terminal widget window
+                    if let Some(widget) = app_handle.get_webview_window("terminal") {
+                        let _ = widget.close();
+                    }
                 }
             });
 
