@@ -374,6 +374,30 @@ async fn open_terminal_window(app: tauri::AppHandle) -> Result<(), String> {
     terminal::commands::open_terminal_window(app).await
 }
 
+/// Fetch changelog from the updater's latest.json
+async fn fetch_changelog(app: &tauri::AppHandle) -> Option<String> {
+    // Read updater endpoint from config
+    let config_value = serde_json::to_value(app.config()).ok()?;
+    let endpoint = config_value
+        .get("plugins")?
+        .get("updater")?
+        .get("endpoints")?
+        .as_array()?
+        .first()?
+        .as_str()?;
+
+    let client = reqwest::Client::new();
+    let resp = match client.get(endpoint).send().await {
+        Ok(r) if r.status().is_success() => r,
+        _ => return None,
+    };
+    let json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        _ => return None,
+    };
+    json.get("long_description").and_then(|v| v.as_str()).map(String::from)
+}
+
 // App Update
 #[tauri::command]
 async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
@@ -384,21 +408,26 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
             return Err(format!("Failed to get updater: {}", e));
         }
     };
-    
+
     match updater.check().await {
         Ok(Some(update)) => {
             log::info!("Update available: {} (current: {})", update.version, app.package_info().version);
+
+            // Fetch changelog from latest.json since Tauri updater doesn't expose long_description
+            let changelog = fetch_changelog(&app).await;
+
             let date_str = update.date.map(|d| {
-                // Format: "2026-07-27 00:00"
-                let s = d.to_string(); // "2026-07-27T00:00:00.000000000+00:00:00"
-                if let Some(idx) = s.find('T') {
-                    let date_part = &s[..idx];
-                    let time_part = &s[idx+1..];
-                    if let Some(colon) = time_part.find(':') {
-                        let min = &time_part[..colon];
-                        format!("{} {}", date_part, min)
+                // Handle both ISO8601 ("2026-07-27T00:00:00...") and time crate format ("2026-07-27 0:00:00.0 +00:00:00")
+                let s = d.to_string();
+                let parts: Vec<&str> = s.split(['T', ' ']).collect();
+                if parts.len() >= 2 {
+                    let date_part = parts[0];
+                    let time_part = parts[1];
+                    let time_components: Vec<&str> = time_part.split(':').collect();
+                    if time_components.len() >= 2 {
+                        format!("{} {}:{:0>2}", date_part, time_components[0], time_components[1])
                     } else {
-                        s
+                        format!("{} {}", date_part, time_part)
                     }
                 } else {
                     s
@@ -408,7 +437,7 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
                 "available": true,
                 "version": update.version.to_string(),
                 "date": date_str,
-                "body": update.body,
+                "body": changelog,
             }))
         }
         Ok(None) => {
