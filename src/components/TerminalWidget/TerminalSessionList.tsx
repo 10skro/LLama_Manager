@@ -32,8 +32,8 @@ export function TerminalSessionList({ sessions, selectedId, onSelect }: Terminal
             onClick={() => onSelect(session.sessionId)}
             className={`w-full text-left px-3 py-2 border-b border-border/5 transition-colors flex items-center justify-between gap-2 ${
               selectedId === session.sessionId
-                ? 'bg-white/10 text-white'
-                : 'text-foreground/60 hover:bg-white/5 hover:text-foreground/80'
+                ? 'bg-primary/15 text-foreground'
+                : 'text-foreground/60 hover:bg-foreground/5 hover:text-foreground/80'
             }`}
           >
             <span className="text-xs font-mono truncate">{session.sessionId ? session.sessionId.slice(0, 8) : session.sessionId}</span>

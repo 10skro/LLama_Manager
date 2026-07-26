@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { X, Grid, LayoutList } from 'lucide-react';
@@ -6,24 +6,35 @@ import { useTerminalSessions } from '@/hooks/useTerminalSessions';
 import { TerminalSessionList } from './TerminalSessionList';
 import { TerminalSessionGrid } from './TerminalSessionGrid';
 import { TerminalSessionItem } from './TerminalSessionItem';
-import { useTheme } from '@/hooks/useTheme';
 
 type ViewMode = 'list' | 'grid';
 
 export function TerminalWidget() {
-  // Apply theme reactively — reads from Zustand store hydrated by __INITIAL_THEME__
-  useTheme();
+  // Theme is already applied by theme-init.js (synchronous during HTML parse).
+  // No need for useTheme() here — the terminal window has no theme switching controls,
+  // and calling useTheme() would trigger applyTheme() which causes unnecessary re-renders
+  // and premature removal of the anti-flash style.
 
   const { sessions, refreshSessions } = useTerminalSessions();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  // Use useRef to track selectedId to avoid re-render cascade on mount:
+  // sessions=[] → sessions=[...] → selectedId=null → selectedId=first
+  // With useRef, we only trigger a re-render when the user explicitly changes selection.
+  const selectedIdRef = useRef<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Auto-select first session when sessions arrive (fixes null selectedId on mount)
+  // Uses useRef to avoid re-render when auto-selecting on mount
   useEffect(() => {
-    if (sessions.length > 0 && !sessions.some((s) => s.sessionId === selectedId)) {
-      setSelectedId(sessions[0].sessionId);
+    if (sessions.length > 0) {
+      const current = selectedIdRef.current;
+      if (!current || !sessions.some((s) => s.sessionId === current)) {
+        const newId = sessions[0].sessionId;
+        selectedIdRef.current = newId;
+        setSelectedId(newId);
+      }
     }
-  }, [sessions, selectedId]);
+  }, [sessions]);
 
   const handleClose = async (sessionId: string) => {
     await invoke('kill_terminal', { sessionId }).catch((err) => {
@@ -41,13 +52,13 @@ export function TerminalWidget() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/10 bg-sidebar">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-sidebar">
         <span className="text-sm font-semibold text-foreground/80">Terminals</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setViewMode('list')}
             className={`p-1.5 rounded transition-colors ${
-              viewMode === 'list' ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
+              viewMode === 'list' ? 'bg-primary/20 text-foreground' : 'text-foreground/40 hover:text-foreground/70'
             }`}
             title="List view"
           >
@@ -56,7 +67,7 @@ export function TerminalWidget() {
           <button
             onClick={() => setViewMode('grid')}
             className={`p-1.5 rounded transition-colors ${
-              viewMode === 'grid' ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
+              viewMode === 'grid' ? 'bg-primary/20 text-foreground' : 'text-foreground/40 hover:text-foreground/70'
             }`}
             title="Grid view"
           >
@@ -64,7 +75,7 @@ export function TerminalWidget() {
           </button>
           <button
             onClick={handleCloseWindow}
-            className="p-1.5 rounded transition-colors text-white/40 hover:text-white/70 hover:bg-white/15"
+            className="p-1.5 rounded transition-colors text-foreground/40 hover:text-foreground/70 hover:bg-foreground/10"
             title="Close window"
           >
             <X className="h-4 w-4" />

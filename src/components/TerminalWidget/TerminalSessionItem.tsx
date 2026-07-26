@@ -82,6 +82,11 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
 
     const xtermTheme = mapToXtermTheme(activeTheme);
 
+    // Apply background color synchronously BEFORE xterm opens to prevent flash.
+    // The xterm container may show a brief flash of wrong background if we don't
+    // set it synchronously before term.open().
+    terminalRef.current.style.backgroundColor = xtermTheme.background || '';
+
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: 'bar',
@@ -158,7 +163,7 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/10 bg-black/20">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/30">
         <span className="text-xs text-foreground/60 font-mono truncate">{sessionId.slice(0, 8)}</span>
         <button
           onClick={handleClose}

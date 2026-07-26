@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
-import { applyTheme, getThemeById, DEFAULT_THEME_ID } from './themes';
 import './index.css';
 
 // Global error handlers to catch silent crashes that freeze the UI
@@ -15,21 +14,9 @@ window.addEventListener('unhandledrejection', (event) => {
   event.preventDefault(); // Prevent Chrome from showing "A listener indicated an asynchronous error"
 });
 
-// Hydrate theme from Rust-injected __INITIAL_THEME__ (set via initialization_script)
-// This runs BEFORE React renders, preventing white flash
-const initialTheme = (window as any).__INITIAL_THEME__;
-if (initialTheme) {
-  const theme = getThemeById(initialTheme.name);
-  if (theme) {
-    applyTheme(theme);
-  }
-} else {
-  // Fallback: apply default theme if no theme was injected
-  const defaultTheme = getThemeById(DEFAULT_THEME_ID);
-  if (defaultTheme) {
-    applyTheme(defaultTheme);
-  }
-}
+// Theme is already applied by the inline script in index.html (runs during HTML parsing,
+// before any CSS/JS loads). No need to re-apply here — useTheme() in App.tsx handles
+// reactive theme changes after React mount.
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,17 +32,12 @@ const isTerminalWindow = new URLSearchParams(window.location.search).get('window
 
 if (isTerminalWindow) {
   // Render the terminal widget app (no router, no query provider needed)
-  // Theme is already applied above from __INITIAL_THEME__
+  // Theme is already applied by inline script in index.html from __INITIAL_THEME__
   const root = document.getElementById('root')!;
-  const renderTerminalApp = async () => {
+  (async () => {
     const { default: TerminalWidgetApp } = await import('./components/TerminalWidget/TerminalWidgetApp');
-    ReactDOM.createRoot(root).render(
-      <React.StrictMode>
-        <TerminalWidgetApp />
-      </React.StrictMode>,
-    );
-  };
-  renderTerminalApp();
+    ReactDOM.createRoot(root).render(<TerminalWidgetApp />);
+  })();
 } else {
   // Render the main application
   ReactDOM.createRoot(document.getElementById('root')!).render(

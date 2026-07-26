@@ -33,9 +33,38 @@ export function getThemeById(id: string): Theme | undefined {
 }
 
 // Applique les variables CSS du thème sur :root
+// Idempotent: ne modifie le DOM que si la valeur a réellement changé
 export function applyTheme(theme: Theme) {
   const root = document.documentElement;
+  const computed = getComputedStyle(root);
+  let hasChanges = false;
+
   for (const [key, value] of Object.entries(theme.cssVariables)) {
-    root.style.setProperty(key, value);
+    const current = computed.getPropertyValue(key).trim();
+    if (current !== value) {
+      root.style.setProperty(key, value);
+      hasChanges = true;
+    }
   }
+
+  // Track which theme is currently applied to avoid redundant work
+  const currentThemeAttr = root.getAttribute('data-applied-theme');
+  if (currentThemeAttr !== theme.id) {
+    root.setAttribute('data-applied-theme', theme.id);
+    hasChanges = true;
+  }
+
+  // Defer removal of the anti-flash style until AFTER the browser has painted
+  // with the new CSS variables. This prevents a flash of wrong background color
+  // when the inline !important style is removed before the CSS variables take effect.
+  if (hasChanges) {
+    requestAnimationFrame(() => {
+      const initStyle = document.querySelector('style[data-theme-init]');
+      if (initStyle) {
+        initStyle.remove();
+      }
+    });
+  }
+
+  return hasChanges;
 }

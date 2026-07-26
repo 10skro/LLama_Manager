@@ -171,7 +171,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Theme
   activeTheme: initialTheme,
-  setActiveTheme: (themeId: string) => set({ activeTheme: themeId }),
+  setActiveTheme: (themeId: string) =>
+    set((state) => {
+      // Skip if theme hasn't actually changed (prevents unnecessary re-renders)
+      if (state.activeTheme === themeId) {
+        return {};
+      }
+      return { activeTheme: themeId };
+    }),
 
   // UI
   sidebarCollapsed: false,

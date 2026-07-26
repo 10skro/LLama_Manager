@@ -24,7 +24,7 @@ function App() {
   useTheme(); // Apply theme reactively
 
   // Load settings and restore saved theme on app startup
-  // Theme is already applied by main.tsx from __INITIAL_THEME__ (injected by Rust)
+  // Theme is already applied by inline script in index.html from __INITIAL_THEME__ (injected by Rust)
   useEffect(() => {
     const loadSettingsAndTheme = async () => {
       try {
@@ -40,7 +40,10 @@ function App() {
         };
         useAppStore.getState().setSettings(merged);
 
-        if (settings.theme) {
+        // Only update theme if it actually differs from the current store value
+        // (store already initialized from __INITIAL_THEME__ injected by Rust)
+        const currentTheme = useAppStore.getState().activeTheme;
+        if (settings.theme && settings.theme !== currentTheme) {
           const theme = getThemeById(settings.theme);
           if (theme) {
             useAppStore.getState().setActiveTheme(settings.theme);
