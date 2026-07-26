@@ -376,10 +376,11 @@ async fn open_terminal_window(app: tauri::AppHandle) -> Result<(), String> {
 // Theme
 #[tauri::command]
 async fn persist_theme_change(
+    app: tauri::AppHandle,
     db: State<'_, DbManager>,
     theme_id: String,
 ) -> Result<(), String> {
-    theme::commands::persist_theme_change(db, theme_id).await
+    theme::commands::persist_theme_change(app, db, theme_id).await
 }
 
 // ─── App Entry Point ───────────────────────────────────────────────────

@@ -77,14 +77,23 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
   const fitAddonRef = useRef<FitAddon | null>(null);
   const activeTheme = useAppStore((s) => s.activeTheme);
 
+  // Theme update effect (in-place, preserves terminal buffer)
+  useEffect(() => {
+    if (!xtermRef.current) return;
+
+    const xtermTheme = mapToXtermTheme(activeTheme);
+    xtermRef.current.options.theme = xtermTheme;
+    if (terminalRef.current) {
+      terminalRef.current.style.backgroundColor = xtermTheme.background || '';
+    }
+  }, [activeTheme]);
+
+  // Terminal initialization (runs once on mount)
   useEffect(() => {
     if (!terminalRef.current) return;
 
     const xtermTheme = mapToXtermTheme(activeTheme);
 
-    // Apply background color synchronously BEFORE xterm opens to prevent flash.
-    // The xterm container may show a brief flash of wrong background if we don't
-    // set it synchronously before term.open().
     terminalRef.current.style.backgroundColor = xtermTheme.background || '';
 
     const term = new Terminal({
@@ -117,7 +126,6 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
     });
     resizeObserver.observe(terminalRef.current);
 
-    // Fetch and replay buffered output for late-joining viewers
     invoke<string>('get_terminal_buffer', { sessionId })
       .then((buffer) => {
         if (buffer && xtermRef.current) {
@@ -126,7 +134,6 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
       })
       .catch(() => {});
 
-    // Debug: log backend terminal events to console
     const unlistenDebug = listen<string>('terminal-debug', (event) => {
       console.log(event.payload);
     });
@@ -152,7 +159,7 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
       xtermRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [sessionId, activeTheme]);
+  }, [sessionId]);
 
   const handleClose = useCallback(() => {
     invoke('kill_terminal', { sessionId }).catch((err) => {

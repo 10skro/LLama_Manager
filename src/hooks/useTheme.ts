@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { emit } from '@tauri-apps/api/event';
 import { useAppStore } from '@/store/useAppStore';
 import { getThemeById, applyTheme } from '@/themes';
 import { DEFAULT_FONT_FAMILY } from '@/fonts';
@@ -13,12 +12,11 @@ export function useTheme() {
     if (theme) {
       applyTheme(theme);
     }
-    // Persist the user's explicit theme choice to SQLite
+    // Persist to SQLite and emit "theme-changed" to ALL webviews via Rust backend.
+    // The Rust command handles cross-window emission (main + terminal widget).
     persistThemeChange(activeTheme).catch(err => {
       console.error('Failed to persist theme change:', err);
     });
-    // Notify other windows (terminal widget, etc.) of the theme change
-    emit('theme-changed', { themeId: activeTheme }).catch(() => {});
   }, [activeTheme]);
 
   // Apply font when settings.font_family changes
