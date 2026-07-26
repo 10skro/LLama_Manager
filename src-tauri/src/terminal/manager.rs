@@ -128,10 +128,16 @@ impl TerminalManager {
             version_id, config_id, cmd_str, working_dir, self.session_count());
 
         // Spawn process using ConPTY
-        let process = conpty::ProcAttr::cmd(cmd_str)
+        // Use commandline() directly — ProcAttr::cmd() wraps with "cmd /C ..." which kills
+        // the interactive shell immediately since /C exits after the command finishes.
+        let process = conpty::ProcAttr::default()
+            .commandline(&cmd_str)
             .current_dir(&working_dir)
             .spawn()
             .map_err(|e| format!("Failed to spawn ConPTY process: {}", e))?;
+
+        // Resize ConPTY to a reasonable size so cmd prompt output is captured properly
+        let _ = process.resize(80, 30);
 
         let pid = process.pid();
         log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}", session_id, pid, version_id, config_id);
