@@ -125,6 +125,7 @@ pub struct CustomCommand {
     pub name: String,
     pub command: String,
     pub description: Option<String>,
+    pub color: String,
     pub created_at: String,
     pub updated_at: String,
 }

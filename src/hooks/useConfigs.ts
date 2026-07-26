@@ -23,6 +23,7 @@ export function useConfigs() {
         id: cc.id,
         name: cc.name,
         description: cc.description,
+        color: cc.color,
         createdAt: cc.createdAt,
         updatedAt: cc.updatedAt,
         command: cc.command,

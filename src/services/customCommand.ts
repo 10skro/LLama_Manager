@@ -1,13 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { CustomCommand } from '@/types';
 
-export async function saveCustomCommand(config: { id?: string; name: string; command: string; description?: string; createdAt?: string }): Promise<CustomCommand> {
+export async function saveCustomCommand(config: { id?: string; name: string; command: string; description?: string; color?: string; createdAt?: string }): Promise<CustomCommand> {
   const now = new Date().toISOString();
 
   const payload: Record<string, string> = {
     name: config.name,
     command: config.command,
     description: config.description || '',
+    color: config.color || '',
   };
   if (config.id) {
     payload.id = config.id;
@@ -19,6 +20,7 @@ export async function saveCustomCommand(config: { id?: string; name: string; com
     name: config.name,
     command: config.command,
     description: config.description,
+    color: config.color || '',
     createdAt: config.createdAt || now,
     updatedAt: now,
   };

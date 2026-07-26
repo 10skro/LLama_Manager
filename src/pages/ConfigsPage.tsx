@@ -18,15 +18,26 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { deleteCustomCommand } from '@/services/customCommand';
 import { useToast } from '@/hooks/use-toast';
 import { formatRelativeTime } from '@/utils/format';
+import { getColorPalette } from '@/themes';
+import { useAppStore } from '@/store/useAppStore';
 import type { ConfigEntry } from '@/types';
 
 export function ConfigsPage() {
   const { entries, isLoading, search, setSearch, filter, setFilter, totalCount, refetch } = useConfigs();
+  const { activeTheme } = useAppStore();
   const { toast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<ConfigEntry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ConfigEntry | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const colorPalette = getColorPalette(activeTheme);
+
+  function getColorHex(colorKey: string): string {
+    if (!colorKey) return '';
+    const match = colorPalette.find(c => c.key === colorKey);
+    return match?.hex || '';
+  }
 
   const editingCustomCommand = editingEntry
     ? {
@@ -34,6 +45,7 @@ export function ConfigsPage() {
         name: editingEntry.name,
         command: editingEntry.command || '',
         description: editingEntry.description,
+        color: editingEntry.color,
         createdAt: editingEntry.createdAt,
       }
     : null;
@@ -157,6 +169,12 @@ export function ConfigsPage() {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <Terminal className="h-4 w-4 text-muted-foreground" />
+                      {entry.color && (
+                        <span
+                          className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: getColorHex(entry.color) }}
+                        />
+                      )}
                       {entry.name}
                     </div>
                   </TableCell>

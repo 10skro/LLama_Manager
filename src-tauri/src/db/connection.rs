@@ -113,6 +113,7 @@ impl DbManager {
                 name TEXT NOT NULL,
                 command TEXT NOT NULL,
                 description TEXT DEFAULT '',
+                color TEXT DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );

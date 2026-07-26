@@ -35,6 +35,14 @@ export const catppuccinMocha: Theme = {
   id: 'catppuccin-mocha',
   name: 'Catppuccin Mocha',
   colors: catppuccinMochaColors,
+  configPicker: [
+    { key: 'red', hex: catppuccinMochaColors.red, label: 'Red' },
+    { key: 'mauve', hex: catppuccinMochaColors.mauve, label: 'Mauve' },
+    { key: 'blue', hex: catppuccinMochaColors.blue, label: 'Blue' },
+    { key: 'green', hex: catppuccinMochaColors.green, label: 'Green' },
+    { key: 'peach', hex: catppuccinMochaColors.peach, label: 'Peach' },
+    { key: 'pink', hex: catppuccinMochaColors.pink, label: 'Pink' },
+  ],
   cssVariables: {
     '--background': hexToHSL(catppuccinMochaColors.base),
     '--foreground': hexToHSL(catppuccinMochaColors.text),

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
 import { saveCustomCommand as saveCustomCommandApi } from '@/services/customCommand';
+import { getColorPalette } from '@/themes';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -17,6 +18,7 @@ interface EditingCommand {
   name: string;
   command: string;
   description?: string;
+  color?: string;
   createdAt: string;
 }
 
@@ -27,13 +29,16 @@ interface CustomCommandModalProps {
 }
 
 export function CustomCommandModal({ open, onOpenChange, editingCommand }: CustomCommandModalProps) {
-  const { addCustomCommand, updateCustomCommand } = useAppStore();
+  const { addCustomCommand, updateCustomCommand, activeTheme } = useAppStore();
   const { toast } = useToast();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [command, setCommand] = useState('');
+  const [color, setColor] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  const colorPalette = getColorPalette(activeTheme);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -42,10 +47,12 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
         setName(editingCommand.name);
         setDescription(editingCommand.description || '');
         setCommand(editingCommand.command);
+        setColor(editingCommand.color || '');
       } else {
         setName('');
         setDescription('');
         setCommand('');
+        setColor('');
       }
     }
   }, [open, editingCommand]);
@@ -65,6 +72,7 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
         name: name.trim(),
         command: command.trim(),
         description: description.trim() || undefined,
+        color,
       };
       if (editingCommand) {
         input.id = editingCommand.id;
@@ -97,7 +105,7 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Terminal className="h-5 w-5 text-primary" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1 min-w-0">
               <DialogTitle className="text-lg">
                 {editingCommand ? 'Edit Custom Command' : 'Create Custom Command'}
               </DialogTitle>
@@ -109,6 +117,48 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
             </div>
           </div>
         </DialogHeader>
+
+        {/* Color Picker */}
+        <div className="flex items-center justify-center gap-1.5">
+          {colorPalette.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setColor(c.key)}
+              className={`
+                relative h-5 w-5 rounded-full transition-all
+                ${color === c.key
+                  ? 'ring-2 ring-offset-1 ring-offset-card scale-110'
+                  : 'hover:scale-110'
+                }
+              `}
+              style={{
+                backgroundColor: c.hex,
+                ['--tw-ring-color' as string]: c.hex,
+              }}
+              title={c.label}
+            >
+              {color === c.key && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="block h-1 w-1 rounded-full bg-black/40" />
+                </span>
+              )}
+            </button>
+          ))}
+          {color && (
+            <button
+              type="button"
+              onClick={() => setColor('')}
+              className="relative h-5 w-5 rounded-full border border-white/30 bg-transparent hover:bg-white/10 transition-all hover:scale-110"
+              title="Remove color"
+            >
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="absolute h-[2px] w-2.5 bg-foreground/50 rotate-45 rounded-sm" />
+                <span className="absolute h-[2px] w-2.5 bg-foreground/50 -rotate-45 rounded-sm" />
+              </span>
+            </button>
+          )}
+        </div>
 
         <div className="space-y-5 py-3">
           {/* Info Section */}

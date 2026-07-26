@@ -24,6 +24,14 @@ export const rosepineDawn: Theme = {
   id: 'rosepine-dawn',
   name: 'Rosé Pine Dawn',
   colors: rosepineDawnColors,
+  configPicker: [
+    { key: 'love', hex: rosepineDawnColors.love, label: 'Love' },
+    { key: 'iris', hex: rosepineDawnColors.iris, label: 'Iris' },
+    { key: 'pine', hex: rosepineDawnColors.pine, label: 'Pine' },
+    { key: 'foam', hex: rosepineDawnColors.foam, label: 'Foam' },
+    { key: 'gold', hex: rosepineDawnColors.gold, label: 'Gold' },
+    { key: 'rose', hex: rosepineDawnColors.rose, label: 'Rose' },
+  ],
   cssVariables: {
     // Semantic mappings
     '--background': hexToHSL(rosepineDawnColors.base),

@@ -24,6 +24,14 @@ export const rosepineMoon: Theme = {
   id: 'rosepine-moon',
   name: 'Rosé Pine Moon',
   colors: rosepineMoonColors,
+  configPicker: [
+    { key: 'love', hex: rosepineMoonColors.love, label: 'Love' },
+    { key: 'iris', hex: rosepineMoonColors.iris, label: 'Iris' },
+    { key: 'pine', hex: rosepineMoonColors.pine, label: 'Pine' },
+    { key: 'foam', hex: rosepineMoonColors.foam, label: 'Foam' },
+    { key: 'gold', hex: rosepineMoonColors.gold, label: 'Gold' },
+    { key: 'rose', hex: rosepineMoonColors.rose, label: 'Rose' },
+  ],
   cssVariables: {
     // Semantic mappings
     '--background': hexToHSL(rosepineMoonColors.base),

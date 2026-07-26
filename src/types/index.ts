@@ -100,6 +100,7 @@ export interface CustomCommand {
   name: string;
   command: string;
   description?: string;
+  color: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,6 +111,7 @@ export type ConfigEntry = {
   id: string;
   name: string;
   description?: string;
+  color: string;
   createdAt: string;
   updatedAt: string;
   command?: string;

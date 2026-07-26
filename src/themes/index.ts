@@ -6,6 +6,15 @@
 export type ThemeColors = Record<string, string>;
 
 /**
+ * A single color option for the config color picker.
+ */
+export interface ConfigPickerColor {
+  key: string;
+  hex: string;
+  label: string;
+}
+
+/**
  * A theme definition with semantic CSS variable mappings.
  */
 export interface Theme {
@@ -13,6 +22,7 @@ export interface Theme {
   name: string;
   colors: ThemeColors;
   cssVariables: Record<string, string>;
+  configPicker: ConfigPickerColor[];
 }
 
 // --- Theme registry ---
@@ -30,6 +40,15 @@ export const DEFAULT_THEME_ID = 'catppuccin-mocha';
 
 export function getThemeById(id: string): Theme | undefined {
   return AVAILABLE_THEMES.find(t => t.id === id);
+}
+
+/**
+ * Get the config picker color palette for a given theme.
+ * Falls back to the default theme if the theme is not found.
+ */
+export function getColorPalette(themeId: string): ConfigPickerColor[] {
+  const theme = getThemeById(themeId);
+  return theme?.configPicker ?? getThemeById(DEFAULT_THEME_ID)!.configPicker;
 }
 
 // Applique les variables CSS du thème sur :root
