@@ -395,7 +395,8 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
                     let date_part = &s[..idx];
                     let time_part = &s[idx+1..];
                     if let Some(colon) = time_part.find(':') {
-                        format!("{} {}", date_part, &time_part[..colon])
+                        let min = &time_part[..colon];
+                        format!("{} {}", date_part, min)
                     } else {
                         s
                     }
