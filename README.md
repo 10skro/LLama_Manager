@@ -17,8 +17,6 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
   - [Configurations](#configurations)
   - [Terminals](#terminals)
 - [Getting Started](#getting-started)
-- [Themes](#themes)
-- [System Requirements](#system-requirements)
 - [License](#license)
 
 ---
@@ -120,29 +118,6 @@ A floating window dedicated to managing running llama.cpp servers.
 2. **Download** — Click the download button on any build row. Progress appears in the bottom-right panel.
 3. **Create a configuration** — Go to **Configurations** and create a startup command with your model path and arguments.
 4. **Link and launch** — Back on the **Dashboard**, open a version card, link your configuration, and click **Play**.
-
----
-
-## Themes
-
-Llama Manager ships with three built-in themes:
-
-| Theme            | Mode  |
-|------------------|-------|
-| Catppuccin Mocha | Dark  |
-| Rosé Pine Dawn   | Light |
-| Rosé Pine Moon   | Dark  |
-
-Switch themes from **Settings → Appearance**.
-
----
-
-## System Requirements
-
-- **OS:** Windows 10 or later
-- **Architecture:** x64 or arm64
-- **RAM:** 4 GB minimum (more recommended for running large models)
-- **Internet:** Required for downloading builds from GitHub
 
 ---
 
