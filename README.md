@@ -17,7 +17,6 @@ A modern Windows desktop application for managing [llama.cpp](https://github.com
   - [Configurations](#configurations)
   - [Terminals](#terminals)
 - [Getting Started](#getting-started)
-- [How It Works](#how-it-works)
 - [Themes](#themes)
 - [System Requirements](#system-requirements)
 - [License](#license)
@@ -121,33 +120,6 @@ A floating window dedicated to managing running llama.cpp servers.
 2. **Download** — Click the download button on any build row. Progress appears in the bottom-right panel.
 3. **Create a configuration** — Go to **Configurations** and create a startup command with your model path and arguments.
 4. **Link and launch** — Back on the **Dashboard**, open a version card, link your configuration, and click **Play**.
-
----
-
-## How It Works
-
-```
-Catalog                    Dashboard              Terminals
-┌──────────────┐          ┌──────────────┐       ┌──────────────┐
-│ Browse builds │  ──────▶│ Version cards │ ────▶│ Server output│
-│ Filter /     │  download│ Play / Stop  │ launch│ Multi-session│
-│ Search       │          │ Clone /      │       │ List / Grid  │
-│ Favorites    │          │ Customize    │       └──────────────┘
-└──────────────┘          └──────────────┘
-                             │
-                             │ link
-                             ▼
-                        ┌──────────────┐
-                        │ Configurations│
-                        │ Custom       │
-                        │ Commands     │
-                        └──────────────┘
-```
-
-1. **Catalog** → Find and download a llama.cpp build.
-2. **Configurations** → Create a startup command with your preferred arguments.
-3. **Dashboard** → Link the configuration to a version card and launch the server.
-4. **Terminals** → Monitor and manage running servers in a floating window.
 
 ---
 
