@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.5.44",
+  "tag_name": "v0.5.45",
   "target_commitish": "main",
-  "name": "v0.5.44",
-  "body": "## Changes\n\n### Fixes\n- Replace ConPTY with pipe-based stdout/stderr capture for real-time terminal output\n- Fix terminal-output event serialization (struct instead of tuple)\n- Fix terminal window errors (camelCase serialization, Tauri capabilities)\n- Add output buffer for late-joining terminal viewers\n- Fix process spawning with commandline() instead of ProcAttr::cmd()\n\n### Refactoring\n- Migrate terminal I/O from ConPTY to pipe-based capture\n",
+  "name": "v0.5.45",
+  "body": "## Changes\n\n### Fixes\n- Fix llama-server 'Invalid argument' error on Windows: strip quotes from file path arguments before passing to cmd /K\n- TypeScript: applyOverrideFlag no longer wraps model/mmproj paths in double quotes\n- Rust: new strip_path_quotes() function cleans quoted file paths (.gguf, .safetensors, .exe, etc.) in startup commands\n",
   "draft": false,
   "prerelease": false
 }
