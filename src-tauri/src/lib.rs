@@ -377,23 +377,38 @@ async fn open_terminal_window(app: tauri::AppHandle) -> Result<(), String> {
 // App Update
 #[tauri::command]
 async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    let updater = app.updater().map_err(|e| e.to_string())?;
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(e) => {
+            log::error!("Failed to get updater: {}", e);
+            return Err(format!("Failed to get updater: {}", e));
+        }
+    };
     
-    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
-        let date_str = update.date.map(|d| d.to_string());
-        Ok(serde_json::json!({
-            "available": true,
-            "version": update.version.to_string(),
-            "date": date_str,
-            "body": update.body,
-        }))
-    } else {
-        Ok(serde_json::json!({
-            "available": false,
-            "version": null,
-            "date": null,
-            "body": null,
-        }))
+    match updater.check().await {
+        Ok(Some(update)) => {
+            log::info!("Update available: {} (current: {})", update.version, app.package_info().version);
+            let date_str = update.date.map(|d| d.to_string());
+            Ok(serde_json::json!({
+                "available": true,
+                "version": update.version.to_string(),
+                "date": date_str,
+                "body": update.body,
+            }))
+        }
+        Ok(None) => {
+            log::info!("No update available (current: {})", app.package_info().version);
+            Ok(serde_json::json!({
+                "available": false,
+                "version": null,
+                "date": null,
+                "body": null,
+            }))
+        }
+        Err(e) => {
+            log::error!("Update check failed: {}", e);
+            Err(format!("Update check failed: {}", e))
+        }
     }
 }
 

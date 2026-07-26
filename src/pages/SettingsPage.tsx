@@ -34,7 +34,7 @@ export function SettingsPage() {
   const { settings, setSettings } = useAppStore();
   const { activeTheme, setActiveTheme } = useTheme();
   const { toast } = useToast();
-  const { updateInfo, isChecking, isInstalling, checkUpdate, installUpdate } = useAppUpdate();
+  const { updateInfo, isChecking, isInstalling, checkUpdate, installUpdate, error: updateError } = useAppUpdate();
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Local state for GitHub token (NOT in settings store)
@@ -755,7 +755,14 @@ export function SettingsPage() {
             </Button>
           </div>
 
-          {hasCheckedManually && !isChecking && !updateInfo.available && (
+          {hasCheckedManually && updateError && (
+            <p className="text-sm text-red flex items-center gap-1.5">
+              <X className="h-4 w-4" />
+              Update check failed: {updateError}
+            </p>
+          )}
+
+          {hasCheckedManually && !isChecking && !updateInfo.available && !updateError && (
             <p className="text-sm text-green flex items-center gap-1.5">
               <Check className="h-4 w-4" />
               You are up to date.
