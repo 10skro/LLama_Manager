@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.13",
-  "long_description": "# v0.6.13\n\n## Test Release\nThis is a test release to verify the auto-update system works correctly.\n\n## Changes\n- Test update detection\n- Verify download and install flow",
-  "pub_date": "2026-07-26T19:00:00Z",
+  "version": "v0.6.12",
+  "long_description": "# v0.6.12\n\n## Features\n- Tauri native auto-update system\n- Bell icon notification for available updates\n- Update changelog modal on startup\n- Check for update button in Settings\n- Notification toggles (auto-check + show modal)\n- Custom multi-size app icons (16x16 to 256x256)\n\n## Technical\n- Added tauri-plugin-updater\n- GitHub Pages hosted latest.json for update checks",
+  "pub_date": "2026-07-26T18:35:43Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.13/Llama.Manager_0.6.13_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMjJXSEJqNlRRYi9wTzM3c0grVEg1V25uMmhYYk9YM09LamhkNzVqR0UzZzFuUjlqYmlOcXVVQUdhRTNMVUZoeDFRdzljbGhkanhNZks2d3FVRWVsTXVLY3Ntam5jbkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDkyNzU2CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMTJfeDY0LXNldHVwLmV4ZQpoQU9PSDdTTFBCSlZ1cDRsNEU1d2g1SHBFcFdQL21jSTRxU3hUWXdDbU4zWHJtTjBIUGl1N0R5VTBVUFV2ZnlGS1dOK0lIRng0NzhpR0FUR0srZmpBUT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.12/Llama.Manager_0.6.12_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUMjJXSEJqNlRRYnl4VUM1b3RJQ05IUHpqNTh6c0xzZGhaZW50ZUNYWVFmMXhEWGtPSUFZZm9lS3RPMFdXQllVOE5HT240ZzRPTXdTaHJhV2NVUEt6VVN0UUwwQmZrY2dJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDkyOTU5CWZpbGU6TGxhbWEuTWFuYWdlcl8wLjYuMTJfeDY0LXNldHVwLmV4ZQpmWkRUSzBtSlVKS3VTZlk2eDZwVDFjWFhIWG1DcVVBR1doSWlzd0Z6TDdsVTZ4YjRMbW1UVkU5dmtySmlJUWxqYTA4Sll5c3BPeUpjVGl5U3pveFhBQT09Cg=="
     }
   }
 }
