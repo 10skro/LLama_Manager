@@ -9,6 +9,12 @@ import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride 
  * Handles paths with double quotes, single quotes, or no quotes.
  * Preserves all other arguments untouched.
  *
+ * IMPORTANT: Does NOT wrap the new value in quotes.
+ * When the command is executed via `cmd /K "full command"`, any quotes
+ * inside the command string become literal characters in the arguments
+ * received by the target process. This causes "Invalid argument" errors
+ * because the OS tries to open a file whose name starts with `"`.
+ *
  * Strategy: tokenise the command respecting quoted strings,
  * then replace the flag+value pair if found, otherwise insert
  * RIGHT AFTER the executable (first token ending with .exe or similar).
@@ -16,7 +22,7 @@ import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride 
 function applyOverrideFlag(
   cmd: string,
   flag: string,       // e.g. '-m' or '--mmproj'
-  newValue: string,    // the override path
+  newValue: string,    // the override path (no quotes added)
 ): string {
   // Tokenise: split on whitespace but respect quoted strings
   const tokens: string[] = [];
@@ -38,23 +44,24 @@ function applyOverrideFlag(
     // Case B: flag and value are attached:         -m"path"
     if (flagIdx < tokens.length && tokens[flagIdx].length > flag.length) {
       // Case B: attached, e.g. -m"path" — replace just the flag token
-      tokens[flagIdx] = `${flag} "${newValue}"`;
+      // No quotes around newValue to prevent literal quote characters in args
+      tokens[flagIdx] = `${flag} ${newValue}`;
     } else if (flagIdx + 1 < tokens.length) {
       // Case A: separate — replace flag and value tokens
       tokens[flagIdx] = flag;
-      // Strip existing quotes from the value token before re-quoting
-      tokens[flagIdx + 1] = `"${newValue}"`;
+      // No quotes around newValue
+      tokens[flagIdx + 1] = newValue;
     } else {
       // Flag at end with no value — replace and append new value
       tokens[flagIdx] = flag;
-      tokens.push(`"${newValue}"`);
+      tokens.push(newValue);
     }
     return tokens.join(' ');
   }
 
   // Flag not found — insert RIGHT AFTER the executable (first token)
-  // This ensures:  exe.exe -m "path" --other-args ...
-  const injection = `${flag} "${newValue}"`;
+  // This ensures:  exe.exe -m path --other-args ...
+  const injection = `${flag} ${newValue}`;
   if (tokens.length === 0) {
     return injection;
   }

@@ -6,6 +6,26 @@ use std::time::Duration;
 
 use tauri::{Emitter, Manager};
 
+/// Strip outer quotes from file path arguments in a command string.
+///
+/// When a command like `llama-server.exe -m "C:\path\model.gguf"` is passed
+/// to `cmd /K` as a single argument, the inner quotes become literal characters
+/// in the arguments received by the target process. This function removes those
+/// quotes to prevent "Invalid argument" errors from the OS.
+///
+/// Only strips quotes from tokens that look like file paths (contain `\` or `/`
+/// or end with a known file extension like `.gguf`, `.safetensors`, `.exe`, etc.).
+fn strip_path_quotes(cmd: &str) -> String {
+    let re = regex::Regex::new(r#""([^"]*[\./\\][^"]*\.(gguf|safetensors|exe|dll|so|dylib|mmproj|bin|model|ckpt|pt|bin2|pth))""#)
+        .expect("valid regex");
+
+    re.replace_all(cmd, |caps: &regex::Captures| {
+        // Return the path without surrounding quotes (as owned String to avoid lifetime issues)
+        caps[1].to_string()
+    })
+    .to_string()
+}
+
 /// Payload emitted on the "terminal-output" Tauri event.
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -101,8 +121,13 @@ impl TerminalManager {
     ) -> Result<String, String> {
         let session_id = uuid::Uuid::new_v4().to_string();
 
+        // Strip quotes from file path arguments to prevent "Invalid argument" errors.
+        // When cmd /K receives a command with quoted paths, the quotes become literal
+        // characters in the arguments passed to the target process.
+        let clean_command = startup_command.as_ref().map(|sc| strip_path_quotes(sc));
+
         // Build the command to run
-        let cmd_str = if let Some(sc) = &startup_command {
+        let cmd_str = if let Some(sc) = &clean_command {
             // Escape cmd.exe metacharacters to prevent command injection / truncation
             let escaped = sc.replace('^', "^^")
                 .replace('&', "^&")
@@ -123,7 +148,7 @@ impl TerminalManager {
         // Use /C with "exit" to ensure cmd.exe exits after the command finishes.
         // Actually use /K to keep cmd alive, but pass command as separate arg.
         let mut cmd = std::process::Command::new("cmd");
-        if let Some(sc) = &startup_command {
+        if let Some(sc) = &clean_command {
             if !sc.is_empty() {
                 cmd.args(&["/K", sc]);
             } else {
