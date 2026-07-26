@@ -46,3 +46,7 @@ Thumbs.db
 opencode.json
 opencode.jsonc
 .opencode/
+
+# Tauri updater signing keys (private!)
+src-tauri/updater.key
+src-tauri/updater.key.pub

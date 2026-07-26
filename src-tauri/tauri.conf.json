@@ -19,10 +19,9 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://api.github.com/repos/10skro/LLama_Manager/releases/latest"
+        "https://10skro.github.io/LLama_Manager/latest.json"
       ],
-      "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNFMkVGQTkzNjBGQzRFNTYKUldSV1R2eGdrL291UGhTVkNabnpRVEMrdHMyZUhDcVNISDNoczJ1L25RcU5JTlVCa0tBVER4RXUK"
+      "dialog": false
     }
   },
   "bundle": {

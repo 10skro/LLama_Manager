@@ -1,0 +1,10 @@
+{
+  "version": "v0.6.12",
+  "long_description": "# v0.6.12\n\n## Features\n- Tauri native auto-update system\n- Bell icon notification for available updates\n- Update changelog modal on startup\n- Check for update button in Settings\n- Notification toggles (auto-check + show modal)\n- Custom multi-size app icons (16x16 to 256x256)\n\n## Technical\n- Added tauri-plugin-updater\n- GitHub Pages hosted latest.json for update checks",
+  "pub_date": "2026-07-26T18:35:43Z",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.12/Llama.Manager_0.6.12_x64-setup.exe"
+    }
+  }
+}
