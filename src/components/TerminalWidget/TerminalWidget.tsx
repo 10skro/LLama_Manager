@@ -6,10 +6,14 @@ import { useTerminalSessions } from '@/hooks/useTerminalSessions';
 import { TerminalSessionList } from './TerminalSessionList';
 import { TerminalSessionGrid } from './TerminalSessionGrid';
 import { TerminalSessionItem } from './TerminalSessionItem';
+import { useTheme } from '@/hooks/useTheme';
 
 type ViewMode = 'list' | 'grid';
 
 export function TerminalWidget() {
+  // Apply theme reactively — reads from Zustand store hydrated by __INITIAL_THEME__
+  useTheme();
+
   const { sessions, refreshSessions } = useTerminalSessions();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -35,10 +39,10 @@ export function TerminalWidget() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#1e1e2e]">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/10 bg-[#181825]">
-        <span className="text-sm font-semibold text-white/80">Terminals</span>
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/10 bg-sidebar">
+        <span className="text-sm font-semibold text-foreground/80">Terminals</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setViewMode('list')}
@@ -90,7 +94,7 @@ export function TerminalWidget() {
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-white/30">Sélectionnez une session</p>
+                  <p className="text-sm text-foreground/30">Sélectionnez une session</p>
                 </div>
               )}
             </div>

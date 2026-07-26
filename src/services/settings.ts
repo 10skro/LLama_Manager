@@ -31,3 +31,11 @@ export function selectFolder(): Promise<string | null> {
 export async function changeStoragePath(oldPath: string, newPath: string): Promise<string> {
   return invoke<string>('change_storage_path', { oldPath, newPath }) as Promise<string>;
 }
+
+/**
+ * Persist an explicit user theme choice to SQLite.
+ * Called only when the user actively switches themes (not on startup).
+ */
+export async function persistThemeChange(themeId: string): Promise<void> {
+  return invoke<void>('persist_theme_change', { themeId }) as Promise<void>;
+}

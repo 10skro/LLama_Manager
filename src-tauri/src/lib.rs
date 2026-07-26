@@ -1,709 +1,377 @@
 #![allow(dead_code)]
 
+mod cards;
 mod config;
 mod custom_command;
 mod db;
 mod download;
+mod favorites;
 mod file;
 mod github;
 mod models;
 mod terminal;
+mod theme;
 mod utils;
 mod version;
 
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
 
-use tauri::{Emitter, Listener, Manager, WebviewWindow};
-use tauri_plugin_dialog::DialogExt;
+use tauri::{Listener, Manager, State};
 
 use crate::config::settings::SettingsManager;
-use crate::config::storage::{validate_storage_path, migrate_storage_path, cleanup_old_storage};
 use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::download::manager::DownloadManager;
-use crate::github::api::{FetchMode, GithubClient};
-use crate::models::types::{
-    AppError, AppSettings, Build, CardCustomization, DownloadProgress, FavoriteBuild, InstalledVersion,
-    ModelFile, VersionConfigLink, VersionOverride,
-};
-use crate::terminal::manager::{TerminalManager, ActiveTerminalInfo};
-use crate::version::manager::VersionManager;
+use crate::github::api::GithubClient;
+use crate::models::types::AppError;
+use crate::terminal::manager::TerminalManager;
+use crate::theme::colors::theme_to_color;
+use crate::theme::inject::build_initialization_script;
 
-const DEFAULT_RELEASE_LIMIT: usize = 50;
-const SEARCH_MAX_RELEASES: usize = 100;
+// ─── Tauri Command Wrappers ─────────────────────────────────────────────
+// #[tauri::command] must be in this module so generate_handler! can see
+// the generated __cmd__* macros. Each wrapper delegates to the domain module.
 
-// ─── Helpers ────────────────────────────────────────────────────────────
-
-/// Spawn a background task that forwards download progress events to the frontend
-/// and writes to the DB with throttling (every 5 events or on terminal status).
-/// When `download_id` is `None`, the ID is taken from each progress message.
-fn spawn_progress_forwarder(
-    app: tauri::AppHandle,
-    db: DbManager,
-    mut rx: tokio::sync::mpsc::Receiver<DownloadProgress>,
-    download_id: Option<i64>,
-) {
-    tokio::spawn(async move {
-        let mut update_counter: u32 = 0;
-        const DB_WRITE_INTERVAL: u32 = 5;
-        // Throttle frontend event emission to max ~5 events/sec (200ms interval)
-        let mut last_emit = Instant::now();
-        const EMIT_INTERVAL: Duration = Duration::from_millis(200);
-
-        while let Some(progress) = rx.recv().await {
-            update_counter += 1;
-            let is_terminal = ["completed", "failed", "cancelled", "downloaded"].contains(&progress.status.as_str());
-
-            // THROTTLED emit: only emit if enough time has passed OR it's a terminal event
-            let now = Instant::now();
-            if is_terminal || now.duration_since(last_emit) >= EMIT_INTERVAL {
-                let _ = app.emit("download-progress", &progress);
-                last_emit = now;
-            }
-
-            // DB write throttling (every 5 events or terminal) - keep existing logic
-            if is_terminal || update_counter % DB_WRITE_INTERVAL == 0 {
-                let id = download_id.unwrap_or(progress.download_id);
-                if let Ok(conn) = db.lock_conn() {
-                    // Map "downloaded" -> "completed" for DB writes so post_download_tasks can proceed
-                    let db_status = if progress.status == "downloaded" { "completed" } else { &progress.status };
-                    let _ = repo::update_download_progress(&conn, id, progress.downloaded, db_status);
-                }
-            }
-        }
-    });
-}
-
-// ─── Tauri Commands ─────────────────────────────────────────────────────
-
+// GitHub / builds
 #[tauri::command]
 async fn fetch_builds(
-    state_github: tauri::State<'_, GithubClient>,
-    state_db: tauri::State<'_, DbManager>,
+    state_github: State<'_, GithubClient>,
+    state_db: State<'_, DbManager>,
     limit: Option<usize>,
     force_refresh: Option<bool>,
-) -> Result<Vec<Build>, String> {
-    let release_limit = limit.unwrap_or(DEFAULT_RELEASE_LIMIT);
-    let mode = if force_refresh == Some(true) {
-        FetchMode::ForceRefresh
-    } else {
-        FetchMode::Conditional
-    };
-    github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, release_limit, mode)
-        .await
-        .map_err(|e| e.to_string())
+) -> Result<Vec<crate::models::types::Build>, String> {
+    github::commands::fetch_builds(state_github, state_db, limit, force_refresh).await
 }
-
 #[tauri::command]
 async fn check_new_builds(
-    state_github: tauri::State<'_, GithubClient>,
-    state_db: tauri::State<'_, DbManager>,
-) -> Result<Vec<Build>, String> {
-    let installed = VersionManager::list_installed(&state_db).map_err(|e| e.to_string())?;
-    let available_builds = github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, DEFAULT_RELEASE_LIMIT, FetchMode::Conditional)
-        .await
-        .map_err(|e| e.to_string())?;
-    Ok(github::api::check_for_new_builds(&installed, &available_builds))
+    state_github: State<'_, GithubClient>,
+    state_db: State<'_, DbManager>,
+) -> Result<Vec<crate::models::types::Build>, String> {
+    github::commands::check_new_builds(state_github, state_db).await
 }
-
 #[tauri::command]
 async fn fetch_release_by_tag(
-    state_github: tauri::State<'_, GithubClient>,
+    state_github: State<'_, GithubClient>,
     tag: String,
-) -> Result<Vec<Build>, String> {
-    github::api::fetch_release_by_tag(&state_github, tag)
-        .await
-        .map_err(|e| e.to_string())
+) -> Result<Vec<crate::models::types::Build>, String> {
+    github::commands::fetch_release_by_tag(state_github, tag).await
 }
-
 #[tauri::command]
 async fn search_builds(
-    state_github: tauri::State<'_, GithubClient>,
+    state_github: State<'_, GithubClient>,
     query: String,
-) -> Result<Vec<Build>, String> {
-    github::api::search_builds(&state_github, query, SEARCH_MAX_RELEASES)
-        .await
-        .map_err(|e| e.to_string())
+) -> Result<Vec<crate::models::types::Build>, String> {
+    github::commands::search_builds(state_github, query).await
 }
-
 #[tauri::command]
-fn get_installed_versions(state: tauri::State<'_, DbManager>) -> Result<Vec<InstalledVersion>, String> {
-    VersionManager::list_installed(&state).map_err(|e| e.to_string())
+async fn fetch_release_changelog(
+    state_github: State<'_, GithubClient>,
+    tag: String,
+) -> Result<Option<String>, String> {
+    github::commands::fetch_release_changelog(state_github, tag).await
+}
+#[tauri::command]
+fn get_catalog_last_fetched(
+    state_db: State<'_, DbManager>,
+) -> Result<Option<String>, String> {
+    github::commands::get_catalog_last_fetched(state_db)
 }
 
+// Version management
+#[tauri::command]
+fn get_installed_versions(state: State<'_, DbManager>) -> Result<Vec<crate::models::types::InstalledVersion>, String> {
+    version::commands::get_installed_versions(state)
+}
 #[tauri::command]
 fn uninstall_version(
-    state: tauri::State<'_, DbManager>,
+    state: State<'_, DbManager>,
     id: i64,
 ) -> Result<bool, String> {
-    VersionManager::uninstall_version(&state, id).map(|_| true).map_err(|e| e.to_string())
+    version::commands::uninstall_version(state, id)
 }
-
 #[tauri::command]
 fn open_folder(
     app: tauri::AppHandle,
-    state_db: tauri::State<'_, DbManager>,
+    state_db: State<'_, DbManager>,
     path: String,
 ) -> Result<String, String> {
-    // Get the actual storage base (respects user-configured custom path)
-    let fallback_path = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?
-        .to_string_lossy()
-        .to_string();
-    let storage_dir = std::path::PathBuf::from(SettingsManager::get_storage_path(&state_db, &fallback_path));
-
-    // Canonicalize both paths to resolve .. and symlinks
-    let canonical_storage = storage_dir.canonicalize()
-        .map_err(|e| format!("Storage directory not found: {}", e))?;
-    let path_buf = std::path::PathBuf::from(&path);
-    let canonical_path = path_buf.canonicalize()
-        .map_err(|e| format!("Path not found: {}", e))?;
-
-    // Check that the canonical path starts with the canonical storage dir
-    if !canonical_path.starts_with(&canonical_storage) {
-        return Err("Access denied: path is outside the storage directory".to_string());
-    }
-
-    std::process::Command::new("explorer")
-        .arg(&path)
-        .spawn()
-        .map_err(|e| format!("Failed to open folder: {}", e))?;
-
-    Ok("Folder opened".to_string())
+    version::commands::open_folder(app, state_db, path)
 }
-
 #[tauri::command]
-async fn cancel_download(
-    state_download: tauri::State<'_, DownloadManager>,
-    id: i64,
-) -> Result<bool, String> {
-    state_download.cancel_download(id).await.map_err(|e| e.to_string())
+async fn get_storage_usage(
+    app: tauri::AppHandle,
+    state_db: State<'_, DbManager>,
+) -> Result<u64, String> {
+    version::commands::get_storage_usage(app, state_db).await
 }
-
-#[tauri::command]
-fn get_download_status(
-    state: tauri::State<'_, DbManager>,
-    id: i64,
-) -> Result<Option<serde_json::Value>, String> {
-    let conn = state.lock_conn().map_err(|e| e.to_string())?;
-    let record = repo::get_download(&conn, id).map_err(|e| e.to_string())?;
-    Ok(record.map(|r| serde_json::to_value(r).unwrap_or_default()))
-}
-
-#[tauri::command]
-fn get_settings(state: tauri::State<'_, DbManager>) -> Result<serde_json::Value, String> {
-    let settings = SettingsManager::get_settings(&state).map_err(|e| e.to_string())?;
-    Ok(serde_json::to_value(settings).map_err(|e| e.to_string())?)
-}
-
-#[tauri::command]
-fn save_settings(
-    state: tauri::State<'_, DbManager>,
-    settings: serde_json::Value,
-) -> Result<(), String> {
-    let s: AppSettings = serde_json::from_value(settings).map_err(|e| e.to_string())?;
-    SettingsManager::save_settings(&state, &s).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn open_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    // .file() is the correct builder for folder dialogs in Tauri's dialog API.
-    // The .blocking_pick_folder() method turns the file dialog builder into a
-    // folder picker, overriding the default file-selection behavior.
-    let folder = app
-        .dialog()
-        .file()
-        .set_title("Select Storage Folder")
-        .blocking_pick_folder();
-    Ok(folder.map(|p| p.to_string()))
-}
-
 #[tauri::command]
 async fn install_version(
     app: tauri::AppHandle,
-    state_db: tauri::State<'_, DbManager>,
-    state_download: tauri::State<'_, DownloadManager>,
+    state_db: State<'_, DbManager>,
+    state_download: State<'_, DownloadManager>,
     build_number: String,
     backend: String,
     architecture: String,
     url: String,
     total_size: u64,
 ) -> Result<i64, String> {
-    let fallback_path = app.path().app_local_data_dir()
-        .map_err(|e| e.to_string())?
-        .to_string_lossy().to_string();
-    let storage_base = PathBuf::from(SettingsManager::get_storage_path(&state_db, &fallback_path));
-
-    let build = Build {
-        build_number,
-        backend,
-        architecture,
-        download_url: url,
-        file_size: total_size,
-        tag_name: String::new(),
-        published_at: String::new(),
-        platform: String::new(),
-        checksum: None,
-    };
-
-    let (tx, rx) = tokio::sync::mpsc::channel::<DownloadProgress>(64);
-    spawn_progress_forwarder(app.clone(), (*state_db).clone(), rx, None);
-
-    // Start install and get download_id + oneshot receiver immediately (non-blocking)
-    let (download_id, paths, download_rx) = VersionManager::start_install(
-        &state_db,
-        &state_download,
-        &build,
-        storage_base,
-        tx.clone(),
-    ).await.map_err(|e| e.to_string())?;
-
-    // Spawn post-download tasks (extract, validate, register) in background
-    let db_clone = (*state_db).clone();
-    tokio::spawn(async move {
-        let result = VersionManager::post_download_tasks(&db_clone, download_id, paths, tx, download_rx).await;
-        match result {
-            Ok(_) => {},
-            Err(e) => {
-                log::error!("Post-download tasks failed: {}", e);
-            }
-        }
-    });
-
-    Ok(download_id)
+    version::commands::install_version(app, state_db, state_download, build_number, backend, architecture, url, total_size).await
 }
-
 #[tauri::command]
-async fn fetch_release_changelog(
-    state_github: tauri::State<'_, GithubClient>,
-    tag: String,
-) -> Result<Option<String>, String> {
-    github::api::fetch_release_changelog(&state_github, tag)
-        .await
-        .map_err(|e| e.to_string())
+fn get_version_config_link(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+) -> Result<Option<crate::models::types::VersionConfigLink>, String> {
+    version::commands::get_version_config_link(state_db, version_id)
 }
-
 #[tauri::command]
-fn get_favorite_builds(state: tauri::State<'_, DbManager>) -> Result<Vec<FavoriteBuild>, String> {
-    let conn = state.lock_conn().map_err(|e| e.to_string())?;
-    repo::get_favorite_builds(&conn).map_err(|e| e.to_string())
+fn save_version_config_link(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+    config_type: String,
+    config_id: String,
+) -> Result<i64, String> {
+    version::commands::save_version_config_link(state_db, version_id, config_type, config_id)
+}
+#[tauri::command]
+fn delete_version_config_link(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+) -> Result<bool, String> {
+    version::commands::delete_version_config_link(state_db, version_id)
+}
+#[tauri::command]
+fn get_version_override(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+) -> Result<Option<crate::models::types::VersionOverride>, String> {
+    version::commands::get_version_override(state_db, version_id)
+}
+#[tauri::command]
+fn save_version_override(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+    model_path: Option<String>,
+    mmproj_path: Option<String>,
+) -> Result<(), String> {
+    version::commands::save_version_override(state_db, version_id, model_path, mmproj_path)
+}
+#[tauri::command]
+fn delete_version_override(
+    state_db: State<'_, DbManager>,
+    version_id: i64,
+) -> Result<bool, String> {
+    version::commands::delete_version_override(state_db, version_id)
 }
 
+// Download management
+#[tauri::command]
+async fn cancel_download(
+    state: State<'_, DownloadManager>,
+    id: i64,
+) -> Result<bool, String> {
+    download::commands::cancel_download(state, id).await
+}
+#[tauri::command]
+fn get_download_status(
+    state: State<'_, DbManager>,
+    id: i64,
+) -> Result<Option<serde_json::Value>, String> {
+    download::commands::get_download_status(state, id)
+}
+
+// Settings & config
+#[tauri::command]
+fn get_settings(state: State<'_, DbManager>) -> Result<serde_json::Value, String> {
+    config::commands::get_settings(state)
+}
+#[tauri::command]
+fn save_settings(
+    state: State<'_, DbManager>,
+    settings: serde_json::Value,
+) -> Result<(), String> {
+    config::commands::save_settings(state, settings)
+}
+#[tauri::command]
+fn open_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    config::commands::open_folder_dialog(app)
+}
+#[tauri::command]
+fn change_storage_path(
+    state_db: State<'_, DbManager>,
+    old_path: String,
+    new_path: String,
+) -> Result<String, String> {
+    config::commands::change_storage_path(state_db, old_path, new_path)
+}
+#[tauri::command]
+fn save_github_token(
+    state_db: State<'_, DbManager>,
+    state_github: State<'_, GithubClient>,
+    token: String,
+) -> Result<(), String> {
+    config::commands::save_github_token(state_db, state_github, token)
+}
+#[tauri::command]
+fn has_github_token(
+    state_db: State<'_, DbManager>,
+) -> Result<bool, String> {
+    config::commands::has_github_token(state_db)
+}
+#[tauri::command]
+fn delete_github_token(
+    state_db: State<'_, DbManager>,
+    state_github: State<'_, GithubClient>,
+) -> Result<(), String> {
+    config::commands::delete_github_token(state_db, state_github)
+}
+#[tauri::command]
+fn get_app_version(app: tauri::AppHandle) -> String {
+    config::commands::get_app_version(app)
+}
+
+// Favorites
+#[tauri::command]
+fn get_favorite_builds(state: State<'_, DbManager>) -> Result<Vec<crate::models::types::FavoriteBuild>, String> {
+    favorites::commands::get_favorite_builds(state)
+}
 #[tauri::command]
 fn toggle_favorite_build(
-    state: tauri::State<'_, DbManager>,
+    state: State<'_, DbManager>,
     build_number: String,
     backend: String,
     download_url: String,
     architecture: String,
 ) -> Result<bool, String> {
-    let mut conn = state.lock_conn().map_err(|e| e.to_string())?;
-    repo::toggle_favorite_build(&mut conn, &build_number, &backend, &download_url, &architecture).map_err(|e| e.to_string())
+    favorites::commands::toggle_favorite_build(state, build_number, backend, download_url, architecture)
 }
 
-#[tauri::command]
-fn save_github_token(
-    state_db: tauri::State<'_, DbManager>,
-    state_github: tauri::State<'_, GithubClient>,
-    token: String,
-) -> Result<(), String> {
-    if token.is_empty() {
-        let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-        repo::delete_setting(&conn, "github_token").map_err(|e| e.to_string())?;
-        state_github.set_token(None);
-    } else {
-        let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-        repo::set_setting(&conn, "github_token", &token).map_err(|e| e.to_string())?;
-        state_github.set_token(Some(token));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-fn has_github_token(
-    state_db: tauri::State<'_, DbManager>,
-) -> Result<bool, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    Ok(repo::get_setting(&conn, "github_token").map_err(|e| e.to_string())?.is_some())
-}
-
-#[tauri::command]
-fn delete_github_token(
-    state_db: tauri::State<'_, DbManager>,
-    state_github: tauri::State<'_, GithubClient>,
-) -> Result<(), String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::delete_setting(&conn, "github_token").map_err(|e| e.to_string())?;
-    state_github.set_token(None);
-    Ok(())
-}
-
-#[tauri::command]
-fn change_storage_path(
-    state_db: tauri::State<'_, DbManager>,
-    old_path: String,
-    new_path: String,
-) -> Result<String, String> {
-    // 1. Validate the new path
-    validate_storage_path(&new_path, &old_path).map_err(|e| e.to_string())?;
-
-    // 2. Migrate files from old to new location
-    migrate_storage_path(&old_path, &new_path, &state_db)
-        .map_err(|e| e.to_string())?;
-
-    // 3. Save new path to database (only after successful migration)
-    // Load current settings, update storage_path, save back
-    let mut settings = SettingsManager::get_settings(&state_db)
-        .map_err(|e| format!("Failed to load settings: {}", e))?;
-    settings.storage_path = new_path.clone();
-    SettingsManager::save_settings(&state_db, &settings)
-        .map_err(|e| format!("Failed to save settings: {}", e))?;
-
-    // 4. Clean up old directory
-    cleanup_old_storage(&old_path);
-
-    Ok(new_path)
-}
-
-#[tauri::command]
-fn get_catalog_last_fetched(
-    state_db: tauri::State<'_, DbManager>,
-) -> Result<Option<String>, String> {
-    Ok(github::api::get_catalog_last_fetched(&state_db))
-}
-
-#[tauri::command]
-fn get_app_version(app: tauri::AppHandle) -> String {
-    app.package_info().version.to_string()
-}
-
-#[tauri::command]
-async fn get_storage_usage(
-    app: tauri::AppHandle,
-    state_db: tauri::State<'_, DbManager>,
-) -> Result<u64, String> {
-    let fallback_path = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?
-        .to_string_lossy()
-        .to_string();
-    let db = (*state_db).clone();
-    tokio::task::spawn_blocking(move || {
-        VersionManager::calculate_storage_usage(&db, &fallback_path)
-    })
-    .await
-    .map_err(|e| format!("Task join error: {}", e))?
-    .map_err(|e| e.to_string())
-}
-
-// ─── Model File Scanning ─────────────────────────────────────────────────
-
-/// Shared utility: scan a folder for files matching given extensions.
-/// Non-recursive: only files directly in the folder.
-/// Returns files sorted by name (case-insensitive).
-/// If extensions is empty, all files are included.
-fn scan_files(folder_path: &str, extensions: &[&str]) -> Result<Vec<ModelFile>, String> {
-    let path = std::path::Path::new(folder_path);
-
-    if !path.exists() {
-        return Err(format!("Folder does not exist: {}", folder_path));
-    }
-
-    if !path.is_dir() {
-        return Err(format!("Path is not a directory: {}", folder_path));
-    }
-
-    let mut files: Vec<ModelFile> = Vec::new();
-
-    for entry in std::fs::read_dir(path).map_err(|e| format!("Failed to read directory: {}", e))? {
-        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
-        let file_path = entry.path();
-
-        // Non-recursive: only files directly in the folder
-        if !file_path.is_file() {
-            continue;
-        }
-
-        // Filter by extensions (empty = all files)
-        if !extensions.is_empty() {
-            let file_ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            if !extensions.contains(&file_ext) {
-                continue;
-            }
-        }
-
-        let metadata = entry.metadata().map_err(|e| format!("Failed to read metadata: {}", e))?;
-        let name = file_path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-
-        files.push(ModelFile {
-            path: file_path.to_string_lossy().to_string(),
-            name,
-            size: metadata.len(),
-        });
-    }
-
-    // Sort by name for consistent ordering
-    files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-
-    Ok(files)
-}
-
-/// Scan for model files (.gguf, .safetensors, etc.)
-/// extensions: comma-separated list, e.g. "gguf,safetensors" or "" for all
-#[tauri::command]
-fn scan_model_files(folder_path: String, extensions: String) -> Result<Vec<ModelFile>, String> {
-    let exts: Vec<&str> = if extensions.is_empty() {
-        Vec::new()
-    } else {
-        extensions.split(',').collect()
-    };
-    scan_files(&folder_path, &exts)
-}
-
-/// Scan for mmproj files (.gguf, .safetensors, .mmproj, etc.)
-/// extensions: comma-separated list, e.g. "gguf,safetensors" or "" for all
-#[tauri::command]
-fn scan_mmproj_files(folder_path: String, extensions: String) -> Result<Vec<ModelFile>, String> {
-    let exts: Vec<&str> = if extensions.is_empty() {
-        Vec::new()
-    } else {
-        extensions.split(',').collect()
-    };
-    scan_files(&folder_path, &exts)
-}
-
-/// Validate that a folder path exists and is accessible as a directory.
-#[tauri::command]
-fn validate_folder(path: String) -> Result<bool, String> {
-    let p = std::path::Path::new(&path);
-    if !p.exists() {
-        return Err(format!("Folder does not exist: {}", path));
-    }
-    if !p.is_dir() {
-        return Err(format!("Path is not a directory: {}", path));
-    }
-    Ok(true)
-}
-
-// ─── Card Customization Commands ────────────────────────────────────────
-
+// Card customization
 #[tauri::command]
 fn get_card_customizations(
-    state_db: tauri::State<'_, DbManager>,
-) -> Result<Vec<CardCustomization>, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::get_all_card_customizations(&conn).map_err(|e| e.to_string())
+    state_db: State<'_, DbManager>,
+) -> Result<Vec<crate::models::types::CardCustomization>, String> {
+    cards::commands::get_card_customizations(state_db)
 }
-
 #[tauri::command]
 fn save_card_customization(
-    state_db: tauri::State<'_, DbManager>,
+    state_db: State<'_, DbManager>,
     version_id: i64,
     title: String,
     header_color: String,
     text_color: String,
 ) -> Result<(), String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    let customization = CardCustomization {
-        version_id,
-        title,
-        header_color,
-        text_color,
-    };
-    repo::upsert_card_customization(&conn, &customization).map_err(|e| e.to_string())
+    cards::commands::save_card_customization(state_db, version_id, title, header_color, text_color)
 }
-
 #[tauri::command]
 fn delete_card_customization(
-    state_db: tauri::State<'_, DbManager>,
+    state_db: State<'_, DbManager>,
     version_id: i64,
 ) -> Result<bool, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::delete_card_customization(&conn, version_id).map_err(|e| e.to_string())
+    cards::commands::delete_card_customization(state_db, version_id)
 }
 
-// ─── Custom Command Commands ────────────────────────────────────────────
-
+// Custom commands
 #[tauri::command]
 fn save_custom_command(
-    state_db: tauri::State<'_, DbManager>,
+    state_db: State<'_, DbManager>,
     config: serde_json::Value,
 ) -> Result<String, String> {
-    custom_command::save_custom_command(&state_db, config).map_err(|e| e.to_string())
+    custom_command::commands::save_custom_command(state_db, config)
 }
-
 #[tauri::command]
 fn get_custom_commands(
-    state_db: tauri::State<'_, DbManager>,
+    state_db: State<'_, DbManager>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    custom_command::get_custom_commands(&state_db).map_err(|e| e.to_string())
+    custom_command::commands::get_custom_commands(state_db)
 }
-
 #[tauri::command]
 fn delete_custom_command(
-    state_db: tauri::State<'_, DbManager>,
+    state_db: State<'_, DbManager>,
     id: String,
 ) -> Result<bool, String> {
-    custom_command::delete_custom_command(&state_db, &id).map_err(|e| e.to_string())
+    custom_command::commands::delete_custom_command(state_db, id)
 }
 
-// ─── Version Config Link Commands ──────────────────────────────────────
-
+// File scanning
 #[tauri::command]
-fn get_version_config_link(
-    state_db: tauri::State<'_, DbManager>,
-    version_id: i64,
-) -> Result<Option<VersionConfigLink>, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::get_version_config_link(&conn, version_id).map_err(|e| e.to_string())
+fn scan_model_files(
+    folder_path: String,
+    extensions: String,
+) -> Result<Vec<crate::models::types::ModelFile>, String> {
+    file::commands::scan_model_files(folder_path, extensions)
 }
-
 #[tauri::command]
-fn save_version_config_link(
-    state_db: tauri::State<'_, DbManager>,
-    version_id: i64,
-    config_type: String,
-    config_id: String,
-) -> Result<i64, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::save_version_config_link(&conn, version_id, &config_type, &config_id).map_err(|e| e.to_string())
+fn scan_mmproj_files(
+    folder_path: String,
+    extensions: String,
+) -> Result<Vec<crate::models::types::ModelFile>, String> {
+    file::commands::scan_mmproj_files(folder_path, extensions)
 }
-
 #[tauri::command]
-fn delete_version_config_link(
-    state_db: tauri::State<'_, DbManager>,
-    version_id: i64,
-) -> Result<bool, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::delete_version_config_link(&conn, version_id).map_err(|e| e.to_string())
+fn validate_folder(path: String) -> Result<bool, String> {
+    file::commands::validate_folder(path)
 }
 
-// ─── Version Override Commands ─────────────────────────────────────────
-
-#[tauri::command]
-fn get_version_override(
-    state_db: tauri::State<'_, DbManager>,
-    version_id: i64,
-) -> Result<Option<VersionOverride>, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::get_version_override(&conn, version_id).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn save_version_override(
-    state_db: tauri::State<'_, DbManager>,
-    version_id: i64,
-    model_path: Option<String>,
-    mmproj_path: Option<String>,
-) -> Result<(), String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::save_version_override(&conn, version_id, model_path, mmproj_path).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn delete_version_override(
-    state_db: tauri::State<'_, DbManager>,
-    version_id: i64,
-) -> Result<bool, String> {
-    let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
-    repo::delete_version_override(&conn, version_id).map_err(|e| e.to_string())
-}
-
-// ─── Terminal Commands ─────────────────────────────────────────────────
-
+// Terminal
 #[tauri::command]
 fn spawn_terminal(
     app: tauri::AppHandle,
-    state_terminal: tauri::State<'_, TerminalManager>,
+    state_terminal: State<'_, TerminalManager>,
     config_id: String,
     version_id: i64,
     working_dir: String,
     startup_command: Option<String>,
 ) -> Result<String, String> {
-    state_terminal.spawn(app, config_id, version_id, working_dir, startup_command)
+    terminal::commands::spawn_terminal(app, state_terminal, config_id, version_id, working_dir, startup_command)
 }
-
 #[tauri::command]
 fn write_terminal_input(
-    state_terminal: tauri::State<'_, TerminalManager>,
+    state_terminal: State<'_, TerminalManager>,
     session_id: String,
     input: String,
 ) -> Result<(), String> {
-    state_terminal.write_input(&session_id, input)
+    terminal::commands::write_terminal_input(state_terminal, session_id, input)
 }
-
 #[tauri::command]
 fn kill_terminal(
-    state_terminal: tauri::State<'_, TerminalManager>,
+    state_terminal: State<'_, TerminalManager>,
     session_id: String,
 ) -> Result<String, String> {
-    state_terminal.kill(&session_id)
+    terminal::commands::kill_terminal(state_terminal, session_id)
 }
-
-/// List all active terminal sessions.
-/// Returns Vec<ActiveTerminalInfo> with session_id and config_id.
 #[tauri::command]
 fn list_active_terminals(
-    state_terminal: tauri::State<'_, TerminalManager>,
-) -> Vec<ActiveTerminalInfo> {
-    state_terminal.list_active_sessions()
+    state_terminal: State<'_, TerminalManager>,
+) -> Vec<crate::terminal::manager::ActiveTerminalInfo> {
+    terminal::commands::list_active_terminals(state_terminal)
 }
-
-/// Get the active terminal session for a given config_id.
-/// Returns the session_id if one exists, or null if not.
 #[tauri::command]
 fn get_terminal_by_config(
-    state_terminal: tauri::State<'_, TerminalManager>,
+    state_terminal: State<'_, TerminalManager>,
     config_id: String,
 ) -> Option<String> {
-    state_terminal.get_session_by_config_id(&config_id)
+    terminal::commands::get_terminal_by_config(state_terminal, config_id)
 }
-
-/// Get the buffered output for a terminal session.
-/// Returns the last ~4KB of output for late-joining viewers.
 #[tauri::command]
 fn get_terminal_buffer(
-    state_terminal: tauri::State<'_, TerminalManager>,
+    state_terminal: State<'_, TerminalManager>,
     session_id: String,
 ) -> String {
-    state_terminal.get_output_buffer(&session_id)
+    terminal::commands::get_terminal_buffer(state_terminal, session_id)
 }
-
-/// Open (or focus) the floating terminal window.
-/// Creates the window if it doesn't exist, or focuses it if already open.
 #[tauri::command]
 async fn open_terminal_window(app: tauri::AppHandle) -> Result<(), String> {
-    let window_label = "terminal";
+    terminal::commands::open_terminal_window(app).await
+}
 
-    // Check if window already exists
-    if let Some(existing) = app.get_webview_window(window_label) {
-        existing.minimize().ok();
-        existing.unminimize().ok();
-        existing.set_focus().ok();
-        return Ok(());
-    }
-
-    // Fire-and-forget: spawn on tokio so the command returns immediately
-    // and doesn't block the main app's IPC thread.
-    let app_handle = app.clone();
-    tokio::spawn(async move {
-        let _ = WebviewWindow::builder(&app_handle, window_label, tauri::WebviewUrl::App("index.html?window=terminal".into()))
-            .title("Terminals")
-            .inner_size(900.0, 600.0)
-            .min_inner_size(600.0, 400.0)
-            .decorations(true)
-            .theme(Some(tauri::Theme::Dark))
-            .build();
-    });
-
-    Ok(())
+// Theme
+#[tauri::command]
+async fn persist_theme_change(
+    db: State<'_, DbManager>,
+    theme_id: String,
+) -> Result<(), String> {
+    theme::commands::persist_theme_change(db, theme_id).await
 }
 
 // ─── App Entry Point ───────────────────────────────────────────────────
@@ -752,6 +420,12 @@ pub fn run_tauri_app() {
                 }
             }
 
+            // Read saved theme from SQLite BEFORE db is moved into Tauri state
+            let initial_theme = {
+                let conn = db.lock_conn().ok();
+                conn.and_then(|c| repo::get_setting(&c, "theme").ok().flatten())
+            }.unwrap_or_else(|| "catppuccin-mocha".to_string());
+
             // Register state
             app.manage(db);
             app.manage(DownloadManager::new());
@@ -767,47 +441,74 @@ pub fn run_tauri_app() {
                 });
             }
 
+            // Build initialization script for the main window (runs BEFORE HTML is parsed)
+            let init_script = build_initialization_script(&initial_theme);
+
+            // Create main window with theme injection via initialization_script
+            let bg_color = theme_to_color(&initial_theme);
+            tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
+                .title("Llama Manager")
+                .inner_size(1280.0, 800.0)
+                .min_inner_size(900.0, 600.0)
+                .resizable(true)
+                .fullscreen(false)
+                .decorations(true)
+                .theme(Some(tauri::Theme::Dark))
+                .background_color(bg_color)
+                .initialization_script(&init_script)
+                .build()
+                .expect("Failed to create main window");
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // GitHub / builds
             fetch_builds,
             check_new_builds,
             fetch_release_by_tag,
             search_builds,
+            fetch_release_changelog,
+            get_catalog_last_fetched,
+            // Version management
             get_installed_versions,
             uninstall_version,
             open_folder,
-            cancel_download,
-            get_download_status,
-            get_settings,
-            save_settings,
-            open_folder_dialog,
-            install_version,
-            fetch_release_changelog,
-            get_favorite_builds,
-            toggle_favorite_build,
-            save_github_token,
-            has_github_token,
-            delete_github_token,
-            get_catalog_last_fetched,
-            change_storage_path,
-            get_app_version,
             get_storage_usage,
-            scan_model_files,
-            get_card_customizations,
-            save_card_customization,
-            delete_card_customization,
-            save_custom_command,
-            get_custom_commands,
-            delete_custom_command,
+            install_version,
             get_version_config_link,
             save_version_config_link,
             delete_version_config_link,
-            scan_mmproj_files,
-            validate_folder,
             get_version_override,
             save_version_override,
             delete_version_override,
+            // Download management
+            cancel_download,
+            get_download_status,
+            // Settings & config
+            get_settings,
+            save_settings,
+            open_folder_dialog,
+            change_storage_path,
+            save_github_token,
+            has_github_token,
+            delete_github_token,
+            get_app_version,
+            // Favorites
+            get_favorite_builds,
+            toggle_favorite_build,
+            // Card customization
+            get_card_customizations,
+            save_card_customization,
+            delete_card_customization,
+            // Custom commands
+            save_custom_command,
+            get_custom_commands,
+            delete_custom_command,
+            // File scanning
+            scan_model_files,
+            scan_mmproj_files,
+            validate_folder,
+            // Terminal
             spawn_terminal,
             write_terminal_input,
             kill_terminal,
@@ -815,6 +516,8 @@ pub fn run_tauri_app() {
             get_terminal_by_config,
             get_terminal_buffer,
             open_terminal_window,
+            // Theme
+            persist_theme_change,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");

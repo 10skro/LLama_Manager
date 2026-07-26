@@ -24,6 +24,7 @@ function App() {
   useTheme(); // Apply theme reactively
 
   // Load settings and restore saved theme on app startup
+  // Theme is already applied by main.tsx from __INITIAL_THEME__ (injected by Rust)
   useEffect(() => {
     const loadSettingsAndTheme = async () => {
       try {

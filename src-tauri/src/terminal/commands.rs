@@ -1,0 +1,109 @@
+use tauri::{AppHandle, Manager, State, WebviewWindow};
+
+use crate::db::connection::DbManager;
+use crate::db::repo;
+use crate::terminal::manager::{ActiveTerminalInfo, TerminalManager};
+use crate::theme::colors::theme_to_color;
+use crate::theme::inject::build_initialization_script;
+
+/// Spawn a new terminal session for a given config/version.
+pub fn spawn_terminal(
+    app: AppHandle,
+    state_terminal: State<'_, TerminalManager>,
+    config_id: String,
+    version_id: i64,
+    working_dir: String,
+    startup_command: Option<String>,
+) -> Result<String, String> {
+    state_terminal.spawn(app, config_id, version_id, working_dir, startup_command)
+}
+
+/// Write input to a terminal session.
+pub fn write_terminal_input(
+    state_terminal: State<'_, TerminalManager>,
+    session_id: String,
+    input: String,
+) -> Result<(), String> {
+    state_terminal.write_input(&session_id, input)
+}
+
+/// Kill a terminal session.
+pub fn kill_terminal(
+    state_terminal: State<'_, TerminalManager>,
+    session_id: String,
+) -> Result<String, String> {
+    state_terminal.kill(&session_id)
+}
+
+/// List all active terminal sessions.
+/// Returns Vec<ActiveTerminalInfo> with session_id and config_id.
+pub fn list_active_terminals(
+    state_terminal: State<'_, TerminalManager>,
+) -> Vec<ActiveTerminalInfo> {
+    state_terminal.list_active_sessions()
+}
+
+/// Get the active terminal session for a given config_id.
+/// Returns the session_id if one exists, or null if not.
+pub fn get_terminal_by_config(
+    state_terminal: State<'_, TerminalManager>,
+    config_id: String,
+) -> Option<String> {
+    state_terminal.get_session_by_config_id(&config_id)
+}
+
+/// Get the buffered output for a terminal session.
+/// Returns the last ~4KB of output for late-joining viewers.
+pub fn get_terminal_buffer(
+    state_terminal: State<'_, TerminalManager>,
+    session_id: String,
+) -> String {
+    state_terminal.get_output_buffer(&session_id)
+}
+
+/// Open (or focus) the floating terminal window.
+/// Creates the window if it doesn't exist, or focuses it if already open.
+pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
+    let window_label = "terminal";
+
+    // Check if window already exists
+    if let Some(existing) = app.get_webview_window(window_label) {
+        existing.minimize().ok();
+        existing.unminimize().ok();
+        existing.set_focus().ok();
+        return Ok(());
+    }
+
+    // Read saved theme from SQLite BEFORE creating the window
+    let theme = app
+        .state::<DbManager>()
+        .lock_conn()
+        .ok()
+        .and_then(|c| repo::get_setting(&c, "theme").ok().flatten())
+        .unwrap_or_else(|| "catppuccin-mocha".to_string());
+
+    // Build initialization script (runs BEFORE HTML is parsed)
+    let init_script = build_initialization_script(&theme);
+    let bg_color = theme_to_color(&theme);
+
+    // Fire-and-forget: spawn on tokio so the command returns immediately
+    // and doesn't block the main app's IPC thread.
+    let app_handle = app.clone();
+    tokio::spawn(async move {
+        let result = WebviewWindow::builder(&app_handle, window_label, tauri::WebviewUrl::App("index.html?window=terminal".into()))
+            .title("Terminals")
+            .inner_size(900.0, 600.0)
+            .min_inner_size(600.0, 400.0)
+            .decorations(true)
+            .theme(Some(tauri::Theme::Dark))
+            .background_color(bg_color)
+            .initialization_script(&init_script)
+            .build();
+
+        if let Err(e) = result {
+            log::error!("Failed to create terminal window: {}", e);
+        }
+    });
+
+    Ok(())
+}

@@ -1,0 +1,14 @@
+{
+  "catppuccin-mocha": {
+    "base": "#1e1e2e",
+    "text": "#cdd6f4"
+  },
+  "rosepine-moon": {
+    "base": "#232136",
+    "text": "#e0def4"
+  },
+  "rosepine-dawn": {
+    "base": "#faf4ed",
+    "text": "#464261"
+  }
+}

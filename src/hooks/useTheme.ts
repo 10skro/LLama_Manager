@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { getThemeById, applyTheme } from '@/themes';
 import { DEFAULT_FONT_FAMILY } from '@/fonts';
+import { persistThemeChange } from '@/services/settings';
 
 export function useTheme() {
   const { activeTheme, settings, setActiveTheme } = useAppStore();
@@ -11,6 +12,10 @@ export function useTheme() {
     if (theme) {
       applyTheme(theme);
     }
+    // Persist the user's explicit theme choice to SQLite
+    persistThemeChange(activeTheme).catch(err => {
+      console.error('Failed to persist theme change:', err);
+    });
   }, [activeTheme]);
 
   // Apply font when settings.font_family changes

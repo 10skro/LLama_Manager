@@ -1,7 +1,25 @@
 import { create } from 'zustand';
 import type { BuildFilters, AppSettings, CustomCommand } from '@/types';
-import { DEFAULT_THEME_ID } from '@/themes';
+import { DEFAULT_THEME_ID, getThemeById } from '@/themes';
 import { makeKey } from '@/utils/buildKey';
+
+/**
+ * Hydrate the initial theme from Rust-injected __INITIAL_THEME__.
+ * This value is set by the backend via initialization_script() before
+ * the HTML is parsed, so it's available synchronously at module load time.
+ * Falls back to DEFAULT_THEME_ID if not available.
+ */
+function getInitialTheme(): string {
+  const injected = (window as any).__INITIAL_THEME__;
+  if (injected && injected.name) {
+    // Validate the theme ID exists in our theme registry
+    const theme = getThemeById(injected.name);
+    if (theme) {
+      return injected.name;
+    }
+  }
+  return DEFAULT_THEME_ID;
+}
 
 interface ActiveDownloadInfo {
   id: number;
@@ -60,9 +78,11 @@ interface AppState {
   syncRunningTerminals: (sessions: { sessionId: string; versionId: number }[]) => void;
 }
 
+const initialTheme = getInitialTheme();
+
 const defaultSettings: AppSettings = {
   storage_path: '',
-  theme: DEFAULT_THEME_ID,
+  theme: initialTheme,
   auto_check_updates: true,
   toast_duration: 5000,
 };
@@ -150,7 +170,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   // Theme
-  activeTheme: DEFAULT_THEME_ID,
+  activeTheme: initialTheme,
   setActiveTheme: (themeId: string) => set({ activeTheme: themeId }),
 
   // UI

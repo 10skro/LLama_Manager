@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- CSP must match src-tauri/tauri.conf.json security.csp -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://ipc.localhost https://api.github.com; frame-src 'none'; object-src 'none';" />
+    <!-- Critical: prevent flash on webview init — apply theme bg before first paint -->
+    <!-- This script runs AFTER initialization_script() sets window.__INITIAL_THEME__ -->
+    <script>
+      (function(){
+        var theme = window.__INITIAL_THEME__ || {name:'catppuccin-mocha',bg:'#1e1e2e',fg:'#cdd6f4'};
+        document.documentElement.style.backgroundColor = theme.bg;
+        document.documentElement.style.color = theme.fg;
+        document.documentElement.setAttribute('data-theme', theme.name);
+      })();
+    </script>
     <title>LlamaCpp Manager</title>
   </head>
   <body class="bg-background text-foreground antialiased">
