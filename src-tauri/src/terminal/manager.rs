@@ -172,7 +172,9 @@ impl TerminalManager {
         let sid = session_id.clone();
 
         std::thread::spawn(move || {
-            log::info!("[TERMINAL] ConPTY reader started for {}", sid);
+            let log_msg = format!("[TERMINAL] ConPTY reader started for {}", sid);
+            log::info!("{}", log_msg);
+            let _ = app_handle.emit("terminal-debug", log_msg);
 
             // Get a reader from the session
             let sessions = app_handle.state::<TerminalManager>();
@@ -186,24 +188,28 @@ impl TerminalManager {
             };
 
             if let Some(mut reader) = reader {
-                log::info!("[TERMINAL] ConPTY reader handle obtained for {}", sid);
+                let log_msg = format!("[TERMINAL] ConPTY reader handle obtained for {}", sid);
+                log::info!("{}", log_msg);
+                let _ = app_handle.emit("terminal-debug", log_msg);
+
                 let mut buf = [0u8; 4096];
                 let mut read_count: u64 = 0;
                 loop {
                     match reader.read(&mut buf) {
                         Ok(0) => {
-                            log::info!("[TERMINAL] ConPTY EOF for {} after {} reads", sid, read_count);
+                            let log_msg = format!("[TERMINAL] ConPTY EOF for {} after {} reads", sid, read_count);
+                            log::info!("{}", log_msg);
+                            let _ = app_handle.emit("terminal-debug", log_msg);
                             break;
                         }
                         Ok(n) => {
                             read_count += 1;
                             let text = String::from_utf8_lossy(&buf[..n]).to_string();
-                            log::info!(
-                                "[TERMINAL] ConPTY read #{:?}: {} bytes: {:?}",
-                                read_count,
-                                n,
-                                text.chars().take(120).collect::<String>()
-                            );
+                            let preview = text.chars().take(120).collect::<String>();
+                            let log_msg = format!("[TERMINAL] ConPTY read #{}: {} bytes: {:?}", read_count, n, preview);
+                            log::info!("{}", log_msg);
+                            let _ = app_handle.emit("terminal-debug", log_msg.clone());
+
                             // Store in circular buffer for late-joining viewers
                             {
                                 let mut b = buffer_arc.lock().unwrap();
@@ -218,21 +224,35 @@ impl TerminalManager {
                                 session_id: sid.clone(),
                                 text: text.clone(),
                             }) {
-                                Ok(()) => log::info!("[TERMINAL] emit OK for {}", sid),
-                                Err(e) => log::error!("[TERMINAL] emit FAILED for {}: {}", sid, e),
+                                Ok(()) => {
+                                    let log_msg = format!("[TERMINAL] emit OK for {}", sid);
+                                    log::info!("{}", log_msg);
+                                    let _ = app_handle.emit("terminal-debug", log_msg);
+                                }
+                                Err(e) => {
+                                    let log_msg = format!("[TERMINAL] emit FAILED for {}: {}", sid, e);
+                                    log::error!("{}", log_msg);
+                                    let _ = app_handle.emit("terminal-debug", log_msg);
+                                }
                             }
                         }
                         Err(e) => {
-                            log::warn!("[TERMINAL] ConPTY read error after {} reads: {}", read_count, e);
+                            let log_msg = format!("[TERMINAL] ConPTY read error after {} reads: {}", read_count, e);
+                            log::warn!("{}", log_msg);
+                            let _ = app_handle.emit("terminal-debug", log_msg);
                             break;
                         }
                     }
                 }
             } else {
-                log::error!("[TERMINAL] ConPTY reader handle NOT obtained for {}", sid);
+                let log_msg = format!("[TERMINAL] ConPTY reader handle NOT obtained for {}", sid);
+                log::error!("{}", log_msg);
+                let _ = app_handle.emit("terminal-debug", log_msg);
             }
 
-            log::info!("[TERMINAL] ConPTY reader exiting for {}", sid);
+            let log_msg = format!("[TERMINAL] ConPTY reader exiting for {}", sid);
+            log::info!("{}", log_msg);
+            let _ = app_handle.emit("terminal-debug", log_msg);
             let _ = app_handle.emit("terminal-exit", sid.clone());
         });
 

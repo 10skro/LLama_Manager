@@ -82,6 +82,11 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
       })
       .catch(() => {});
 
+    // Debug: log backend terminal events to console
+    const unlistenDebug = listen<string>('terminal-debug', (event) => {
+      console.log(event.payload);
+    });
+
     const unlistenOutput = listen<{ sessionId: string; text: string }>('terminal-output', (event) => {
       if (event.payload.sessionId === sessionId && xtermRef.current) {
         xtermRef.current.write(event.payload.text);
@@ -96,6 +101,7 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
 
     return () => {
       resizeObserver.disconnect();
+      unlistenDebug.then((u) => u());
       unlistenOutput.then((u) => u());
       unlistenExit.then((u) => u());
       term.dispose();
