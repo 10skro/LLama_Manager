@@ -1,8 +1,8 @@
 {
-  "tag_name": "v0.6.10",
+  "tag_name": "v0.6.11",
   "target_commitish": "main",
-  "name": "v0.6.10",
-  "body": "## Changes\n\n### Features\n\n- Clone version cards: create independent cards sharing the same binaries\n- Clone with settings option: duplicate card with customization, config link, and override\n- Safe-delete: version files are only removed when no other card shares the install path\n\n### UI / UX Improvements\n\n- Gear icon dropdown menu on version cards with Clone, Clone with Settings, and Delete actions\n\n### Maintenance\n\n- Removed UNIQUE constraint on installed_versions table to support multiple cards per build\n- Removed migration system (app not yet public)",
+  "name": "v0.6.11",
+  "body": "## Changes\n\n### Bug Fixes\n\n- Terminal widget now applies correct theme when opened after a theme change\n\n### Documentation\n\n- Rewrite README with user-facing feature descriptions\n\n### Maintenance\n\n- Sync version across tauri.conf.json and release.json",
   "draft": false,
   "prerelease": false
 }
