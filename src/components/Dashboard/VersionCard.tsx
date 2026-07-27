@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { emit } from '@tauri-apps/api/event';
 import { useToast } from '@/hooks/use-toast';
 import { saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import { useTerminalLaunch } from '@/hooks/useTerminalLaunch';
@@ -151,6 +152,8 @@ export function VersionCard({
         });
       }
       closeDropdown();
+      // Notify floating terminal window of card customization changes
+      emit('card-customizations-update', null).catch(() => {});
     } catch (err) {
       console.error('Failed to save customization:', err);
       toast({
@@ -165,6 +168,8 @@ export function VersionCard({
       await deleteCardCustomization(version.id);
       onCustomizationChange(version.id, undefined);
       closeDropdown();
+      // Notify floating terminal window of card customization changes
+      emit('card-customizations-update', null).catch(() => {});
     } catch (err) {
       console.error('Failed to reset customization:', err);
       toast({

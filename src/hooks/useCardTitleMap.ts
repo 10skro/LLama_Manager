@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { getCardCustomizations } from '@/services/version';
 
 export function useCardTitleMap() {
   const [titleMap, setTitleMap] = useState<Record<number, string>>({});
   const cancelledRef = useRef(false);
 
-  useEffect(() => {
-    cancelledRef.current = false;
+  const loadTitles = useCallback(() => {
     getCardCustomizations()
       .then((cards) => {
         if (cancelledRef.current) return;
@@ -19,9 +19,24 @@ export function useCardTitleMap() {
       .catch((err) => {
         console.error('Failed to load card titles:', err);
       });
-
-    return () => { cancelledRef.current = true; };
   }, []);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+
+    // Initial load
+    loadTitles();
+
+    // Listen for card customization changes from the main window
+    const unlisten = listen('card-customizations-update', () => {
+      loadTitles();
+    });
+
+    return () => {
+      cancelledRef.current = true;
+      unlisten.then((u) => u());
+    };
+  }, [loadTitles]);
 
   return titleMap;
 }
