@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ const pageTitles: Record<string, string> = {
 
 export function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { newBuilds } = useAppStore();
   const { updateInfo, isInstalling, installUpdate } = useAppUpdate();
 
@@ -73,36 +74,44 @@ export function Header() {
                     <p className="mt-0.5">{updateInfo.date}</p>
                   )}
                 </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => installUpdate()}
-                  disabled={isInstalling}
-                  className="gap-2 text-peach focus:text-peach"
-                >
-                  {isInstalling ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
-                  {isInstalling ? 'Installing...' : 'Install & Restart'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5">
+                  <Button
+                    onClick={() => installUpdate()}
+                    disabled={isInstalling}
+                    size="sm"
+                    className="w-full gap-2"
+                  >
+                    {isInstalling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    {isInstalling ? 'Installing...' : 'Install & Restart'}
+                  </Button>
+                </div>
               </>
             )}
 
             {newBuilds.length > 0 ? (
               <>
-                <DropdownMenuLabel>{newBuilds.length} New Builds</DropdownMenuLabel>
-                {newBuilds.slice(0, 5).map((build) => (
-                  <DropdownMenuItem key={build}>
-                    {build}
-                  </DropdownMenuItem>
-                ))}
-                {newBuilds.length > 5 && (
-                  <DropdownMenuItem className="text-muted-foreground">
-                    +{newBuilds.length - 5} more...
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuLabel className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Update Available
+                </DropdownMenuLabel>
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  <p>Latest: <span className="font-mono text-foreground">{newBuilds[0].split(' / ')[0]}</span></p>
+                </div>
+                <div className="px-2 py-1.5">
+                  <Button
+                    onClick={() => navigate('/catalog')}
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    View in Catalog
+                  </Button>
+                </div>
               </>
             ) : !hasAppUpdate ? (
               <DropdownMenuLabel>No notifications</DropdownMenuLabel>

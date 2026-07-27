@@ -24,14 +24,12 @@ import {
   HardDrive, Cpu,
 } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
-
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: versions, isLoading } = useInstalledVersions();
   const { storageUsage, isLoading: storageLoading } = useStorageUsage();
-  const { latestInstalled, latestAvailable, updateAvailable } = useLatestBuildInfo();
+  const { latestInstalled } = useLatestBuildInfo();
   const settings = useAppStore((state) => state.settings);
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
@@ -208,16 +206,9 @@ export function DashboardPage() {
               <Cpu className="h-5 w-5 text-green" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-semibold truncate">
-                  {latestInstalled?.build_number ?? '\u2014'}
-                </p>
-                {updateAvailable && (
-                  <Badge variant="outline" className="text-xs border-green/40 text-green shrink-0">
-                    {latestAvailable?.build_number ?? 'update'}
-                  </Badge>
-                )}
-              </div>
+              <p className="text-2xl font-semibold truncate">
+                {latestInstalled?.build_number ?? '\u2014'}
+              </p>
               <p className="text-xs text-muted-foreground">Latest Build</p>
             </div>
           </CardContent>

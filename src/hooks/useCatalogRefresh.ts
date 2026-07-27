@@ -1,8 +1,10 @@
 import { useToast } from '@/hooks/use-toast';
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
+import { useAppStore } from '@/store/useAppStore';
 import { useRefreshStore, startCountdown } from '@/store/useRefreshStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchBuilds, checkNewBuilds } from '@/services/github';
+import type { Build } from '@/types';
 
 interface UseCatalogRefreshOptions {
   onError: (message: string) => void;
@@ -40,9 +42,15 @@ export function useCatalogRefresh({ onError }: UseCatalogRefreshOptions) {
         setLastFetched(ts);
         end(true); // Success -> trigger cooldown
         startCountdown();
+
+        // Populate notification bell
+        const buildLabels = newBuilds.map((b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+        useAppStore.getState().setNewBuilds(buildLabels);
+
         toast({ title: 'Update found', description: `${newBuilds.length} build(s) not yet installed.` });
       } else {
-        // No new builds - no fetch, no cooldown
+        // No new builds - clear bell and show toast
+        useAppStore.getState().setNewBuilds([]);
         end(false);
         toast({ title: 'No updates', description: 'Catalog is already up to date.' });
       }

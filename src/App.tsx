@@ -8,7 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CatalogPage } from './pages/CatalogPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ConfigsPage } from './pages/ConfigsPage';
-import { fetchBuilds, getCatalogLastFetched } from './services/github';
+import { fetchBuilds, checkNewBuilds, getCatalogLastFetched } from './services/github';
 import { getSettings } from './services/settings';
 
 import { getCustomCommands } from './services/customCommand';
@@ -18,6 +18,7 @@ import { useAppStore } from './store/useAppStore';
 import { useRefreshStore } from './store/useRefreshStore';
 import { useTheme } from './hooks/useTheme';
 import { useAppUpdate } from './hooks/useAppUpdate';
+import { useToast } from './hooks/use-toast';
 import { UpdateModal } from './components/UpdateModal';
 import type { AppSettings, Build } from './types';
 
@@ -96,7 +97,7 @@ function App() {
     loadConfigs();
   }, []);
 
-  // Intelligent startup check: always verify with GitHub via ETag
+  // Intelligent startup check: verify with GitHub via ETag + populate notification bell
   useEffect(() => {
     const checkAndLoad = async () => {
       try {
@@ -104,12 +105,58 @@ function App() {
         queryClient.setQueryData<Build[]>(['builds', undefined], builds);
         const ts = await getCatalogLastFetched();
         useRefreshStore.setState({ lastFetched: ts });
+
+        // Check for new builds and populate the notification bell
+        const newBuilds = await checkNewBuilds();
+        if (newBuilds.length > 0) {
+          const buildLabels = newBuilds.map((b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+          useAppStore.getState().setNewBuilds(buildLabels);
+        }
       } catch (err) {
         console.error('Failed to check builds on startup:', err);
       }
     };
     checkAndLoad();
   }, [queryClient]);
+
+  // Background auto-refresh: check for new builds every 60 minutes
+  const { toast } = useToast();
+  useEffect(() => {
+    const AUTO_REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+    const autoRefresh = async () => {
+      try {
+        const newBuilds = await checkNewBuilds();
+
+        if (newBuilds.length > 0) {
+          // New builds found — fetch full catalog and update cache
+          const freshBuilds = await fetchBuilds({ forceRefresh: true });
+          queryClient.setQueryData<Build[]>(['builds', undefined], freshBuilds);
+          const ts = await getCatalogLastFetched();
+          useRefreshStore.setState({ lastFetched: ts });
+
+          // Populate notification bell
+          const buildLabels = newBuilds.map((b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+          useAppStore.getState().setNewBuilds(buildLabels);
+
+          toast({
+            title: 'Update found',
+            description: `${newBuilds.length} build(s) not yet installed.`,
+          });
+        } else {
+          // No new builds — clear any stale bell notifications
+          useAppStore.getState().setNewBuilds([]);
+        }
+        // If 0 new builds: silent — no toast, no update
+      } catch (err) {
+        // Silent on error — don't spam the user with hourly error toasts
+        console.error('Auto-refresh failed:', err);
+      }
+    };
+
+    const intervalId = setInterval(autoRefresh, AUTO_REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [queryClient, toast]);
 
   return (
     <ErrorBoundary>
