@@ -218,15 +218,15 @@ export default function OverrideDialog({
         <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden [&>span]:block [&>span]:overflow-hidden [&>span]:whitespace-nowrap [&>span]:truncate">
           <SelectValue placeholder={folder ? placeholder : noFolderMessage} />
         </SelectTrigger>
-        <SelectContent className="max-w-[calc(var(--radix-select-trigger-width)-1px)] min-w-[8rem] [&_[data-highlighted]]:bg-foreground/5 [&_[data-highlighted]]:text-foreground [&_[data-state=checked]]:bg-foreground/5">
+        <SelectContent className="max-w-[calc(var(--radix-select-trigger-width)-1px)] min-w-[8rem] [&_[data-highlighted]]:bg-foreground/15 [&_[data-highlighted]]:text-foreground [&_[data-state=checked]]:bg-foreground/15">
           {scanning
-            ? <SelectItem value="__loading" disabled className="hover:bg-foreground/5 focus:bg-foreground/5">Loading...</SelectItem>
+            ? <SelectItem value="__loading" disabled className="hover:bg-foreground/15 focus:bg-foreground/15">Loading...</SelectItem>
             : files.length === 0
               ? <div className="px-2 py-3 text-xs text-muted-foreground text-center">
                   No files found{filter !== 'all' ? ` (${filter})` : ''}
                 </div>
               : files.map((file) => (
-                  <SelectItem key={file.path} value={file.path} className="hover:bg-foreground/5 focus:bg-foreground/5 text-foreground">
+                  <SelectItem key={file.path} value={file.path} className="hover:bg-foreground/15 focus:bg-foreground/15 text-foreground">
                     <div className="flex items-center gap-2 max-w-full">
                       <span className="truncate flex-1" title={file.path}>{file.name}</span>
                       <Badge variant="outline" className={`text-[10px] h-5 px-1.5 shrink-0 ${extBadgeColor(getFileExt(file.name))}`}>
