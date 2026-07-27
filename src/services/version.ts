@@ -45,3 +45,15 @@ export async function duplicateVersion(versionId: number, withSettings: boolean)
     withSettings,
   }) as Promise<number>;
 }
+
+export async function bulkSetDisplayOrder(
+  orders: { versionId: number; displayOrder: number }[],
+): Promise<void> {
+  return invoke<void>('bulk_set_display_order', {
+    orders: orders.map((o) => [o.versionId, o.displayOrder]),
+  }) as Promise<void>;
+}
+
+export async function resetDisplayOrder(): Promise<void> {
+  return invoke<void>('reset_display_order') as Promise<void>;
+}

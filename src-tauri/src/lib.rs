@@ -277,6 +277,17 @@ fn delete_card_customization(
 ) -> Result<bool, String> {
     cards::commands::delete_card_customization(state_db, version_id)
 }
+#[tauri::command]
+fn bulk_set_display_order(
+    state_db: State<'_, DbManager>,
+    orders: Vec<(i64, i64)>,
+) -> Result<(), String> {
+    cards::commands::bulk_set_display_order(state_db, orders)
+}
+#[tauri::command]
+fn reset_display_order(state_db: State<'_, DbManager>) -> Result<(), String> {
+    cards::commands::reset_display_order(state_db)
+}
 
 // Custom commands
 #[tauri::command]
@@ -585,6 +596,8 @@ pub fn run_tauri_app() {
             get_card_customizations,
             save_card_customization,
             delete_card_customization,
+            bulk_set_display_order,
+            reset_display_order,
             // Custom commands
             save_custom_command,
             get_custom_commands,

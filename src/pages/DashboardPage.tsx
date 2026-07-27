@@ -8,7 +8,7 @@ import { useVersionConfigLinks } from '@/hooks/useVersionConfigLinks';
 import { useConfigs } from '@/hooks/useConfigs';
 
 import { useToast } from '@/hooks/use-toast';
-import { uninstallVersion, getCardCustomizations, duplicateVersion, saveCardCustomization } from '@/services/version';
+import { uninstallVersion, getCardCustomizations, duplicateVersion, saveCardCustomization, bulkSetDisplayOrder, resetDisplayOrder } from '@/services/version';
 import { getVersionOverride, saveVersionOverride } from '@/services/versionOverride';
 import { saveVersionConfigLink } from '@/services/versionConfig';
 import type { CardCustomization, VersionOverride, CardClipboardData } from '@/types';
@@ -24,6 +24,8 @@ import {
   Package, Trash2,
   Loader2,
   HardDrive, Cpu,
+  GripVertical,
+  RotateCcw,
 } from 'lucide-react';
 import { ToastAction } from '@/components/ui/toast';
 
@@ -50,6 +52,9 @@ export function DashboardPage() {
   const [tempTitle, setTempTitle] = useState('');
   const [tempColor, setTempColor] = useState('');
   const [tempTextColor, setTempTextColor] = useState('');
+  // Reorder mode: drag-and-drop card reordering
+  const [reorderMode, setReorderMode] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
 
   // Lifted hooks: shared config links and configs across all version cards
   const { getLink, setLink, removeLink, loadAll } = useVersionConfigLinks();
@@ -312,6 +317,66 @@ export function DashboardPage() {
     }
   };
 
+  // --- Reorder handlers ---
+
+  const handleDragEnd = async (event: { active: { id: number }; over: { id: number } | null }) => {
+    const over = event.over;
+    if (!over || event.active.id === over.id || !versions) return;
+
+    const oldIndex = versions.findIndex((v) => v.id === event.active.id);
+    const newIndex = versions.findIndex((v) => v.id === over.id);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+    // Build new ordered list
+    const newVersions = [...versions];
+    const [moved] = newVersions.splice(oldIndex, 1);
+    newVersions.splice(newIndex, 0, moved);
+
+    // Compute display_order: positions 0, 1, 2, ...
+    const orders = newVersions.map((v, i) => ({ versionId: v.id, displayOrder: i }));
+
+    setIsReordering(true);
+    try {
+      await bulkSetDisplayOrder(orders);
+      await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+      toast({
+        title: 'Order updated',
+        description: 'Card order has been saved.',
+      });
+    } catch (err) {
+      console.error('Failed to save card order:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Save failed',
+        description: 'Could not save the new card order.',
+      });
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const handleResetOrder = async () => {
+    setIsReordering(true);
+    try {
+      await resetDisplayOrder();
+      await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+      setReorderMode(false);
+      toast({
+        title: 'Order reset',
+        description: 'Cards returned to default (newest first) order.',
+      });
+    } catch (err) {
+      console.error('Failed to reset order:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Reset failed',
+        description: 'Could not reset the card order.',
+      });
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
       {/* Header */}
@@ -321,6 +386,29 @@ export function DashboardPage() {
           <p className="text-muted-foreground mt-1">
             Overview of your installed llama.cpp builds.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {reorderMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetOrder}
+              disabled={isReordering}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset Order
+            </Button>
+          )}
+          <Button
+            variant={reorderMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setReorderMode((p) => !p)}
+            className="gap-2"
+          >
+            <GripVertical className="h-4 w-4" />
+            {reorderMode ? 'Exit Reorder' : 'Reorder'}
+          </Button>
         </div>
       </div>
 
@@ -377,38 +465,35 @@ export function DashboardPage() {
           ))}
         </div>
       ) : versions && versions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {versions.map((version) => (
-            <VersionCard
-              key={version.id}
-              version={version}
-              customization={cardCustomizations[version.id]}
-              onCustomizationChange={handleCustomizationChange}
-              onDeleteClick={setDeleteTarget}
-              onDuplicateClick={handleDuplicate}
-              editingDropdownId={editingDropdownId}
-              onEditingDropdownChange={setEditingDropdownId}
-              tempTitle={tempTitle}
-              onTempTitleChange={setTempTitle}
-              tempColor={tempColor}
-              onTempColorChange={setTempColor}
-              tempTextColor={tempTextColor}
-              onTempTextColorChange={setTempTextColor}
-              configLink={getLink(version.id)}
-              configs={configs}
-              configsLoading={configsLoading}
-              onSetLink={setLink}
-              onRemoveLink={removeLink}
-              override={versionOverrides[version.id] ?? null}
-              onOverrideChange={handleOverrideChange}
-              modelFolder={settings?.model_folder}
-              mmprojFolder={settings?.mmproj_folder}
-              clipboardData={clipboardData}
-              onCopyClick={handleCopy}
-              onPasteRequest={handlePasteRequest}
-            />
-          ))}
-        </div>
+        <ReorderableGrid
+          versions={versions}
+          reorderMode={reorderMode}
+          onDragEnd={handleDragEnd}
+          cardCustomizations={cardCustomizations}
+          onCustomizationChange={handleCustomizationChange}
+          onDeleteClick={setDeleteTarget}
+          onDuplicateClick={handleDuplicate}
+          editingDropdownId={editingDropdownId}
+          onEditingDropdownChange={setEditingDropdownId}
+          tempTitle={tempTitle}
+          onTempTitleChange={setTempTitle}
+          tempColor={tempColor}
+          onTempColorChange={setTempColor}
+          tempTextColor={tempTextColor}
+          onTempTextColorChange={setTempTextColor}
+          getLink={getLink}
+          configs={configs}
+          configsLoading={configsLoading}
+          setLink={setLink}
+          removeLink={removeLink}
+          versionOverrides={versionOverrides}
+          onOverrideChange={handleOverrideChange}
+          modelFolder={settings?.model_folder}
+          mmprojFolder={settings?.mmproj_folder}
+          clipboardData={clipboardData}
+          onCopyClick={handleCopy}
+          onPasteRequest={handlePasteRequest}
+        />
       ) : (
         /* Empty State */
         <Card className="border-border/50 bg-card/50">
@@ -491,6 +576,199 @@ export function DashboardPage() {
         </DialogContent>
       </Dialog>
 
+    </div>
+  );
+}
+
+/* ─── Reorderable Grid ─────────────────────────────────────────────────── */
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { InstalledVersion, VersionConfigLink, ConfigEntry } from '@/types';
+
+interface ReorderableGridProps {
+  versions: InstalledVersion[];
+  reorderMode: boolean;
+  onDragEnd: (event: { active: { id: number }; over: { id: number } | null }) => void;
+  cardCustomizations: Record<number, CardCustomization>;
+  onCustomizationChange: (versionId: number, customization?: CardCustomization) => void;
+  onDeleteClick: (id: number) => void;
+  onDuplicateClick: (versionId: number, withSettings: boolean) => void;
+  editingDropdownId: number | null;
+  onEditingDropdownChange: (id: number | null) => void;
+  tempTitle: string;
+  onTempTitleChange: (v: string) => void;
+  tempColor: string;
+  onTempColorChange: (v: string) => void;
+  tempTextColor: string;
+  onTempTextColorChange: (v: string) => void;
+  getLink: (versionId: number) => VersionConfigLink | undefined;
+  configs: ConfigEntry[];
+  configsLoading: boolean;
+  setLink: (versionId: number, configType: 'custom', configId: string) => Promise<void>;
+  removeLink: (versionId: number) => Promise<void>;
+  versionOverrides: Record<number, VersionOverride>;
+  onOverrideChange: (versionId: number, override: VersionOverride | null) => void;
+  modelFolder?: string;
+  mmprojFolder?: string;
+  clipboardData: CardClipboardData | null;
+  onCopyClick: (versionId: number) => void;
+  onPasteRequest: (targetVersionId: number) => void;
+}
+
+function ReorderableGrid(props: ReorderableGridProps) {
+  const {
+    versions,
+    reorderMode,
+    onDragEnd,
+    cardCustomizations,
+    onCustomizationChange,
+    onDeleteClick,
+    onDuplicateClick,
+    editingDropdownId,
+    onEditingDropdownChange,
+    tempTitle,
+    onTempTitleChange,
+    tempColor,
+    onTempColorChange,
+    tempTextColor,
+    onTempTextColorChange,
+    getLink,
+    configs,
+    configsLoading,
+    setLink,
+    removeLink,
+    versionOverrides,
+    onOverrideChange,
+    modelFolder,
+    mmprojFolder,
+    clipboardData,
+    onCopyClick,
+    onPasteRequest,
+  } = props;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const renderCards = () => versions.map((version) => (
+    <SortableCardItem key={version.id} versionId={version.id}>
+      <VersionCard
+        version={version}
+        customization={cardCustomizations[version.id]}
+        onCustomizationChange={onCustomizationChange}
+        onDeleteClick={onDeleteClick}
+        onDuplicateClick={onDuplicateClick}
+        editingDropdownId={editingDropdownId}
+        onEditingDropdownChange={onEditingDropdownChange}
+        tempTitle={tempTitle}
+        onTempTitleChange={onTempTitleChange}
+        tempColor={tempColor}
+        onTempColorChange={onTempColorChange}
+        tempTextColor={tempTextColor}
+        onTempTextColorChange={onTempTextColorChange}
+        configLink={getLink(version.id) ?? null}
+        configs={configs}
+        configsLoading={configsLoading}
+        onSetLink={setLink}
+        onRemoveLink={removeLink}
+        override={versionOverrides[version.id] ?? null}
+        onOverrideChange={onOverrideChange}
+        modelFolder={modelFolder}
+        mmprojFolder={mmprojFolder}
+        clipboardData={clipboardData}
+        onCopyClick={onCopyClick}
+        onPasteRequest={onPasteRequest}
+      />
+    </SortableCardItem>
+  ));
+
+  if (!reorderMode) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {versions.map((version) => (
+          <VersionCard
+            key={version.id}
+            version={version}
+            customization={cardCustomizations[version.id]}
+            onCustomizationChange={onCustomizationChange}
+            onDeleteClick={onDeleteClick}
+            onDuplicateClick={onDuplicateClick}
+            editingDropdownId={editingDropdownId}
+            onEditingDropdownChange={onEditingDropdownChange}
+            tempTitle={tempTitle}
+            onTempTitleChange={onTempTitleChange}
+            tempColor={tempColor}
+            onTempColorChange={onTempColorChange}
+            tempTextColor={tempTextColor}
+            onTempTextColorChange={onTempTextColorChange}
+            configLink={getLink(version.id) ?? null}
+            configs={configs}
+            configsLoading={configsLoading}
+            onSetLink={setLink}
+            onRemoveLink={removeLink}
+            override={versionOverrides[version.id] ?? null}
+            onOverrideChange={onOverrideChange}
+            modelFolder={modelFolder}
+            mmprojFolder={mmprojFolder}
+            clipboardData={clipboardData}
+            onCopyClick={onCopyClick}
+            onPasteRequest={onPasteRequest}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd as any}>
+      <SortableContext items={versions.map((v) => v.id)} strategy={verticalListSortingStrategy}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {renderCards()}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function SortableCardItem({ versionId, children }: { versionId: number; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: versionId,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+      {/* Drag handle overlay */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-2 left-2 z-20 flex items-center justify-center w-8 h-8 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
+      {children}
     </div>
   );
 }

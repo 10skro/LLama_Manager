@@ -126,6 +126,8 @@ pub struct CardCustomization {
     pub title: String,
     pub header_color: String,
     pub text_color: String,
+    #[serde(default)]
+    pub display_order: Option<i64>,
 }
 
 /// User custom command configuration

@@ -95,6 +95,7 @@ export interface CardCustomization {
   title: string;
   header_color: string;
   text_color: string;
+  display_order?: number | null;
 }
 
 // User custom command configuration

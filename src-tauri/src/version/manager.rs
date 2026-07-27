@@ -297,6 +297,7 @@ impl VersionManager {
                     title: custom.title,
                     header_color: custom.header_color,
                     text_color: custom.text_color,
+                    display_order: None,
                 };
                 let _ = repo::upsert_card_customization(&conn, &new_custom);
             }
