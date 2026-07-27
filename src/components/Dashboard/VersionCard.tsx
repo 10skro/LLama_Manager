@@ -251,7 +251,7 @@ export function VersionCard({
 
   return (
     <Card
-      className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden"
+      className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden flex flex-col"
     >
       {/* Colored Header Bar */}
       <div
@@ -381,26 +381,27 @@ export function VersionCard({
         </div>
       )}
 
-      <CardHeader className="pb-3 pt-4">
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground font-medium">Version</p>
-          <p className="font-mono font-semibold text-lg truncate">
-            {version.build_number}
-          </p>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Badge
-              variant="outline"
-              className={`border ${getBackendColor(version.backend)}`}
-            >
-              {version.backend}
-            </Badge>
-            <Badge variant="outline" className="border text-muted-foreground text-xs">
-              {version.architecture}
-            </Badge>
+      <div className="flex-1 flex flex-col justify-end">
+        <CardHeader className="pb-3 pt-6">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground font-medium">Version</p>
+            <p className="font-mono font-semibold text-lg truncate">
+              {version.build_number}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1">
+              <Badge
+                variant="outline"
+                className={`border ${getBackendColor(version.backend)}`}
+              >
+                {version.backend}
+              </Badge>
+              <Badge variant="outline" className="border text-muted-foreground text-xs">
+                {version.architecture}
+              </Badge>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -458,7 +459,7 @@ export function VersionCard({
 
         <Separator className="border-border/50" />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-auto">
           <Button
             variant={isRunning ? "destructive" : "outline"}
             size="sm"
@@ -518,6 +519,7 @@ export function VersionCard({
           </DropdownMenu>
         </div>
       </CardContent>
+      </div>
 
       <OverrideDialog
         open={overrideDialogOpen}
