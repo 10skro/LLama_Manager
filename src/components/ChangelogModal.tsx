@@ -10,17 +10,34 @@ import { fetchReleaseChangelog } from '@/services/github';
 interface ChangelogModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  tagName: string;
+  tagName?: string;
   buildNumber: string;
+  /** If provided, skip network fetch and use this body directly. */
+  body?: string | null;
 }
 
-export function ChangelogModal({ open, onOpenChange, tagName, buildNumber }: ChangelogModalProps) {
+export function ChangelogModal({ open, onOpenChange, tagName, buildNumber, body }: ChangelogModalProps) {
   const [changelog, setChangelog] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+
+    // If body is provided directly, use it immediately (no network fetch)
+    if (body !== undefined) {
+      setChangelog(body);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Otherwise, fetch from GitHub API using tagName
+    if (!tagName) {
+      setChangelog(null);
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
     setLoading(true);
@@ -47,7 +64,7 @@ export function ChangelogModal({ open, onOpenChange, tagName, buildNumber }: Cha
     return () => {
       cancelled = true;
     };
-  }, [open, tagName]);
+  }, [open, tagName, body]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

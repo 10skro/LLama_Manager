@@ -9,8 +9,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, Terminal, Download, Loader2 } from 'lucide-react';
+import { Bell, Terminal, Download, Loader2, FileText } from 'lucide-react';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
+import { ChangelogModal } from '@/components/ChangelogModal';
+import { saveSettings } from '@/services/settings';
+import { useState } from 'react';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -21,8 +24,9 @@ const pageTitles: Record<string, string> = {
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { newBuilds } = useAppStore();
+  const { newBuilds, settings } = useAppStore();
   const { updateInfo, isInstalling, installUpdate } = useAppUpdate();
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   const title = pageTitles[location.pathname] || 'Llama Manager';
 
@@ -38,6 +42,7 @@ export function Header() {
   };
 
   return (
+    <>
     <div className="flex items-center justify-between px-6 py-3 border-b border-border/50 bg-background/80 backdrop-blur-sm">
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
       <div className="flex items-center gap-2">
@@ -72,12 +77,32 @@ export function Header() {
                     <p className="mt-0.5">{updateInfo.date}</p>
                   )}
                 </div>
-                <div className="px-2 py-1.5">
+                <div className="px-2 py-1.5 flex gap-2">
                   <Button
-                    onClick={() => installUpdate()}
+                    onClick={() => setChangelogOpen(true)}
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 gap-2"
+                    disabled={!updateInfo.body}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Changelog
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      // Persist changelog for post-install display
+                      if (settings && updateInfo.version && updateInfo.body) {
+                        await saveSettings({
+                          ...settings,
+                          pending_changelog_version: updateInfo.version,
+                          pending_changelog_body: updateInfo.body,
+                        });
+                      }
+                      await installUpdate();
+                    }}
                     disabled={isInstalling}
                     size="sm"
-                    className="w-full gap-2"
+                    className="flex-1 gap-2"
                   >
                     {isInstalling ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -120,5 +145,13 @@ export function Header() {
         <Separator orientation="vertical" className="h-6" />
       </div>
     </div>
+
+    <ChangelogModal
+      open={changelogOpen}
+      onOpenChange={setChangelogOpen}
+      buildNumber={updateInfo.version ?? 'Update'}
+      body={updateInfo.body}
+    />
+    </>
   );
 }

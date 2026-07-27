@@ -41,6 +41,10 @@ impl SettingsManager {
 
         let mmproj_folder = map.remove("mmproj_folder");
 
+        let pending_changelog_version = map.remove("pending_changelog_version");
+
+        let pending_changelog_body = map.remove("pending_changelog_body");
+
         Ok(AppSettings {
             storage_path,
             theme,
@@ -50,6 +54,8 @@ impl SettingsManager {
             toast_duration,
             model_folder,
             mmproj_folder,
+            pending_changelog_version,
+            pending_changelog_body,
         })
     }
 
@@ -102,6 +108,24 @@ impl SettingsManager {
             }
             _ => {
                 let _ = repo::delete_setting(&conn, "mmproj_folder");
+            }
+        }
+        // Save pending_changelog_version
+        match &settings.pending_changelog_version {
+            Some(version) if !version.is_empty() => {
+                repo::set_setting(&conn, "pending_changelog_version", version)?;
+            }
+            _ => {
+                let _ = repo::delete_setting(&conn, "pending_changelog_version");
+            }
+        }
+        // Save pending_changelog_body
+        match &settings.pending_changelog_body {
+            Some(body) if !body.is_empty() => {
+                repo::set_setting(&conn, "pending_changelog_body", body)?;
+            }
+            _ => {
+                let _ = repo::delete_setting(&conn, "pending_changelog_body");
             }
         }
         Ok(())
