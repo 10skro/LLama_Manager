@@ -15,7 +15,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Package, Trash2, List,
+  Trash2, List,
   Terminal, SlidersHorizontal, Pencil,
   Play, Square, Settings, Copy, CopyCheck, ClipboardCheck,
 } from 'lucide-react';
@@ -363,7 +363,7 @@ export function VersionCard({
 
       {/* Override Badge */}
       {hasOverride && (
-        <div className="px-3 pb-1">
+        <div className="px-3 pb-1.5">
           <Badge variant="outline" className="border-iris/30 text-iris text-xs gap-1">
             <SlidersHorizontal className="h-3 w-3" />
             {getOverrideBadgeText()}
@@ -373,7 +373,7 @@ export function VersionCard({
 
       {/* Running Badge */}
       {isRunning && (
-        <div className="px-3 pb-1">
+        <div className="px-3 pb-1.5">
           <Badge variant="outline" className="border-green/30 text-green text-xs gap-1 items-center">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
             Running
@@ -381,30 +381,26 @@ export function VersionCard({
         </div>
       )}
 
-      <CardHeader className="pb-3 pt-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-            <Package className="h-5 w-5 text-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-mono font-semibold text-lg">
-              {version.build_number}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <Badge
-                variant="outline"
-                className={`border ${getBackendColor(version.backend)}`}
-              >
-                {version.backend}
-              </Badge>
-              <Badge variant="outline" className="border text-muted-foreground text-xs">
-                {version.architecture}
-              </Badge>
-            </div>
+      <CardHeader className="pb-3 pt-4">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground font-medium">Version</p>
+          <p className="font-mono font-semibold text-lg truncate">
+            {version.build_number}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <Badge
+              variant="outline"
+              className={`border ${getBackendColor(version.backend)}`}
+            >
+              {version.backend}
+            </Badge>
+            <Badge variant="outline" className="border text-muted-foreground text-xs">
+              {version.architecture}
+            </Badge>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
