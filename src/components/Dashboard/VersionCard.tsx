@@ -219,7 +219,7 @@ export function VersionCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-white/60 hover:text-white hover:bg-white/20 shrink-0 cursor-grab active:cursor-grabbing"
+              className="h-6 w-6 text-black/60 hover:text-black hover:bg-black/10 shrink-0 cursor-grab active:cursor-grabbing"
               title="Drag to reorder"
               {...dragHandleProps.attributes}
               {...dragHandleProps.listeners}
@@ -261,7 +261,7 @@ export function VersionCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
+                className="h-7 w-7 text-black/80 hover:text-black hover:bg-black/10"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -282,6 +282,17 @@ export function VersionCard({
               <div className="px-2 py-1">
                 <p className="text-xs text-muted-foreground mb-1.5">Header Color</p>
                 <div className="flex flex-wrap gap-2">
+                  {/* Default (original) color swatch */}
+                  <button
+                    key="default"
+                    onClick={() => setTempColor('')}
+                    aria-label="Default color"
+                    className={`h-6 w-6 rounded-full border-2 transition-all ${
+                      tempColor === '' ? 'border-white scale-110' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: 'hsl(var(--secondary))' }}
+                    title="Default"
+                  />
                   {HEADER_COLORS.map(color => (
                     <button
                       key={color.name}
@@ -435,7 +446,7 @@ export function VersionCard({
             <Button
               variant="outline"
               size="sm"
-              className={`gap-2 ${hasOverride ? 'border-iris text-iris hover:bg-iris/10' : ''}`}
+              className={`flex-1 gap-2 ${hasOverride ? 'border-iris/50 text-iris' : ''}`}
               onClick={() => setOverrideDialogOpen(true)}
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -483,7 +494,7 @@ export function VersionCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, false)}>
                   <Copy className="h-4 w-4" />
-                  <span>Clone</span>
+                  <span>Clone Empty</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, true)}>
                   <CopyCheck className="h-4 w-4" />
