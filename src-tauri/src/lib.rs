@@ -27,8 +27,6 @@ use crate::models::types::AppError;
 use crate::terminal::manager::TerminalManager;
 use crate::theme::colors::theme_to_color;
 use crate::theme::inject::build_initialization_script;
-use tauri_plugin_updater::UpdaterExt;
-
 // ─── Tauri Command Wrappers ─────────────────────────────────────────────
 // #[tauri::command] must be in this module so generate_handler! can see
 // the generated __cmd__* macros. Each wrapper delegates to the domain module.
@@ -398,74 +396,136 @@ async fn fetch_changelog(app: &tauri::AppHandle) -> Option<String> {
     json.get("long_description").and_then(|v| v.as_str()).map(String::from)
 }
 
-// App Update
+// App Update — manual check to avoid Tauri minisign parsing issues with empty signature
 #[tauri::command]
 async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    let updater = match app.updater() {
-        Ok(u) => u,
-        Err(e) => {
-            log::error!("Failed to get updater: {}", e);
-            return Err(format!("Failed to get updater: {}", e));
-        }
-    };
+    // Read updater endpoint from config
+    let config_value = serde_json::to_value(app.config()).map_err(|e| e.to_string())?;
+    let endpoint = config_value
+        .get("plugins")
+        .and_then(|v| v.get("updater"))
+        .and_then(|v| v.get("endpoints"))
+        .and_then(|v| v.as_array())
+        .and_then(|v| v.first())
+        .and_then(|v| v.as_str())
+        .ok_or("Updater endpoint not configured")?;
 
-    match updater.check().await {
-        Ok(Some(update)) => {
-            log::info!("Update available: {} (current: {})", update.version, app.package_info().version);
+    let current_version = app.package_info().version.to_string();
 
-            // Fetch changelog from latest.json since Tauri updater doesn't expose long_description
-            let changelog = fetch_changelog(&app).await;
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(endpoint)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch update info: {}", e))?;
 
-            let date_str = update.date.map(|d| {
-                // Handle both ISO8601 ("2026-07-27T00:00:00...") and time crate format ("2026-07-27 0:00:00.0 +00:00:00")
-                let s = d.to_string();
-                let parts: Vec<&str> = s.split(['T', ' ']).collect();
+    if !resp.status().is_success() {
+        return Err(format!("Update check failed: HTTP {}", resp.status()));
+    }
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| format!("Failed to parse update info: {}", e))?;
+
+    let remote_version = json
+        .get("version")
+        .and_then(|v| v.as_str())
+        .ok_or("No version in update manifest")?;
+
+    // Strip leading 'v' if present for comparison
+    let remote_clean = remote_version.strip_prefix('v').unwrap_or(remote_version);
+    let current_clean = current_version.strip_prefix('v').unwrap_or(&current_version);
+
+    if remote_clean > current_clean {
+        let changelog = fetch_changelog(&app).await;
+
+        let date_str = json
+            .get("pub_date")
+            .and_then(|v| v.as_str())
+            .map(|d| {
+                let parts: Vec<&str> = d.split(['T', ' ']).collect();
                 if parts.len() >= 2 {
-                    let date_part = parts[0];
-                    let time_part = parts[1];
-                    let time_components: Vec<&str> = time_part.split(':').collect();
+                    let time_components: Vec<&str> = parts[1].split(':').collect();
                     if time_components.len() >= 2 {
-                        format!("{} {}:{:0>2}", date_part, time_components[0], time_components[1])
+                        format!("{} {}:{:0>2}", parts[0], time_components[0], time_components[1])
                     } else {
-                        format!("{} {}", date_part, time_part)
+                        format!("{} {}", parts[0], parts[1])
                     }
                 } else {
-                    s
+                    d.to_string()
                 }
             });
-            Ok(serde_json::json!({
-                "available": true,
-                "version": update.version.to_string(),
-                "date": date_str,
-                "body": changelog,
-            }))
-        }
-        Ok(None) => {
-            log::info!("No update available (current: {})", app.package_info().version);
-            Ok(serde_json::json!({
-                "available": false,
-                "version": null,
-                "date": null,
-                "body": null,
-            }))
-        }
-        Err(e) => {
-            log::error!("Update check failed: {}", e);
-            Err(format!("Update check failed: {}", e))
-        }
+
+        log::info!("Update available: {} (current: {})", remote_version, current_version);
+        Ok(serde_json::json!({
+            "available": true,
+            "version": remote_version,
+            "date": date_str,
+            "body": changelog,
+        }))
+    } else {
+        log::info!("No update available (current: {})", current_version);
+        Ok(serde_json::json!({
+            "available": false,
+            "version": null,
+            "date": null,
+            "body": null,
+        }))
     }
 }
 
 #[tauri::command]
 async fn install_app_update(app: tauri::AppHandle) -> Result<(), String> {
-    let updater = app.updater().map_err(|e| e.to_string())?;
-    
-    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
-        update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
-        Ok(())
-    } else {
-        Err("No update available".to_string())
-    }
+    // Read updater endpoint from config
+    let config_value = serde_json::to_value(app.config()).map_err(|e| e.to_string())?;
+    let endpoint = config_value
+        .get("plugins")
+        .and_then(|v| v.get("updater"))
+        .and_then(|v| v.get("endpoints"))
+        .and_then(|v| v.as_array())
+        .and_then(|v| v.first())
+        .and_then(|v| v.as_str())
+        .ok_or("Updater endpoint not configured")?;
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(endpoint)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch update info: {}", e))?;
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| format!("Failed to parse update info: {}", e))?;
+
+    let download_url = json
+        .get("platforms")
+        .and_then(|v| v.get("windows-x86_64"))
+        .and_then(|v| v.get("url"))
+        .and_then(|v| v.as_str())
+        .ok_or("No download URL in update manifest")?;
+
+    // Download the installer
+    let installer_resp = client
+        .get(download_url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download update: {}", e))?;
+
+    let bytes = installer_resp
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read update data: {}", e))?;
+
+    // Save to temp directory
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.join("Llama.Manager.Update.exe");
+
+    std::fs::write(&installer_path, bytes.as_ref()).map_err(|e| format!("Failed to save installer: {}", e))?;
+
+    // Launch installer with /S for silent install and /RESTART to restart app
+    std::process::Command::new("cmd")
+        .args(&["/C", "start", "", installer_path.to_str().ok_or("Invalid installer path")?, "/S", "/RESTART"])
+        .spawn()
+        .map_err(|e| format!("Failed to launch installer: {}", e))?;
+
+    Ok(())
 }
 
 // Theme
