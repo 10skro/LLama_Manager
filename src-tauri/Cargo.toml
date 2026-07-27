@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "llamacpp-manager"
 version = "0.6.21"
 description = "A manager for llama.cpp versions"
