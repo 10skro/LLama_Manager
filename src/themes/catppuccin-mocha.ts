@@ -87,5 +87,7 @@ export const catppuccinMocha: Theme = {
     '--overlay-0': hexToHSL(catppuccinMochaColors.overlay0),
     '--overlay-1': hexToHSL(catppuccinMochaColors.overlay1),
     '--overlay-2': hexToHSL(catppuccinMochaColors.overlay2),
+    // Item highlight (dropdown hover/focus)
+    '--item-highlight': '0 0% 100%', // white
   },
 };
