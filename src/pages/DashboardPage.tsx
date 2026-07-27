@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { useQueryClient } from '@tanstack/react-query';
 import type { UniqueIdentifier } from '@dnd-kit/core';
@@ -29,6 +29,7 @@ import { Package, Trash2, Loader2, HardDrive, Cpu, GripVertical, RotateCcw } fro
 import { ToastAction } from '@/components/ui/toast';
 
 import { ReorderableGrid, StatCard, DashboardProvider, useDashboardContext } from '@/components/Dashboard';
+import type { VersionCardActions } from '@/components/Dashboard/ReorderableGrid';
 
 /* ─── Helpers ─── */
 
@@ -249,6 +250,7 @@ function DashboardContent({
     cardCustomizations,
     setCustomization,
     getLink,
+    setLink,
     versionOverrides,
     setOverride,
     clipboardData,
@@ -345,6 +347,7 @@ function DashboardContent({
 
       if (clipboardData.configLink) {
         await saveVersionConfigLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
+        setLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
       }
 
       if (clipboardData.override) {
@@ -376,20 +379,24 @@ function DashboardContent({
     } finally {
       setIsPasting(false);
     }
-  }, [clipboardData, pasteTarget, setCustomization, setOverride, setClipboardData, setPasteTarget, toast]);
+  }, [clipboardData, pasteTarget, setCustomization, setLink, setOverride, setClipboardData, setPasteTarget, toast]);
 
-  // --- Duplicate handler with context reload ---
+  // --- Duplicate handler: reload customizations when cloning with settings ---
   const handleDuplicateWithContext = useCallback(async (versionId: number, withSettings: boolean) => {
-    try {
-      await onDuplicate(versionId, withSettings);
-      if (withSettings) {
-        const record = await loadCardCustomizationsRecord();
-        Object.values(record).forEach(c => setCustomization(c.version_id, c));
-      }
-    } catch (err) {
-      console.error('Failed to duplicate:', err);
+    await onDuplicate(versionId, withSettings);
+    if (withSettings) {
+      const record = await loadCardCustomizationsRecord();
+      Object.values(record).forEach(c => setCustomization(c.version_id, c));
     }
   }, [onDuplicate, setCustomization]);
+
+  // --- Unified actions object for VersionCard ---
+  const actions: VersionCardActions = useMemo(() => ({
+    onDeleteClick: (versionId: number) => setDeleteTarget(versionId),
+    onDuplicateClick: handleDuplicateWithContext,
+    onCopyClick: handleCopy,
+    onPasteRequest: setPasteTarget,
+  }), [handleDuplicateWithContext, handleCopy]);
 
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
@@ -469,10 +476,7 @@ function DashboardContent({
           versions={versions}
           reorderMode={reorderMode}
           onDragEnd={onDragEnd}
-          onDeleteClick={setDeleteTarget}
-          onDuplicateClick={handleDuplicateWithContext}
-          onCopyClick={handleCopy}
-          onPasteRequest={setPasteTarget}
+          actions={actions}
         />
       ) : (
         <Card className="border-border/50 bg-card/50">

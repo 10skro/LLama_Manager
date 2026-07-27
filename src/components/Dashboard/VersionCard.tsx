@@ -22,41 +22,22 @@ import {
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
 import { useDashboardContext } from './DashboardContext';
-
-const HEADER_COLORS = [
-  { name: 'mauve', variable: 'hsl(var(--mauve))', label: 'Mauve' },
-  { name: 'red', variable: 'hsl(var(--red))', label: 'Red' },
-  { name: 'pink', variable: 'hsl(var(--pink))', label: 'Pink' },
-  { name: 'peach', variable: 'hsl(var(--peach))', label: 'Peach' },
-  { name: 'yellow', variable: 'hsl(var(--yellow))', label: 'Yellow' },
-  { name: 'green', variable: 'hsl(var(--green))', label: 'Green' },
-  { name: 'teal', variable: 'hsl(var(--teal))', label: 'Teal' },
-  { name: 'blue', variable: 'hsl(var(--blue))', label: 'Blue' },
-  { name: 'lavender', variable: 'hsl(var(--lavender))', label: 'Lavender' },
-  { name: 'love', variable: 'hsl(var(--love))', label: 'Love' },
-  { name: 'iris', variable: 'hsl(var(--iris))', label: 'Iris' },
-  { name: 'pine', variable: 'hsl(var(--pine))', label: 'Pine' },
-];
+import { HEADER_COLORS, TEXT_COLORS } from './cardTheme';
+import type { VersionCardActions } from './ReorderableGrid';
 
 /**
- * VersionCard now only needs `version` + 4 action callbacks.
+ * VersionCard now only needs `version` + `actions` object.
  * All shared state (customization, override, config, clipboard, editing)
  * comes from DashboardContext.
  */
 interface VersionCardProps {
   version: InstalledVersion;
-  onDeleteClick: (versionId: number) => void;
-  onDuplicateClick: (versionId: number, withSettings: boolean) => void;
-  onCopyClick: (versionId: number) => void;
-  onPasteRequest: (targetVersionId: number) => void;
+  actions: VersionCardActions;
 }
 
 export function VersionCard({
   version,
-  onDeleteClick,
-  onDuplicateClick,
-  onCopyClick,
-  onPasteRequest,
+  actions,
 }: VersionCardProps) {
   const { toast } = useToast();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
@@ -241,7 +222,7 @@ export function VersionCard({
               size="icon"
               className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
               title="Paste settings"
-              onClick={() => onPasteRequest(version.id)}
+              onClick={() => actions.onPasteRequest(version.id)}
             >
               <ClipboardCheck className="h-3.5 w-3.5" />
             </Button>
@@ -299,16 +280,17 @@ export function VersionCard({
               <div className="px-2 py-1">
                 <p className="text-xs text-muted-foreground mb-1.5">Text Color</p>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setTempTextColor('white')}
-                    className={`h-6 w-6 rounded-full border-2 bg-white shadow-md ring-1 ring-gray-300 transition-all ${tempTextColor === 'white' ? 'border-white scale-110' : 'border-border'}`}
-                    title="White"
-                  />
-                  <button
-                    onClick={() => setTempTextColor('black')}
-                    className={`h-6 w-6 rounded-full border-2 bg-black transition-all ${tempTextColor === 'black' ? 'border-white scale-110' : 'border-border'}`}
-                    title="Black"
-                  />
+                  {TEXT_COLORS.map(color => (
+                    <button
+                      key={color.name}
+                      onClick={() => setTempTextColor(color.name)}
+                      className={`h-6 w-6 rounded-full border-2 shadow-md ring-1 ring-gray-300 transition-all ${
+                        tempTextColor === color.name ? 'border-white scale-110' : 'border-border'
+                      }`}
+                      style={{ backgroundColor: color.variable }}
+                      title={color.label}
+                    />
+                  ))}
                 </div>
               </div>
               <DropdownMenuSeparator />
@@ -479,22 +461,22 @@ export function VersionCard({
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onDuplicateClick(version.id, false)}>
+                <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, false)}>
                   <Copy className="h-4 w-4" />
                   <span>Clone</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDuplicateClick(version.id, true)}>
+                <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, true)}>
                   <CopyCheck className="h-4 w-4" />
                   <span>Clone with Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onCopyClick(version.id)}>
+                <DropdownMenuItem onClick={() => actions.onCopyClick(version.id)}>
                   <Copy className="h-4 w-4" />
                   <span>Copy Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-red focus:text-red focus:bg-red/10"
-                  onClick={() => onDeleteClick(version.id)}
+                  onClick={() => actions.onDeleteClick(version.id)}
                 >
                   <Trash2 className="h-4 w-4" />
                   <span>Delete</span>

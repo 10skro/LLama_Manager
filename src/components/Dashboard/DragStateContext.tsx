@@ -6,7 +6,7 @@ export interface DragState {
   isDragging: boolean;
 }
 
-const DragStateContext = React.createContext<DragState>({
+export const DragStateContext = React.createContext<DragState>({
   overId: undefined,
   isDragging: false,
 });
@@ -24,5 +24,3 @@ export function DragStateProvider({ children }: { children: React.ReactNode }) {
     </DragStateContext.Provider>
   );
 }
-
-export default DragStateContext;
