@@ -215,10 +215,10 @@ export default function OverrideDialog({
         onValueChange={onChange}
         disabled={!folder || scanning}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden [&>span]:block [&>span]:overflow-hidden [&>span]:whitespace-nowrap [&>span]:truncate">
           <SelectValue placeholder={folder ? placeholder : noFolderMessage} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-w-[calc(var(--radix-select-trigger-width)-1px)] min-w-[8rem] [&_[data-highlighted]]:bg-white/5 [&_[data-highlighted]]:text-white [&_[data-state=checked]]:bg-white/5">
           {scanning
             ? <SelectItem value="__loading" disabled>Loading...</SelectItem>
             : files.length === 0
@@ -227,7 +227,7 @@ export default function OverrideDialog({
                 </div>
               : files.map((file) => (
                   <SelectItem key={file.path} value={file.path}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 max-w-full">
                       <span className="truncate flex-1" title={file.path}>{file.name}</span>
                       <Badge variant="outline" className={`text-[10px] h-5 px-1.5 shrink-0 ${extBadgeColor(getFileExt(file.name))}`}>
                         {getFileExt(file.name)}
@@ -247,7 +247,7 @@ export default function OverrideDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md overflow-hidden grid-cols-1">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings2 className="h-4 w-4" />
