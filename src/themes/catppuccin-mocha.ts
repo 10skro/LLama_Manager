@@ -60,7 +60,7 @@ export const catppuccinMocha: Theme = {
     '--accent-foreground': '0 0% 15%',
     '--destructive': hexToHSL(catppuccinMochaColors.red),
     '--destructive-foreground': '0 0% 15%',
-    '--border': hexToHSL(catppuccinMochaColors.crust),
+    '--border': hexToHSL(catppuccinMochaColors.surface0),
     '--input': hexToHSL(catppuccinMochaColors.crust),
     '--ring': hexToHSL(catppuccinMochaColors.blue),
     '--sidebar': hexToHSL(catppuccinMochaColors.crust),
@@ -87,5 +87,7 @@ export const catppuccinMocha: Theme = {
     '--overlay-0': hexToHSL(catppuccinMochaColors.overlay0),
     '--overlay-1': hexToHSL(catppuccinMochaColors.overlay1),
     '--overlay-2': hexToHSL(catppuccinMochaColors.overlay2),
+    // Item highlight (dropdown hover/focus)
+    '--item-highlight': '0 0% 100%', // white
   },
 };

@@ -90,5 +90,7 @@ export const rosepineMoon: Theme = {
     '--overlay-0': hexToHSL(rosepineMoonColors.muted),
     '--overlay-1': hexToHSL(rosepineMoonColors.subtle),
     '--overlay-2': hexToHSL(rosepineMoonColors.text),
+    // Item highlight (dropdown hover/focus)
+    '--item-highlight': '0 0% 100%', // white
   },
 };

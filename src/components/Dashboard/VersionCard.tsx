@@ -15,7 +15,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Package, Trash2, List,
+  Trash2, List,
   Terminal, SlidersHorizontal, Pencil,
   Play, Square, Settings, Copy, CopyCheck, ClipboardCheck,
 } from 'lucide-react';
@@ -251,7 +251,7 @@ export function VersionCard({
 
   return (
     <Card
-      className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden"
+      className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden flex flex-col"
     >
       {/* Colored Header Bar */}
       <div
@@ -363,7 +363,7 @@ export function VersionCard({
 
       {/* Override Badge */}
       {hasOverride && (
-        <div className="px-3 pb-1">
+        <div className="px-3 pt-1.5 pb-1.5">
           <Badge variant="outline" className="border-iris/30 text-iris text-xs gap-1">
             <SlidersHorizontal className="h-3 w-3" />
             {getOverrideBadgeText()}
@@ -373,7 +373,7 @@ export function VersionCard({
 
       {/* Running Badge */}
       {isRunning && (
-        <div className="px-3 pb-1">
+        <div className="px-3 pb-1.5">
           <Badge variant="outline" className="border-green/30 text-green text-xs gap-1 items-center">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
             Running
@@ -381,16 +381,14 @@ export function VersionCard({
         </div>
       )}
 
-      <CardHeader className="pb-3 pt-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-            <Package className="h-5 w-5 text-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-mono font-semibold text-lg">
+      <div className="flex-1 flex flex-col justify-end">
+        <CardHeader className="pb-3 pt-6">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground font-medium">Version</p>
+            <p className="font-mono font-semibold text-lg truncate">
               {version.build_number}
             </p>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 mt-1">
               <Badge
                 variant="outline"
                 className={`border ${getBackendColor(version.backend)}`}
@@ -402,9 +400,8 @@ export function VersionCard({
               </Badge>
             </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -462,7 +459,7 @@ export function VersionCard({
 
         <Separator className="border-border/50" />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-auto">
           <Button
             variant={isRunning ? "destructive" : "outline"}
             size="sm"
@@ -522,6 +519,7 @@ export function VersionCard({
           </DropdownMenu>
         </div>
       </CardContent>
+      </div>
 
       <OverrideDialog
         open={overrideDialogOpen}

@@ -65,6 +65,7 @@ export default {
           1: 'hsl(var(--overlay-1))',
           2: 'hsl(var(--overlay-2))',
         },
+        'item-highlight': 'hsl(var(--item-highlight))',
       },
       fontFamily: {
         sans: ['var(--custom-font)', 'ui-sans-serif', 'system-ui', '-apple-system'],

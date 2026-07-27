@@ -95,10 +95,10 @@ export function FilterBar({
               <Badge
                 key={backend}
                 variant="outline"
-                className={`cursor-pointer transition-colors ${
+                className={`cursor-pointer transition-all ${
                   filters.backend.includes(backend)
-                    ? `${getBackendColor(backend)} bg-primary/20`
-                    : `${getBackendColor(backend)} hover:bg-secondary`
+                    ? `${getBackendColor(backend)} bg-primary/20 border-primary/60 font-semibold`
+                    : `${getBackendColor(backend)} opacity-50 hover:opacity-80`
                 }`}
                 onClick={() => toggleBackendFilter(backend)}
               >

@@ -199,9 +199,9 @@ export default function OverrideDialog({
             {EXTENSION_FILTERS.map((f) => (
               <Button
                 key={f.value}
-                variant={filter === f.value ? 'secondary' : 'ghost'}
+                variant={filter === f.value ? 'secondary' : 'outline'}
                 size="sm"
-                className={`text-xs h-6 px-2.5 ${filter === f.value ? '' : 'hover:bg-secondary/50'}`}
+                className={`text-xs h-6 px-2.5 ${filter === f.value ? 'border-primary/50 font-semibold' : 'border-border/40 text-muted-foreground'}`}
                 onClick={() => onFilterChange(f.value)}
               >
                 {f.label}
@@ -215,19 +215,19 @@ export default function OverrideDialog({
         onValueChange={onChange}
         disabled={!folder || scanning}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden [&>span]:block [&>span]:overflow-hidden [&>span]:whitespace-nowrap [&>span]:truncate">
           <SelectValue placeholder={folder ? placeholder : noFolderMessage} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-w-[calc(var(--radix-select-trigger-width)-1px)] min-w-[8rem] [&_[data-highlighted]]:bg-item-highlight/15 [&_[data-highlighted]]:text-foreground [&_[data-state=checked]]:bg-item-highlight/15">
           {scanning
-            ? <SelectItem value="__loading" disabled>Loading...</SelectItem>
+            ? <SelectItem value="__loading" disabled className="hover:bg-item-highlight/15 focus:bg-item-highlight/15">Loading...</SelectItem>
             : files.length === 0
               ? <div className="px-2 py-3 text-xs text-muted-foreground text-center">
                   No files found{filter !== 'all' ? ` (${filter})` : ''}
                 </div>
               : files.map((file) => (
-                  <SelectItem key={file.path} value={file.path}>
-                    <div className="flex items-center gap-2">
+                  <SelectItem key={file.path} value={file.path} className="hover:bg-item-highlight/15 focus:bg-item-highlight/15 text-foreground">
+                    <div className="flex items-center gap-2 max-w-full">
                       <span className="truncate flex-1" title={file.path}>{file.name}</span>
                       <Badge variant="outline" className={`text-[10px] h-5 px-1.5 shrink-0 ${extBadgeColor(getFileExt(file.name))}`}>
                         {getFileExt(file.name)}
@@ -247,7 +247,7 @@ export default function OverrideDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md overflow-hidden grid-cols-1">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings2 className="h-4 w-4" />

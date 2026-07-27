@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.23",
-  "long_description": "## Changes\n\n### Security\n\n- Replace custom update system with native Tauri updater enabling cryptographic signature verification during installation\n\n### Refactoring\n\n- Remove manual HTTP-based update checks and installer downloads\n- Remove unused `fetch_changelog` function\n- Reduce update module from ~130 lines to ~55 lines using `tauri_plugin_updater` API",
-  "pub_date": "2026-07-27T01:00:00Z",
+  "version": "v0.6.24",
+  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix long filenames overflowing the Override dialog by constraining trigger width and adding text truncation\n\n### UI / UX Improvements\n\n- Improve Catppuccin Mocha separator visibility with darker border color\n- Improve filter button active/inactive states across catalog, configs, and override dialog\n- Remove icons from catalog download buttons for proper text centering\n- Improve dashboard card spacing, remove redundant icon, add Version label\n- Align dashboard card content to bottom for consistent layout\n- Add spacing between config separator and override badge in dashboard card\n- Replace hardcoded dropdown highlights with theme-adaptive hover colors\n- Introduce dedicated `--item-highlight` theme variable for consistent dropdown/select highlighting\n\n### Refactoring\n\n- Decouple dropdown highlight color from text color using dedicated theme variable per theme",
+  "pub_date": "2026-07-27T02:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.23/Llama%20Manager_0.6.23_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTVkRngzeWd1MHdZdUlPc2pFWWZRT0YyeURvOVJMMWxWakJ0M1M2bWF3d0tYZlY3bElyYkdxRjIvN3BjVnJrcmtWMWV6VWliemU1Vmx1U1QyM1FTQXd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTY1NDMyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMjNfeDY0LXNldHVwLmV4ZQphaTlLQ0JFTER3VFkvdm5jazBUa3EzamcyK2w5QTEvdG5UM1k5aGlXalk3aVRwM2EyVmpVOVVSbGE1NjhvYnBWa2pUbFJHKzgzdGl0UUFacExLQkhEdz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.24/Llama%20Manager_0.6.24_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTFTYm5SL0NkN1JNMGtwV0lUcWhoYThnallOYXRNZHAzb1ZpZzhJWDFhallkeFd4MXYzVGpkU2NtQ01pNmF0Z1lMZ05mNzZrc3ZmdmE5K01haFp5L0FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTcxMDQyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMjRfeDY0LXNldHVwLmV4ZQpYRkxDcXhaK213bnI0UGhtdG5uUGlqYisrazNKQkNiWDU3TVh3aTllaHhXQXVITFFjOG5FYXIyaGNWa0hpNVdKamhpWE5tc1lGYkNFNEJhM21SelRCdz09Cg=="
     }
   }
 }

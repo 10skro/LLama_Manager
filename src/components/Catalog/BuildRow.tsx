@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate, formatSize } from '@/utils/format';
 import { BuildStatusBadge } from '@/components/BuildStatusBadge';
-import { Star, Info, Download, Loader2 } from 'lucide-react';
+import { Star, Info } from 'lucide-react';
 import type { Build } from '@/types';
 
 interface BuildRowProps {
@@ -110,7 +110,6 @@ export function BuildRow({
             </Button>
           ) : isDownloading ? (
             <Button variant="secondary" size="sm" disabled className="w-[80px] justify-center">
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
               Downloading
             </Button>
           ) : (
@@ -122,7 +121,6 @@ export function BuildRow({
               }}
               className="w-[80px] justify-center"
             >
-              <Download className="h-3 w-3 mr-1" />
               Download
             </Button>
           )}
