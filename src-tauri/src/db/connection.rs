@@ -105,6 +105,7 @@ impl DbManager {
                 title TEXT NOT NULL DEFAULT '',
                 header_color TEXT NOT NULL DEFAULT '',
                 text_color TEXT NOT NULL DEFAULT '' CHECK(text_color IN ('white', 'black', '')),
+                display_order INTEGER DEFAULT NULL,
                 FOREIGN KEY (version_id) REFERENCES installed_versions(id)
             );
 
@@ -138,6 +139,12 @@ impl DbManager {
             );
             ",
         )?;
+
+        // Migration: add display_order column if it doesn't exist
+        conn.execute(
+            "ALTER TABLE card_customizations ADD COLUMN display_order INTEGER DEFAULT NULL",
+            [],
+        ).ok();
 
         Ok(())
     }

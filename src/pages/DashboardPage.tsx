@@ -1,31 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { useQueryClient } from '@tanstack/react-query';
+
+import type { InstalledVersion } from '@/types';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useStorageUsage } from '@/hooks/useStorageUsage';
 import { useLatestBuildInfo } from '@/hooks/useLatestBuildInfo';
 import { useVersionConfigLinks } from '@/hooks/useVersionConfigLinks';
 import { useConfigs } from '@/hooks/useConfigs';
-
 import { useToast } from '@/hooks/use-toast';
-import { uninstallVersion, getCardCustomizations, duplicateVersion, saveCardCustomization } from '@/services/version';
+import {
+  uninstallVersion,
+  getCardCustomizations,
+  duplicateVersion,
+  bulkSetDisplayOrder,
+  resetDisplayOrder,
+  saveCardCustomization,
+} from '@/services/version';
 import { getVersionOverride, saveVersionOverride } from '@/services/versionOverride';
 import { saveVersionConfigLink } from '@/services/versionConfig';
-import type { CardCustomization, VersionOverride, CardClipboardData } from '@/types';
+import type { CardCustomization, CardClipboardData } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { formatSize } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-
-import { VersionCard } from '@/components/Dashboard/VersionCard';
-import {
-  Package, Trash2,
-  Loader2,
-  HardDrive, Cpu,
-} from 'lucide-react';
+import { Package, Trash2, Loader2, HardDrive, Cpu, GripVertical, RotateCcw } from 'lucide-react';
 import { ToastAction } from '@/components/ui/toast';
+
+import { ReorderableGrid, StatCard, DashboardProvider, useDashboardContext } from '@/components/Dashboard';
+import type { VersionCardActions } from '@/components/Dashboard/ReorderableGrid';
+
+/* ─── Helpers ─── */
+
+/** Load card customizations from backend into a versionId→customization record. */
+async function loadCardCustomizationsRecord(): Promise<Record<number, CardCustomization>> {
+  const customs = await getCardCustomizations();
+  const record: Record<number, CardCustomization> = {};
+  for (const c of customs) {
+    record[c.version_id] = c;
+  }
+  return record;
+}
+
+/* ─── Main Component ─── */
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
@@ -35,21 +54,13 @@ export function DashboardPage() {
   const { latestInstalled } = useLatestBuildInfo();
   const settings = useAppStore((state) => state.settings);
 
+  // Dialogs
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  // Copy/paste clipboard state
-  const [clipboardData, setClipboardData] = useState<CardClipboardData | null>(null);
-  const [pasteTarget, setPasteTarget] = useState<number | null>(null);
-  const [isPasting, setIsPasting] = useState(false);
-  // Card customizations per version (versionId -> customization)
-  const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
-  // Version overrides per version (versionId -> override)
-  const [versionOverrides, setVersionOverrides] = useState<Record<number, VersionOverride>>({});
-  // Shared editing state: only one card's customize dropdown can be open at a time
-  const [editingDropdownId, setEditingDropdownId] = useState<number | null>(null);
-  const [tempTitle, setTempTitle] = useState('');
-  const [tempColor, setTempColor] = useState('');
-  const [tempTextColor, setTempTextColor] = useState('');
+
+  // Reorder mode
+  const [reorderMode, setReorderMode] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
 
   // Lifted hooks: shared config links and configs across all version cards
   const { getLink, setLink, removeLink, loadAll } = useVersionConfigLinks();
@@ -62,43 +73,7 @@ export function DashboardPage() {
     }
   }, [versions, loadAll]);
 
-  // Load overrides for all installed versions
-  useEffect(() => {
-    if (!versions || versions.length === 0) return;
-
-    const loadOverrides = async () => {
-      const record: Record<number, VersionOverride> = {};
-      for (const version of versions) {
-        try {
-          const override = await getVersionOverride(version.id);
-          if (override) {
-            record[version.id] = override;
-          }
-        } catch (err) {
-          console.error(`Failed to load override for version ${version.id}:`, err);
-        }
-      }
-      setVersionOverrides(record);
-    };
-    loadOverrides();
-  }, [versions]);
-
-  // Load customizations from backend on mount
-  useEffect(() => {
-    const loadCustomizations = async () => {
-      try {
-        const customs = await getCardCustomizations();
-        const record: Record<number, CardCustomization> = {};
-        for (const c of customs) {
-          record[c.version_id] = c;
-        }
-        setCardCustomizations(record);
-      } catch (err) {
-        console.error('Failed to load card customizations:', err);
-      }
-    };
-    loadCustomizations();
-  }, []);
+  // --- Action handlers ---
 
   const handleDelete = async () => {
     if (deleteTarget === null) return;
@@ -107,11 +82,6 @@ export function DashboardPage() {
     try {
       await uninstallVersion(deleteTarget);
       await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
-      setCardCustomizations(prev => {
-        const next = { ...prev };
-        delete next[deleteTarget];
-        return next;
-      });
       toast({
         title: 'Version deleted',
         description: `${versionToDelete?.build_number ?? 'Version'} has been removed.`,
@@ -128,173 +98,9 @@ export function DashboardPage() {
     }
   };
 
-  const handleCustomizationChange = (versionId: number, customization?: CardCustomization) => {
-    setCardCustomizations(prev => {
-      const next = { ...prev };
-      if (customization) {
-        next[versionId] = customization;
-      } else {
-        delete next[versionId];
-      }
-      return next;
-    });
-  };
-
-  const handleOverrideChange = (versionId: number, override: VersionOverride | null) => {
-    setVersionOverrides(prev => {
-      const next = { ...prev };
-      if (override) {
-        next[versionId] = override;
-      } else {
-        delete next[versionId];
-      }
-      return next;
-    });
-  };
-
-  // --- Copy / Paste handlers ---
-
-  const handleCopy = (versionId: number) => {
-    const custom = cardCustomizations[versionId];
-    const link = getLink(versionId);
-    const override = versionOverrides[versionId];
-
-    const data: CardClipboardData = {
-      sourceVersionId: versionId,
-    };
-
-    if (custom && (custom.title || custom.header_color || custom.text_color)) {
-      data.customization = {
-        title: custom.title,
-        header_color: custom.header_color,
-        text_color: custom.text_color,
-      };
-    }
-
-    if (link) {
-      data.configLink = {
-        config_type: link.config_type,
-        config_id: link.config_id,
-      };
-    }
-
-    if (override) {
-      data.override = {
-        model_path: override.model_path,
-        mmproj_path: override.mmproj_path,
-      };
-    }
-
-    setClipboardData(data);
-    toast({
-      title: 'Settings copied',
-      description: 'Card settings are ready to paste on another card.',
-      duration: 0,
-      action: (
-        <ToastAction
-          altText="Cancel copy"
-          onClick={() => {
-            setClipboardData(null);
-          }}
-        >
-          Cancel
-        </ToastAction>
-      ),
-    });
-  };
-
-  const handlePasteRequest = (targetVersionId: number) => {
-    if (!clipboardData) return;
-    setPasteTarget(targetVersionId);
-  };
-
-  const handlePasteConfirm = async () => {
-    if (!clipboardData || pasteTarget === null) return;
-    setIsPasting(true);
-    try {
-      const targetId = pasteTarget;
-
-      // 1. Paste customization
-      if (clipboardData.customization) {
-        const { title, header_color, text_color } = clipboardData.customization;
-        if (title || header_color || text_color) {
-          await saveCardCustomization(targetId, title, header_color, text_color);
-          setCardCustomizations(prev => ({
-            ...prev,
-            [targetId]: {
-              version_id: targetId,
-              title,
-              header_color,
-              text_color,
-            },
-          }));
-        }
-      }
-
-      // 2. Paste config link
-      if (clipboardData.configLink) {
-        await saveVersionConfigLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
-        // Force reload of config links
-        if (versions && versions.length > 0) {
-          await loadAll(versions.map(v => v.id));
-        }
-      }
-
-      // 3. Paste override
-      if (clipboardData.override) {
-        const overrideData = clipboardData.override;
-        const hasOverride = overrideData.model_path || overrideData.mmproj_path;
-        if (hasOverride) {
-          await saveVersionOverride(targetId, overrideData.model_path, overrideData.mmproj_path);
-          setVersionOverrides(prev => ({
-            ...prev,
-            [targetId]: {
-              version_id: targetId,
-              model_path: overrideData.model_path,
-              mmproj_path: overrideData.mmproj_path,
-            },
-          }));
-        }
-      }
-
-      // Notify floating terminal window
-      emit('card-customizations-update', null).catch(() => {});
-
-      setClipboardData(null);
-      setPasteTarget(null);
-      toast({
-        title: 'Settings pasted',
-        description: 'Card settings have been applied successfully.',
-      });
-    } catch (err) {
-      console.error('Failed to paste settings:', err);
-      toast({
-        variant: 'destructive',
-        title: 'Paste failed',
-        description: 'Could not apply settings to this card.',
-      });
-    } finally {
-      setIsPasting(false);
-    }
-  };
-
-  const handlePasteCancel = () => {
-    setPasteTarget(null);
-  };
-
   const handleDuplicate = async (versionId: number, withSettings: boolean) => {
     try {
       await duplicateVersion(versionId, withSettings);
-      // Reload customizations so the cloned card's settings appear immediately
-      if (withSettings) {
-        const customs = await getCardCustomizations();
-        const record: Record<number, CardCustomization> = {};
-        for (const c of customs) {
-          record[c.version_id] = c;
-        }
-        setCardCustomizations(record);
-      }
-      // Invalidate installed-versions: triggers reload of versions, config links, and overrides
       await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
       toast({
         title: withSettings ? 'Cloned with settings' : 'Cloned',
@@ -312,6 +118,276 @@ export function DashboardPage() {
     }
   };
 
+  // --- Reorder handlers ---
+
+  const handleDragEnd = async (newVersions: InstalledVersion[]) => {
+    if (!versions || newVersions.length !== versions.length) return;
+
+    const orders = newVersions.map((v, i) => ({ versionId: v.id, displayOrder: i }));
+
+    setIsReordering(true);
+    try {
+      await bulkSetDisplayOrder(orders);
+      await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+      toast({
+        title: 'Order updated',
+        description: 'Card order has been saved.',
+      });
+    } catch (err) {
+      console.error('Failed to save card order:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Save failed',
+        description: 'Could not save the new card order.',
+      });
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const handleResetOrder = async () => {
+    setIsReordering(true);
+    try {
+      await resetDisplayOrder();
+      await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+      setReorderMode(false);
+      toast({
+        title: 'Order reset',
+        description: 'Cards returned to default (newest first) order.',
+      });
+    } catch (err) {
+      console.error('Failed to reset order:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Reset failed',
+        description: 'Could not reset the card order.',
+      });
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  return (
+    <DashboardProvider
+      getLink={getLink}
+      setLink={setLink}
+      removeLink={removeLink}
+      configs={configs}
+      configsLoading={configsLoading}
+      modelFolder={settings?.model_folder}
+      mmprojFolder={settings?.mmproj_folder}
+    >
+      <DashboardContent
+        versions={versions}
+        isLoading={isLoading}
+        storageUsage={storageUsage ?? null}
+        storageLoading={storageLoading}
+        latestInstalled={latestInstalled}
+        reorderMode={reorderMode}
+        setReorderMode={setReorderMode}
+        isReordering={isReordering}
+        deleteTarget={deleteTarget}
+        setDeleteTarget={setDeleteTarget}
+        isDeleting={isDeleting}
+        onDragEnd={handleDragEnd}
+        onResetOrder={handleResetOrder}
+        onDelete={handleDelete}
+        onDuplicate={handleDuplicate}
+        toast={toast}
+      />
+    </DashboardProvider>
+  );
+}
+
+/* ─── Inner content (inside DashboardProvider, can use context) ─── */
+
+function DashboardContent({
+  versions,
+  isLoading,
+  storageUsage,
+  storageLoading,
+  latestInstalled,
+  reorderMode,
+  setReorderMode,
+  isReordering,
+  deleteTarget,
+  setDeleteTarget,
+  isDeleting,
+  onDragEnd,
+  onResetOrder,
+  onDelete,
+  onDuplicate,
+  toast,
+}: {
+  versions: import('@/types').InstalledVersion[] | undefined;
+  isLoading: boolean;
+  storageUsage: number | null;
+  storageLoading: boolean;
+  latestInstalled: { build_number: string } | null;
+  reorderMode: boolean;
+  setReorderMode: (v: boolean) => void;
+  isReordering: boolean;
+  deleteTarget: number | null;
+  setDeleteTarget: (id: number | null) => void;
+  isDeleting: boolean;
+  onDragEnd: (newVersions: InstalledVersion[]) => void;
+  onResetOrder: () => void;
+  onDelete: () => void;
+  onDuplicate: (versionId: number, withSettings: boolean) => void;
+  toast: (options: any) => void;
+}) {
+  const {
+    cardCustomizations,
+    setCustomization,
+    getLink,
+    setLink,
+    versionOverrides,
+    setOverride,
+    clipboardData,
+    setClipboardData,
+  } = useDashboardContext();
+
+  // Paste dialog state
+  const [pasteTarget, setPasteTarget] = useState<number | null>(null);
+  const [isPasting, setIsPasting] = useState(false);
+
+  // Load customizations from backend on mount
+  useEffect(() => {
+    let cancelled = false;
+    loadCardCustomizationsRecord().then(record => {
+      if (!cancelled) {
+        Object.values(record).forEach(c => setCustomization(c.version_id, c));
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [setCustomization]);
+
+  // Load overrides for all installed versions
+  useEffect(() => {
+    if (!versions || versions.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      versions.map(async (version) => {
+        try {
+          const override = await getVersionOverride(version.id);
+          if (!cancelled && override) {
+            setOverride(version.id, override);
+          }
+        } catch (err) {
+          console.error(`Failed to load override for version ${version.id}:`, err);
+        }
+      })
+    ).catch(() => {});
+    return () => { cancelled = true; };
+  }, [versions, setOverride]);
+
+  // --- Copy handler (needs context data) ---
+  const handleCopy = useCallback((versionId: number) => {
+    const custom = cardCustomizations[versionId];
+    const link = getLink(versionId);
+    const override = versionOverrides[versionId];
+
+    const data: CardClipboardData = { sourceVersionId: versionId };
+
+    if (custom && (custom.title || custom.header_color || custom.text_color)) {
+      data.customization = {
+        title: custom.title,
+        header_color: custom.header_color,
+        text_color: custom.text_color,
+      };
+    }
+    if (link) {
+      data.configLink = { config_type: link.config_type, config_id: link.config_id };
+    }
+    if (override) {
+      data.override = { model_path: override.model_path, mmproj_path: override.mmproj_path };
+    }
+
+    setClipboardData(data);
+    toast({
+      title: 'Settings copied',
+      description: 'Card settings are ready to paste on another card.',
+      duration: 0,
+      action: (
+        <ToastAction altText="Cancel copy" onClick={() => setClipboardData(null)}>
+          Cancel
+        </ToastAction>
+      ),
+    });
+  }, [cardCustomizations, getLink, versionOverrides, setClipboardData, toast]);
+
+  // --- Paste handler (needs context data) ---
+  const handlePasteConfirm = useCallback(async () => {
+    if (!clipboardData || pasteTarget === null) return;
+    const targetId = pasteTarget;
+    setIsPasting(true);
+    try {
+      if (clipboardData.customization) {
+        const { title, header_color, text_color } = clipboardData.customization;
+        if (title || header_color || text_color) {
+          await saveCardCustomization(targetId, title, header_color, text_color);
+          setCustomization(targetId, {
+            version_id: targetId,
+            title,
+            header_color,
+            text_color,
+          });
+        }
+      }
+
+      if (clipboardData.configLink) {
+        await saveVersionConfigLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
+        setLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
+      }
+
+      if (clipboardData.override) {
+        const { model_path, mmproj_path } = clipboardData.override;
+        if (model_path || mmproj_path) {
+          await saveVersionOverride(targetId, model_path, mmproj_path);
+          setOverride(targetId, {
+            version_id: targetId,
+            model_path,
+            mmproj_path,
+          });
+        }
+      }
+
+      emit('card-customizations-update', null).catch(() => {});
+      setClipboardData(null);
+      setPasteTarget(null);
+      toast({
+        title: 'Settings pasted',
+        description: 'Card settings have been applied successfully.',
+      });
+    } catch (err) {
+      console.error('Failed to paste settings:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Paste failed',
+        description: 'Could not apply settings to this card.',
+      });
+    } finally {
+      setIsPasting(false);
+    }
+  }, [clipboardData, pasteTarget, setCustomization, setLink, setOverride, setClipboardData, setPasteTarget, toast]);
+
+  // --- Duplicate handler: reload customizations when cloning with settings ---
+  const handleDuplicateWithContext = useCallback(async (versionId: number, withSettings: boolean) => {
+    await onDuplicate(versionId, withSettings);
+    if (withSettings) {
+      const record = await loadCardCustomizationsRecord();
+      Object.values(record).forEach(c => setCustomization(c.version_id, c));
+    }
+  }, [onDuplicate, setCustomization]);
+
+  // --- Unified actions object for VersionCard ---
+  const actions: VersionCardActions = useMemo(() => ({
+    onDeleteClick: (versionId: number) => setDeleteTarget(versionId),
+    onDuplicateClick: handleDuplicateWithContext,
+    onCopyClick: handleCopy,
+    onPasteRequest: setPasteTarget,
+  }), [handleDuplicateWithContext, handleCopy]);
+
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
       {/* Header */}
@@ -322,51 +398,60 @@ export function DashboardPage() {
             Overview of your installed llama.cpp builds.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          {reorderMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onResetOrder}
+              disabled={isReordering}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset Order
+            </Button>
+          )}
+          <Button
+            variant={reorderMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setReorderMode(!reorderMode)}
+            className="gap-2"
+          >
+            <GripVertical className="h-4 w-4" />
+            {reorderMode ? 'Exit Reorder' : 'Reorder'}
+          </Button>
+        </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
-        <Card className="border-border/50 bg-card/50">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue/20">
-              <Package className="h-5 w-5 text-blue" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">{versions?.length || 0}</p>
-              <p className="text-xs text-muted-foreground">Installed</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50 bg-card/50">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green/20">
-              <Cpu className="h-5 w-5 text-green" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-2xl font-semibold truncate">
-                {latestInstalled?.build_number ?? '\u2014'}
-              </p>
-              <p className="text-xs text-muted-foreground">Latest Build</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50 bg-card/50">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-mauve/20">
-              <HardDrive className="h-5 w-5 text-mauve" />
-            </div>
-            <div>
-              {storageLoading ? (
-                <Skeleton className="h-7 w-24" />
-              ) : (
-                <p className="text-2xl font-semibold">
-                  {storageUsage != null ? formatSize(storageUsage) : '\u2014'}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">Storage Used</p>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          icon={<Package />}
+          iconBg="bg-blue/20"
+          iconText="text-blue"
+          value={versions?.length || 0}
+          label="Installed"
+        />
+        <StatCard
+          icon={<Cpu />}
+          iconBg="bg-green/20"
+          iconText="text-green"
+          value={latestInstalled?.build_number ?? '\u2014'}
+          label="Latest Build"
+        />
+        <StatCard
+          icon={<HardDrive />}
+          iconBg="bg-mauve/20"
+          iconText="text-mauve"
+          value={
+            storageLoading ? (
+              <Skeleton className="h-7 w-24" />
+            ) : (
+              storageUsage != null ? formatSize(storageUsage) : '\u2014'
+            )
+          }
+          label="Storage Used"
+        />
       </div>
 
       {/* Version Cards */}
@@ -377,40 +462,13 @@ export function DashboardPage() {
           ))}
         </div>
       ) : versions && versions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {versions.map((version) => (
-            <VersionCard
-              key={version.id}
-              version={version}
-              customization={cardCustomizations[version.id]}
-              onCustomizationChange={handleCustomizationChange}
-              onDeleteClick={setDeleteTarget}
-              onDuplicateClick={handleDuplicate}
-              editingDropdownId={editingDropdownId}
-              onEditingDropdownChange={setEditingDropdownId}
-              tempTitle={tempTitle}
-              onTempTitleChange={setTempTitle}
-              tempColor={tempColor}
-              onTempColorChange={setTempColor}
-              tempTextColor={tempTextColor}
-              onTempTextColorChange={setTempTextColor}
-              configLink={getLink(version.id)}
-              configs={configs}
-              configsLoading={configsLoading}
-              onSetLink={setLink}
-              onRemoveLink={removeLink}
-              override={versionOverrides[version.id] ?? null}
-              onOverrideChange={handleOverrideChange}
-              modelFolder={settings?.model_folder}
-              mmprojFolder={settings?.mmproj_folder}
-              clipboardData={clipboardData}
-              onCopyClick={handleCopy}
-              onPasteRequest={handlePasteRequest}
-            />
-          ))}
-        </div>
+        <ReorderableGrid
+          versions={versions}
+          reorderMode={reorderMode}
+          onDragEnd={onDragEnd}
+          actions={actions}
+        />
       ) : (
-        /* Empty State */
         <Card className="border-border/50 bg-card/50">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-6">
@@ -437,13 +495,10 @@ export function DashboardPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={handlePasteCancel} disabled={isPasting}>
+            <Button variant="outline" onClick={() => setPasteTarget(null)} disabled={isPasting}>
               Cancel
             </Button>
-            <Button
-              onClick={handlePasteConfirm}
-              disabled={isPasting}
-            >
+            <Button onClick={handlePasteConfirm} disabled={isPasting}>
               {isPasting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -473,11 +528,7 @@ export function DashboardPage() {
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
+            <Button variant="destructive" onClick={onDelete} disabled={isDeleting}>
               {isDeleting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -490,7 +541,6 @@ export function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

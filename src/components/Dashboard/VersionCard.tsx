@@ -3,7 +3,7 @@ import { emit } from '@tauri-apps/api/event';
 import { useToast } from '@/hooks/use-toast';
 import { saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import { useTerminalLaunch } from '@/hooks/useTerminalLaunch';
-import type { InstalledVersion, CardCustomization, ConfigEntry, VersionConfigLink, VersionOverride, CardClipboardData } from '@/types';
+import type { InstalledVersion, ConfigEntry, VersionOverride } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,84 +21,55 @@ import {
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
+import { useDashboardContext } from './DashboardContext';
+import { HEADER_COLORS, TEXT_COLORS } from './cardTheme';
+import type { VersionCardActions } from './ReorderableGrid';
 
-const HEADER_COLORS = [
-  { name: 'mauve', variable: 'hsl(var(--mauve))', label: 'Mauve' },
-  { name: 'red', variable: 'hsl(var(--red))', label: 'Red' },
-  { name: 'pink', variable: 'hsl(var(--pink))', label: 'Pink' },
-  { name: 'peach', variable: 'hsl(var(--peach))', label: 'Peach' },
-  { name: 'yellow', variable: 'hsl(var(--yellow))', label: 'Yellow' },
-  { name: 'green', variable: 'hsl(var(--green))', label: 'Green' },
-  { name: 'teal', variable: 'hsl(var(--teal))', label: 'Teal' },
-  { name: 'blue', variable: 'hsl(var(--blue))', label: 'Blue' },
-  { name: 'lavender', variable: 'hsl(var(--lavender))', label: 'Lavender' },
-  { name: 'love', variable: 'hsl(var(--love))', label: 'Love' },
-  { name: 'iris', variable: 'hsl(var(--iris))', label: 'Iris' },
-  { name: 'pine', variable: 'hsl(var(--pine))', label: 'Pine' },
-];
-
+/**
+ * VersionCard now only needs `version` + `actions` object.
+ * All shared state (customization, override, config, clipboard, editing)
+ * comes from DashboardContext.
+ */
 interface VersionCardProps {
   version: InstalledVersion;
-  customization?: CardCustomization;
-  onCustomizationChange: (versionId: number, customization?: CardCustomization) => void;
-  onDeleteClick: (versionId: number) => void;
-  onDuplicateClick: (versionId: number, withSettings: boolean) => void;
-  // Shared state for editing dropdown (only one card can edit at a time)
-  editingDropdownId: number | null;
-  onEditingDropdownChange: (id: number | null) => void;
-  tempTitle: string;
-  onTempTitleChange: (title: string) => void;
-  tempColor: string;
-  onTempColorChange: (color: string) => void;
-  tempTextColor: string;
-  onTempTextColorChange: (color: string) => void;
-  // Lifted config state (shared across all cards)
-  configLink: VersionConfigLink | null;
-  configs: ConfigEntry[];
-  configsLoading: boolean;
-  onSetLink: (versionId: number, configType: 'custom', configId: string) => Promise<void>;
-  onRemoveLink: (versionId: number) => Promise<void>;
-  // Override state
-  override: VersionOverride | null;
-  onOverrideChange: (versionId: number, override: VersionOverride | null) => void;
-  // Settings for file selectors
-  modelFolder: string | undefined;
-  mmprojFolder: string | undefined;
-  // Copy/paste clipboard
-  clipboardData: CardClipboardData | null;
-  onCopyClick: (versionId: number) => void;
-  onPasteRequest: (targetVersionId: number) => void;
+  actions: VersionCardActions;
 }
 
 export function VersionCard({
   version,
-  customization,
-  onCustomizationChange,
-  onDeleteClick,
-  onDuplicateClick,
-  editingDropdownId,
-  onEditingDropdownChange,
-  tempTitle,
-  onTempTitleChange,
-  tempColor,
-  onTempColorChange,
-  tempTextColor,
-  onTempTextColorChange,
-  configLink,
-  configs,
-  configsLoading,
-  onSetLink,
-  onRemoveLink,
-  override,
-  onOverrideChange,
-  modelFolder,
-  mmprojFolder,
-  clipboardData,
-  onCopyClick,
-  onPasteRequest,
+  actions,
 }: VersionCardProps) {
   const { toast } = useToast();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+
+  // ─── All shared state from context ───
+  const {
+    cardCustomizations,
+    setCustomization,
+    versionOverrides,
+    setOverride,
+    getLink,
+    configs,
+    configsLoading,
+    setLink,
+    removeLink,
+    clipboardData,
+    editingDropdownId,
+    tempTitle,
+    tempColor,
+    tempTextColor,
+    openEditDropdown,
+    closeEditDropdown,
+    setTempTitle,
+    setTempColor,
+    setTempTextColor,
+    modelFolder,
+    mmprojFolder,
+  } = useDashboardContext();
+
+  const customization = cardCustomizations[version.id];
+  const override = versionOverrides[version.id] ?? null;
+  const configLink = getLink(version.id) ?? null;
 
   const { handleToggle, isRunning, hasConfig } = useTerminalLaunch({
     version,
@@ -129,18 +100,7 @@ export function VersionCard({
     : undefined;
 
   const openCustomizeDropdown = () => {
-    const existing = customization;
-    onEditingDropdownChange(version.id);
-    onTempTitleChange(existing?.title ?? '');
-    onTempColorChange(existing?.header_color ?? '');
-    onTempTextColorChange(existing?.text_color ?? '');
-  };
-
-  const closeDropdown = () => {
-    onEditingDropdownChange(null);
-    onTempTitleChange('');
-    onTempColorChange('');
-    onTempTextColorChange('');
+    openEditDropdown(version.id, customization);
   };
 
   const saveCustomization = async () => {
@@ -148,18 +108,17 @@ export function VersionCard({
     try {
       if (trimmed === '' && tempColor === '' && tempTextColor === '') {
         await deleteCardCustomization(version.id);
-        onCustomizationChange(version.id, undefined);
+        setCustomization(version.id, undefined);
       } else {
         await saveCardCustomization(version.id, trimmed, tempColor, tempTextColor);
-        onCustomizationChange(version.id, {
+        setCustomization(version.id, {
           version_id: version.id,
           title: trimmed,
           header_color: tempColor,
           text_color: tempTextColor,
         });
       }
-      closeDropdown();
-      // Notify floating terminal window of card customization changes
+      closeEditDropdown();
       emit('card-customizations-update', null).catch(() => {});
     } catch (err) {
       console.error('Failed to save customization:', err);
@@ -173,9 +132,8 @@ export function VersionCard({
   const resetCustomization = async () => {
     try {
       await deleteCardCustomization(version.id);
-      onCustomizationChange(version.id, undefined);
-      closeDropdown();
-      // Notify floating terminal window of card customization changes
+      setCustomization(version.id, undefined);
+      closeEditDropdown();
       emit('card-customizations-update', null).catch(() => {});
     } catch (err) {
       console.error('Failed to reset customization:', err);
@@ -188,7 +146,7 @@ export function VersionCard({
 
   const handleSelectConfig = async (config: ConfigEntry) => {
     try {
-      await onSetLink(version.id, config.type, config.id);
+      await setLink(version.id, config.type, config.id);
       toast({
         title: config.name,
         description: `Linked: ${config.name}`,
@@ -204,7 +162,7 @@ export function VersionCard({
 
   const handleClearConfig = async () => {
     try {
-      await onRemoveLink(version.id);
+      await removeLink(version.id);
       toast({
         title: 'Config cleared',
         description: 'Config link removed from this version.',
@@ -215,7 +173,7 @@ export function VersionCard({
   };
 
   const handleOverrideSave = useCallback((newOverride: VersionOverride | null) => {
-    onOverrideChange(version.id, newOverride);
+    setOverride(version.id, newOverride);
     if (newOverride) {
       toast({
         title: 'Override saved',
@@ -227,27 +185,20 @@ export function VersionCard({
         description: `Override removed from ${version.build_number}.`,
       });
     }
-  }, [version.id, version.build_number, onOverrideChange, toast]);
+  }, [version.id, version.build_number, setOverride, toast]);
 
   const hasOverride = override !== null && (override.model_path || override.mmproj_path);
 
   // Paste button visibility: clipboard has data AND this card is not the source
   const canPaste = clipboardData !== null && clipboardData.sourceVersionId !== version.id;
 
-  // Build descriptive override badge text
-  const getOverrideBadgeText = (): string => {
-    if (!override) return 'Override active';
-    const parts: string[] = [];
-    if (override.model_path) {
-      const modelName = override.model_path.split('\\').pop()?.split('/').pop() ?? 'model.gguf';
-      parts.push(`Model: ${modelName}`);
-    }
-    if (override.mmproj_path) {
-      const mmprojName = override.mmproj_path.split('\\').pop()?.split('/').pop() ?? 'mmproj.mmproj';
-      parts.push(`MMProj: ${mmprojName}`);
-    }
-    return parts.join(' + ') || 'Override active';
-  };
+  // Extract override file names for separate badges
+  const overrideModelName = override?.model_path
+    ? override.model_path.split('\\').pop()?.split('/').pop() ?? 'model.gguf'
+    : null;
+  const overrideMmprojName = override?.mmproj_path
+    ? override.mmproj_path.split('\\').pop()?.split('/').pop() ?? 'mmproj.mmproj'
+    : null;
 
   return (
     <Card
@@ -271,87 +222,88 @@ export function VersionCard({
               size="icon"
               className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
               title="Paste settings"
-              onClick={() => onPasteRequest(version.id)}
+              onClick={() => actions.onPasteRequest(version.id)}
             >
               <ClipboardCheck className="h-3.5 w-3.5" />
             </Button>
           )}
           <DropdownMenu
-          open={editingDropdownId === version.id}
-          onOpenChange={(open) => {
-            if (open) {
-              openCustomizeDropdown();
-            } else {
-              closeDropdown();
-            }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Customize Card</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <div className="px-2 py-1.5">
-              <Input
-                value={tempTitle}
-                onChange={(e) => onTempTitleChange(e.target.value)}
-                placeholder="Enter title..."
-                aria-label="Card title"
-                className="h-8 text-sm"
-              />
-            </div>
-            <DropdownMenuSeparator />
-            <div className="px-2 py-1">
-              <p className="text-xs text-muted-foreground mb-1.5">Header Color</p>
-              <div className="flex flex-wrap gap-2">
-                {HEADER_COLORS.map(color => (
-                  <button
-                    key={color.name}
-                    onClick={() => onTempColorChange(color.name)}
-                    aria-label={color.label}
-                    className={`h-6 w-6 rounded-full border-2 transition-all ${
-                      tempColor === color.name ? 'border-white scale-110' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: color.variable }}
-                    title={color.label}
-                  />
-                ))}
-              </div>
-            </div>
-            <DropdownMenuSeparator />
-            <div className="px-2 py-1">
-              <p className="text-xs text-muted-foreground mb-1.5">Text Color</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onTempTextColorChange('white')}
-                  className={`h-6 w-6 rounded-full border-2 bg-white shadow-md ring-1 ring-gray-300 transition-all ${tempTextColor === 'white' ? 'border-white scale-110' : 'border-border'}`}
-                  title="White"
-                />
-                <button
-                  onClick={() => onTempTextColorChange('black')}
-                  className={`h-6 w-6 rounded-full border-2 bg-black transition-all ${tempTextColor === 'black' ? 'border-white scale-110' : 'border-border'}`}
-                  title="Black"
+            open={editingDropdownId === version.id}
+            onOpenChange={(open) => {
+              if (open) {
+                openCustomizeDropdown();
+              } else {
+                closeEditDropdown();
+              }
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Customize Card</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5">
+                <Input
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  placeholder="Enter title..."
+                  aria-label="Card title"
+                  className="h-8 text-sm"
                 />
               </div>
-            </div>
-            <DropdownMenuSeparator />
-            <div className="flex gap-2 px-2 pb-1">
-              <DropdownMenuItem onClick={saveCustomization} className="flex-1 justify-center">
-                Apply
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={resetCustomization} className="flex-1 justify-center">
-                Reset
-              </DropdownMenuItem>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1">
+                <p className="text-xs text-muted-foreground mb-1.5">Header Color</p>
+                <div className="flex flex-wrap gap-2">
+                  {HEADER_COLORS.map(color => (
+                    <button
+                      key={color.name}
+                      onClick={() => setTempColor(color.name)}
+                      aria-label={color.label}
+                      className={`h-6 w-6 rounded-full border-2 transition-all ${
+                        tempColor === color.name ? 'border-white scale-110' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: color.variable }}
+                      title={color.label}
+                    />
+                  ))}
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1">
+                <p className="text-xs text-muted-foreground mb-1.5">Text Color</p>
+                <div className="flex gap-2">
+                  {TEXT_COLORS.map(color => (
+                    <button
+                      key={color.name}
+                      onClick={() => setTempTextColor(color.name)}
+                      className={`h-6 w-6 rounded-full border-2 shadow-md ring-1 ring-gray-300 transition-all ${
+                        tempTextColor === color.name ? 'border-white scale-110' : 'border-border'
+                      }`}
+                      style={{ backgroundColor: color.variable }}
+                      title={color.label}
+                    />
+                  ))}
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <div className="flex gap-2 px-2 pb-1">
+                <DropdownMenuItem onClick={saveCustomization} className="flex-1 justify-center">
+                  Apply
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={resetCustomization} className="flex-1 justify-center">
+                  Reset
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -364,9 +316,23 @@ export function VersionCard({
       {/* Override Badge */}
       {hasOverride && (
         <div className="px-3 pt-1.5 pb-1.5">
-          <Badge variant="outline" className="border-iris/30 text-iris text-xs gap-1">
-            <SlidersHorizontal className="h-3 w-3" />
-            {getOverrideBadgeText()}
+          <Badge
+            variant="outline"
+            className="border-iris/30 text-iris text-xs gap-1 max-w-full"
+          >
+            <SlidersHorizontal className="h-3 w-3 shrink-0" />
+            <div className="flex flex-wrap items-center gap-1 min-w-0 line-clamp-2">
+              {overrideModelName && (
+                <span className="truncate" title={`Model: ${overrideModelName}`}>
+                  Model: {overrideModelName}
+                </span>
+              )}
+              {overrideMmprojName && (
+                <span className="truncate" title={`MMProj: ${overrideMmprojName}`}>
+                  MMProj: {overrideMmprojName}
+                </span>
+              )}
+            </div>
           </Badge>
         </div>
       )}
@@ -402,123 +368,123 @@ export function VersionCard({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1 gap-2">
-                <List className="h-4 w-4" />
-                Config
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64">
-              <DropdownMenuLabel>Select Config</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {configsLoading ? (
-                <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                  Loading...
-                </div>
-              ) : configs.length === 0 ? (
-                <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                  No configs
-                </div>
-              ) : (
-                configs.map((config) => (
-                  <DropdownMenuItem
-                    key={`${config.type}-${config.id}`}
-                    onClick={() => handleSelectConfig(config)}
-                  >
-                    <Terminal className="h-4 w-4" />
-                    <span className="truncate">{config.name}</span>
-                    {configLink?.config_type === config.type && configLink?.config_id === config.id && (
-                      <span className="ml-auto text-xs text-green">Active</span>
-                    )}
-                  </DropdownMenuItem>
-                ))
-              )}
-              {configLink && (
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex-1 gap-2">
+                  <List className="h-4 w-4" />
+                  Config
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuLabel>Select Config</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {configsLoading ? (
+                  <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                    Loading...
+                  </div>
+                ) : configs.length === 0 ? (
+                  <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                    No configs
+                  </div>
+                ) : (
+                  configs.map((config) => (
+                    <DropdownMenuItem
+                      key={`${config.type}-${config.id}`}
+                      onClick={() => handleSelectConfig(config)}
+                    >
+                      <Terminal className="h-4 w-4" />
+                      <span className="truncate">{config.name}</span>
+                      {configLink?.config_type === config.type && configLink?.config_id === config.id && (
+                        <span className="ml-auto text-xs text-green">Active</span>
+                      )}
+                    </DropdownMenuItem>
+                  ))
+                )}
+                {configLink && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleClearConfig} className="text-red">
+                      <Trash2 className="h-4 w-4" />
+                      Clear Config
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`gap-2 ${hasOverride ? 'border-iris text-iris hover:bg-iris/10' : ''}`}
+              onClick={() => setOverrideDialogOpen(true)}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Override
+            </Button>
+          </div>
+
+          <Separator className="border-border/50" />
+
+          <div className="flex items-center gap-2 mt-auto">
+            <Button
+              variant={isRunning ? "destructive" : "outline"}
+              size="sm"
+              className="flex-1 gap-2"
+              onClick={handleToggle}
+              disabled={!hasConfig}
+              aria-label={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
+              title={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
+            >
+              {isRunning ? (
                 <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleClearConfig} className="text-red">
-                    <Trash2 className="h-4 w-4" />
-                    Clear Config
-                  </DropdownMenuItem>
+                  <Square className="h-4 w-4" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Play
                 </>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`gap-2 ${hasOverride ? 'border-iris text-iris hover:bg-iris/10' : ''}`}
-            onClick={() => setOverrideDialogOpen(true)}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Override
-          </Button>
-        </div>
-
-        <Separator className="border-border/50" />
-
-        <div className="flex items-center gap-2 mt-auto">
-          <Button
-            variant={isRunning ? "destructive" : "outline"}
-            size="sm"
-            className={`flex-1 gap-2 ${isRunning ? '' : ''}`}
-            onClick={handleToggle}
-            disabled={!hasConfig}
-            aria-label={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
-            title={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
-          >
-            {isRunning ? (
-              <>
-                <Square className="h-4 w-4" />
-                Stop
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4" />
-                Play
-              </>
-            )}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                title="Actions"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onDuplicateClick(version.id, false)}>
-                <Copy className="h-4 w-4" />
-                <span>Clone</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDuplicateClick(version.id, true)}>
-                <CopyCheck className="h-4 w-4" />
-                <span>Clone with Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onCopyClick(version.id)}>
-                <Copy className="h-4 w-4" />
-                <span>Copy Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red focus:text-red focus:bg-red/10"
-                onClick={() => onDeleteClick(version.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardContent>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  title="Actions"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, false)}>
+                  <Copy className="h-4 w-4" />
+                  <span>Clone</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, true)}>
+                  <CopyCheck className="h-4 w-4" />
+                  <span>Clone with Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => actions.onCopyClick(version.id)}>
+                  <Copy className="h-4 w-4" />
+                  <span>Copy Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red focus:text-red focus:bg-red/10"
+                  onClick={() => actions.onDeleteClick(version.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardContent>
       </div>
 
       <OverrideDialog

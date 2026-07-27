@@ -24,8 +24,11 @@ pub fn insert_version(conn: &Connection, version: &InstalledVersion) -> Result<i
 
 pub fn get_all_versions(conn: &Connection) -> Result<Vec<InstalledVersion>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend, architecture, install_path, installed_at, status, download_id
-         FROM installed_versions ORDER BY id DESC",
+        "SELECT v.id, v.build_number, v.backend, v.architecture, v.install_path,
+                v.installed_at, v.status, v.download_id
+         FROM installed_versions v
+         LEFT JOIN card_customizations c ON v.id = c.version_id
+         ORDER BY COALESCE(c.display_order, -1) ASC, v.id DESC",
     )?;
 
     let versions = stmt.query_map([], |row| {
@@ -386,7 +389,7 @@ pub fn toggle_favorite_build(conn: &mut Connection, build_number: &str, backend:
 
 pub fn get_card_customization_by_version_id(conn: &Connection, version_id: i64) -> Result<Option<CardCustomization>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT version_id, title, header_color, text_color FROM card_customizations WHERE version_id = ?1",
+        "SELECT version_id, title, header_color, text_color, display_order FROM card_customizations WHERE version_id = ?1",
     )?;
 
     let mut rows = stmt.query(rusqlite::params![version_id])?;
@@ -396,6 +399,7 @@ pub fn get_card_customization_by_version_id(conn: &Connection, version_id: i64) 
             title: row.get(1)?,
             header_color: row.get(2)?,
             text_color: row.get(3)?,
+            display_order: row.get(4).unwrap_or(None),
         }))
     } else {
         Ok(None)
@@ -404,7 +408,7 @@ pub fn get_card_customization_by_version_id(conn: &Connection, version_id: i64) 
 
 pub fn get_all_card_customizations(conn: &Connection) -> Result<Vec<CardCustomization>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT version_id, title, header_color, text_color FROM card_customizations",
+        "SELECT version_id, title, header_color, text_color, display_order FROM card_customizations",
     )?;
 
     let customs = stmt.query_map([], |row| {
@@ -413,6 +417,7 @@ pub fn get_all_card_customizations(conn: &Connection) -> Result<Vec<CardCustomiz
             title: row.get(1)?,
             header_color: row.get(2)?,
             text_color: row.get(3)?,
+            display_order: row.get(4).unwrap_or(None),
         })
     })?;
 
@@ -421,17 +426,19 @@ pub fn get_all_card_customizations(conn: &Connection) -> Result<Vec<CardCustomiz
 
 pub fn upsert_card_customization(conn: &Connection, customization: &CardCustomization) -> Result<(), AppError> {
     conn.execute(
-        "INSERT INTO card_customizations (version_id, title, header_color, text_color)
-         VALUES (?1, ?2, ?3, ?4)
+        "INSERT INTO card_customizations (version_id, title, header_color, text_color, display_order)
+         VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT(version_id) DO UPDATE SET
            title = excluded.title,
            header_color = excluded.header_color,
-           text_color = excluded.text_color",
+           text_color = excluded.text_color,
+           display_order = excluded.display_order",
         params![
             customization.version_id,
             customization.title,
             customization.header_color,
             customization.text_color,
+            customization.display_order,
         ],
     )?;
     Ok(())
@@ -443,6 +450,28 @@ pub fn delete_card_customization(conn: &Connection, version_id: i64) -> Result<b
         params![version_id],
     )?;
     Ok(rows > 0)
+}
+
+/// Bulk-update display_order for all cards. Uses a transaction for atomicity.
+pub fn bulk_set_display_order(conn: &mut Connection, orders: &[(i64, i64)]) -> Result<(), AppError> {
+    let tx = conn.transaction()?;
+    for (version_id, display_order) in orders {
+        // First ensure a row exists in card_customizations
+        tx.execute(
+            "INSERT INTO card_customizations (version_id, title, header_color, text_color, display_order)
+             VALUES (?1, '', '', '', ?2)
+             ON CONFLICT(version_id) DO UPDATE SET display_order = ?2",
+            params![version_id, display_order],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Reset all display_order to NULL, returning to default id DESC ordering.
+pub fn reset_display_order(conn: &Connection) -> Result<(), AppError> {
+    conn.execute("UPDATE card_customizations SET display_order = NULL", [])?;
+    Ok(())
 }
 
 // ─── Custom Commands ───────────────────────────────────────────────────
