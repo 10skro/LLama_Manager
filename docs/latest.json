@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.21",
-  "long_description": "# v0.6.21\n\n## Changes\n\n### Features\n\n- Add copy/paste card settings between dashboard cards (title, color, config, override)\n\n### Bug Fixes\n\n- Auto-refresh card titles in terminal widget when card customization changes\n\n### Maintenance\n\n- Remove obsolete release.json (replaced by docs/latest.json)",
+  "version": "v0.6.22",
+  "long_description": "# v0.6.22\n\n## Changes\n\n### Security\n\n- Cryptographic signature now properly enforced for auto-updates\n- Updater pubkey configured and signed artifacts generated\n\n### Maintenance\n\n- Enable createUpdaterArtifacts in Tauri bundle config\n- Signed release artifacts (.exe + .sig) for native auto-update",
   "pub_date": "2026-07-27T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.21/Llama.Manager_0.6.21_x64-setup.exe",
-      "signature": ""
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.22/Llama%20Manager_0.6.22_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTdFQ0crU2laZ3pQbURCM0pHbUpCb0hwclRTN2FlNEM4eTZubFdFdGduVk9rWkJIOHNOUWdSYU1vL2VzZEoxTlI0b1d2eXZKNExURjhlR29GbzRoRWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTYzNTEzCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMjJfeDY0LXNldHVwLmV4ZQpCY1M4SWlYckFEU3VES3oxVm14cGhLcjhwL05tRHhoNm1BSC9YbHdwcXhXc1hjZ0ZzV2QzRVpxSVJmY1FSOHNSdmtvVU5iaTRpcmEwbHFOQkxCYWpEQT09Cg=="
     }
   }
 }
