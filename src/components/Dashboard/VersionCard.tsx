@@ -17,27 +17,31 @@ import {
 import {
   Trash2, List,
   Terminal, SlidersHorizontal, Pencil,
-  Play, Square, Settings, Copy, CopyCheck, ClipboardCheck,
+  Play, Square, Settings, Copy, CopyCheck, ClipboardCheck, GripVertical,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
 import { useDashboardContext } from './DashboardContext';
 import { HEADER_COLORS, TEXT_COLORS } from './cardTheme';
 import type { VersionCardActions } from './ReorderableGrid';
+import type { DragHandleProps } from './SortableCardItem';
 
 /**
  * VersionCard now only needs `version` + `actions` object.
  * All shared state (customization, override, config, clipboard, editing)
  * comes from DashboardContext.
+ * Optional `dragHandleProps` injected by SortableCardItem for drag-and-drop.
  */
 interface VersionCardProps {
   version: InstalledVersion;
   actions: VersionCardActions;
+  dragHandleProps?: DragHandleProps;
 }
 
 export function VersionCard({
   version,
   actions,
+  dragHandleProps,
 }: VersionCardProps) {
   const { toast } = useToast();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
@@ -209,12 +213,28 @@ export function VersionCard({
         className="px-3 py-2 flex items-center justify-between rounded-t-xl"
         style={{ backgroundColor: headerBg }}
       >
-        <p
-          className="text-sm font-medium text-foreground truncate flex-1"
-          style={{ color: displayTextColor || undefined }}
-        >
-          {displayTitle}
-        </p>
+        {/* Left side: drag handle + title */}
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          {dragHandleProps && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-black/60 hover:text-black hover:bg-black/10 shrink-0 cursor-grab active:cursor-grabbing"
+              title="Drag to reorder"
+              {...dragHandleProps.attributes}
+              {...dragHandleProps.listeners}
+            >
+              <GripVertical className="h-3 w-3" />
+            </Button>
+          )}
+          <p
+            className="text-sm font-medium text-foreground truncate"
+            style={{ color: displayTextColor || undefined }}
+          >
+            {displayTitle}
+          </p>
+        </div>
+        {/* Right side: action buttons */}
         <div className="flex items-center gap-1">
           {canPaste && (
             <Button
@@ -241,7 +261,7 @@ export function VersionCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
+                className="h-7 w-7 text-black/80 hover:text-black hover:bg-black/10"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -262,6 +282,17 @@ export function VersionCard({
               <div className="px-2 py-1">
                 <p className="text-xs text-muted-foreground mb-1.5">Header Color</p>
                 <div className="flex flex-wrap gap-2">
+                  {/* Default (original) color swatch */}
+                  <button
+                    key="default"
+                    onClick={() => setTempColor('')}
+                    aria-label="Default color"
+                    className={`h-6 w-6 rounded-full border-2 transition-all ${
+                      tempColor === '' ? 'border-white scale-110' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: 'hsl(var(--secondary))' }}
+                    title="Default"
+                  />
                   {HEADER_COLORS.map(color => (
                     <button
                       key={color.name}
@@ -415,7 +446,7 @@ export function VersionCard({
             <Button
               variant="outline"
               size="sm"
-              className={`gap-2 ${hasOverride ? 'border-iris text-iris hover:bg-iris/10' : ''}`}
+              className={`flex-1 gap-2 ${hasOverride ? 'border-iris/50 text-iris' : ''}`}
               onClick={() => setOverrideDialogOpen(true)}
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -463,7 +494,7 @@ export function VersionCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, false)}>
                   <Copy className="h-4 w-4" />
-                  <span>Clone</span>
+                  <span>Clone Empty</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => actions.onDuplicateClick(version.id, true)}>
                   <CopyCheck className="h-4 w-4" />

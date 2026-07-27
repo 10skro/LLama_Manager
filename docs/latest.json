@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.52",
-  "long_description": "## Changes\n\n### Features\n\n- Add drag-and-drop card reordering on Dashboard with persistent display order\n\n### Bug Fixes\n\n- Fix Clone with Settings to properly reload customizations\n- Fix Copy/Paste config link to update local state after saving\n- Smooth drag-and-drop card settle animation (eliminates visual snap)\n- Prevent long filenames from overflowing Override dialog badge\n\n### Refactoring\n\n- Extract Dashboard components and context to eliminate prop drilling\n- Unify VersionCard action callbacks into single interface\n- Share color constants across Dashboard components\n- Clean up drag-and-drop overlay system",
-  "pub_date": "2026-07-27T18:00:00Z",
+  "version": "v0.6.53",
+  "long_description": "## Changes\n\n### Features\n\n- Remove Reorder toggle: drag-and-drop is now always active with inline GripVertical handle in each card's header bar\n\n### Bug Fixes\n\n- Enable changelog buttons when update is available (no longer blocked by missing release body)\n- Fix show_update_modal race condition on startup (setting now respected after async settings load)\n- Fix Override button hover to use native outline variant behavior (eliminates conflicting hover classes)",
+  "pub_date": "2026-07-27T19:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.52/Llama.Manager_0.6.52_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXc5cWlkc05IcVNBMkgwTXVZd1VYZ3hLNzlXU0tkeHVMM003Q25EQURJb0RHWlVkbk1iV3lWenZZTHhnMUN2WERJL0hNeWtuUWRlV1JaRDBrYkpzandvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTg1MjMxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTJfeDY0LXNldHVwLmV4ZQpaRmFXbTdDY2pKU0wvaGlHclM3cFN6eTc1UXVnY2RaQkpmSkw5ajVUOGRrRjZ1a25EM0lYbFJURzZuSnRndkhOZmZzSHFwam5YdllNV09ldUpEdi9CZz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.53/Llama.Manager_0.6.53_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXhKVVo5WU5oKzFBdU9CVVdUS1RGdC9SeG42dDlDZUVBSHdUeTlKNVlod3VVc2UrMkFYWkVhdXhoMzhzZytoZW96U2ZSeGdQQ2lEN2theCtETXVVQXcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTg4Njc5CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTNfeDY0LXNldHVwLmV4ZQoxU3hMSU9IbzVSWmk5dnBaYjJSUVJkaTl6UWN2Q2xabDhhRWRtVk5tZDRrY1ZMVHJiU2lvRnFWNEloUy9oOXA1ckhydlcyWHlaOFo3R3V0bUgzcVJBdz09Cg=="
     }
   }
 }
