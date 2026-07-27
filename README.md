@@ -75,6 +75,9 @@ Your main workspace. Each installed llama.cpp build appears as a card displaying
 
 ### Catalog
 
+<img width="992" height="374" alt="image" src="https://github.com/user-attachments/assets/b4bf4a44-fd8f-46ba-9a07-131ecd07e336" />
+
+
 Browse and download all llama.cpp builds available directly from the official GitHub repository.
 
 - **Browse builds** — View all available builds, grouped by version number, including backend and architecture details.
