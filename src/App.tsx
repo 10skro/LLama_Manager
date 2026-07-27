@@ -9,7 +9,7 @@ import { CatalogPage } from './pages/CatalogPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ConfigsPage } from './pages/ConfigsPage';
 import { fetchBuilds, checkNewBuilds, getCatalogLastFetched } from './services/github';
-import { getSettings } from './services/settings';
+import { getSettings, saveSettings } from './services/settings';
 
 import { getCustomCommands } from './services/customCommand';
 import { getThemeById, DEFAULT_THEME_ID } from './themes';
@@ -20,30 +20,36 @@ import { useTheme } from './hooks/useTheme';
 import { useAppUpdate } from './hooks/useAppUpdate';
 import { useToast } from './hooks/use-toast';
 import { UpdateModal } from './components/UpdateModal';
+import { ChangelogModal } from './components/ChangelogModal';
 import type { AppSettings, Build } from './types';
 
 function App() {
   const queryClient = useQueryClient();
   useTheme(); // Apply theme reactively
-  const { updateInfo } = useAppUpdate();
+  const { updateInfo, isChecking } = useAppUpdate();
   const { settings } = useAppStore();
   const [showModal, setShowModal] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [updateCheckCompleted, setUpdateCheckCompleted] = useState(false);
+
+  // Post-installation changelog modal
+  const [showPostInstallChangelog, setShowPostInstallChangelog] = useState(false);
+  const [postInstallChangelogBody, setPostInstallChangelogBody] = useState<string | null>(null);
+  const [postInstallChangelogVersion, setPostInstallChangelogVersion] = useState<string | null>(null);
 
   // Show update modal on startup if update available and setting is enabled
+  // Wait for the real update check (isChecking) to finish instead of using an arbitrary timeout
   useEffect(() => {
-    if (!initialCheckDone) {
-      // Wait a bit for settings to load and update check to complete
-      const timer = setTimeout(() => {
-        setInitialCheckDone(true);
-        const shouldShow = updateInfo.available && (settings?.show_update_modal ?? true);
-        if (shouldShow) {
-          setShowModal(true);
-        }
-      }, 2000);
-      return () => clearTimeout(timer);
+    if (updateCheckCompleted) return;
+
+    if (!isChecking) {
+      // The update check has completed (isChecking went from true to false)
+      setUpdateCheckCompleted(true);
+      const shouldShow = updateInfo.available && (settings?.show_update_modal ?? true);
+      if (shouldShow) {
+        setShowModal(true);
+      }
     }
-  }, [initialCheckDone, updateInfo.available, settings?.show_update_modal]);
+  }, [isChecking, updateCheckCompleted, updateInfo.available, settings?.show_update_modal]);
 
   // Load settings and restore saved theme on app startup
   // Theme is already applied by inline script in index.html from __INITIAL_THEME__ (injected by Rust)
@@ -60,8 +66,17 @@ function App() {
           font_family: settings.font_family,
           model_folder: settings.model_folder,
           mmproj_folder: settings.mmproj_folder,
+          pending_changelog_version: settings.pending_changelog_version,
+          pending_changelog_body: settings.pending_changelog_body,
         };
         useAppStore.getState().setSettings(merged);
+
+        // Show post-installation changelog modal if pending changelog exists
+        if (settings.pending_changelog_version && settings.pending_changelog_body) {
+          setPostInstallChangelogVersion(settings.pending_changelog_version);
+          setPostInstallChangelogBody(settings.pending_changelog_body);
+          setShowPostInstallChangelog(true);
+        }
 
         // Only update theme if it actually differs from the current store value
         // (store already initialized from __INITIAL_THEME__ injected by Rust)
@@ -169,6 +184,32 @@ function App() {
         </Routes>
       </AppShell>
       <UpdateModal open={showModal} onOpenChange={setShowModal} />
+      <ChangelogModal
+        open={showPostInstallChangelog}
+        onOpenChange={async (open) => {
+          setShowPostInstallChangelog(open);
+          if (!open) {
+            // Clear pending changelog after the user has seen it
+            try {
+              const current = useAppStore.getState().settings;
+              await saveSettings({
+                ...current,
+                pending_changelog_version: undefined,
+                pending_changelog_body: undefined,
+              });
+              useAppStore.getState().setSettings({
+                ...current,
+                pending_changelog_version: undefined,
+                pending_changelog_body: undefined,
+              });
+            } catch (err) {
+              console.error('Failed to clear pending changelog:', err);
+            }
+          }
+        }}
+        buildNumber={postInstallChangelogVersion ?? 'Update'}
+        body={postInstallChangelogBody}
+      />
       <Toaster />
     </ErrorBoundary>
   );

@@ -15,9 +15,10 @@ import {
   FolderOpen, Save, HardDrive, Palette, Bell,
   Info, Loader2, Eye, EyeOff,
   AlertCircle, X, Check, ChevronDown, Settings2,
-  Brain, RefreshCw, Download,
+  Brain, RefreshCw, Download, FileText,
 } from 'lucide-react';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
+import { ChangelogModal } from '@/components/ChangelogModal';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES, getThemeById } from '@/themes';
 import { AVAILABLE_FONTS } from '@/fonts';
@@ -44,6 +45,7 @@ export function SettingsPage() {
   const [appVersion, setAppVersion] = useState<string>('...');
   const appUpdateLastChecked = useAppStore((s) => s.appUpdateLastChecked);
   const [hasChecked, setHasChecked] = useState(true);
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   // Debounce timers for folder auto-save
   const modelFolderSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -596,20 +598,42 @@ export function SettingsPage() {
                 {updateInfo.date && (
                   <p className="text-xs text-muted-foreground">{updateInfo.date}</p>
                 )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => installUpdate()}
-                  disabled={isInstalling}
-                  className="text-peach border-peach/30 hover:bg-peach/10 hover:text-peach"
-                >
-                  {isInstalling ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
-                  {isInstalling ? 'Installing...' : 'Install & Restart'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setChangelogOpen(true)}
+                    disabled={!updateInfo.body}
+                    className="text-peach border-peach/30 hover:bg-peach/10 hover:text-peach"
+                  >
+                    <FileText className="h-4 w-4" />
+                    View Changelog
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      // Persist changelog for post-install display
+                      if (settings && updateInfo.version && updateInfo.body) {
+                        await saveSettings({
+                          ...settings,
+                          pending_changelog_version: updateInfo.version,
+                          pending_changelog_body: updateInfo.body,
+                        });
+                      }
+                      await installUpdate();
+                    }}
+                    disabled={isInstalling}
+                    className="text-peach border-peach/30 hover:bg-peach/10 hover:text-peach"
+                  >
+                    {isInstalling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    {isInstalling ? 'Installing...' : 'Install & Restart'}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -790,6 +814,13 @@ export function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      <ChangelogModal
+        open={changelogOpen}
+        onOpenChange={setChangelogOpen}
+        buildNumber={updateInfo.version ?? 'Update'}
+        body={updateInfo.body}
+      />
       </div> {/* end max-w-3xl mx-auto wrapper */}
     </div>
   );

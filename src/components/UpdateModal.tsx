@@ -31,6 +31,14 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   };
 
   const handleInstall = async () => {
+    // Persist changelog so it can be shown on next startup after the update
+    if (settings && updateInfo.version && updateInfo.body) {
+      await saveSettings({
+        ...settings,
+        pending_changelog_version: updateInfo.version,
+        pending_changelog_body: updateInfo.body,
+      });
+    }
     await installUpdate();
   };
 

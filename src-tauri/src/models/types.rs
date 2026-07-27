@@ -80,6 +80,10 @@ pub struct AppSettings {
     pub model_folder: Option<String>, // folder containing .gguf model files
     #[serde(default)]
     pub mmproj_folder: Option<String>, // folder containing .mmproj project files
+    #[serde(default)]
+    pub pending_changelog_version: Option<String>, // version whose changelog should be shown on next startup
+    #[serde(default)]
+    pub pending_changelog_body: Option<String>, // markdown body of the pending changelog
 }
 
 fn default_show_update_modal() -> bool {

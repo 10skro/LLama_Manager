@@ -58,6 +58,8 @@ export interface AppSettings {
   font_family?: string; // CSS font-family name, e.g. 'Plus Jakarta Sans'
   model_folder?: string; // Folder containing .gguf model files
   mmproj_folder?: string; // Folder containing .mmproj project files
+  pending_changelog_version?: string; // Version whose changelog should be shown on next startup
+  pending_changelog_body?: string; // Markdown body of the pending changelog
 }
 
 // Favorite build
