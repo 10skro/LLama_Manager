@@ -117,10 +117,10 @@ export function ConfigsPage() {
           {(['all', 'custom'] as const).map((f) => (
             <Button
               key={f}
-              variant={filter === f ? 'secondary' : 'ghost'}
+              variant={filter === f ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => setFilter(f)}
-              className="text-xs h-7 px-3"
+              className={`text-xs h-7 px-3 ${filter === f ? 'border-primary/50 font-semibold' : 'border-border/40 text-muted-foreground'}`}
             >
               {f === 'all' ? 'All' : 'Custom'}
             </Button>

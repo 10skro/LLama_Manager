@@ -199,9 +199,9 @@ export default function OverrideDialog({
             {EXTENSION_FILTERS.map((f) => (
               <Button
                 key={f.value}
-                variant={filter === f.value ? 'secondary' : 'ghost'}
+                variant={filter === f.value ? 'secondary' : 'outline'}
                 size="sm"
-                className={`text-xs h-6 px-2.5 ${filter === f.value ? '' : 'hover:bg-secondary/50'}`}
+                className={`text-xs h-6 px-2.5 ${filter === f.value ? 'border-primary/50 font-semibold' : 'border-border/40 text-muted-foreground'}`}
                 onClick={() => onFilterChange(f.value)}
               >
                 {f.label}
