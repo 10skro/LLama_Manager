@@ -7,7 +7,7 @@ import { DragStateContext } from './DragStateContext';
 /**
  * Sortable wrapper for a VersionCard in reorder mode.
  * - Shows ghost placeholder on the dragged card.
- * - Shows animated pulse halo on the drop target.
+ * - Shows pulse frame on the drop target card.
  * - Smooth CSS transitions on sibling card position changes.
  * - Drag handle overlay (always visible during global drag, hover-only otherwise).
  */
@@ -26,8 +26,6 @@ export function SortableCardItem({
   const isGhost = isDragging;
 
   // Track the previous isDragging state to detect the exact frame the drag ends.
-  // On that frame, apply a smooth CSS transition so the card glides back to its slot
-  // instead of snapping instantly.
   const prevDragging = React.useRef(isDragging);
   const justReleased = !isDragging && prevDragging.current;
   prevDragging.current = isDragging;
@@ -51,9 +49,9 @@ export function SortableCardItem({
       style={style}
       className="relative group"
     >
-      {/* Animated drop target indicator — glowing ring behind the card */}
+      {/* Drop target indicator — pulse frame behind the target card */}
       {isDropTarget && (
-        <div className="absolute -inset-2 rounded-xl bg-secondary/50 ring-2 ring-ring/50 animate-pulse pointer-events-none" />
+        <div className="absolute -inset-2 rounded-xl bg-secondary/50 ring-2 ring-ring/50 animate-pulse pointer-events-none" style={{ zIndex: -1 }} />
       )}
 
       {/* Ghost placeholder when this card is being dragged */}

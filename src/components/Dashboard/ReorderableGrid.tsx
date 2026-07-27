@@ -45,7 +45,6 @@ export function ReorderableGrid({
 }: ReorderableGridProps) {
   const [localVersions, setLocalVersions] = useState(versions);
 
-  // Sync local state when parent versions change (e.g. after backend invalidation)
   useEffect(() => {
     setLocalVersions(versions);
   }, [versions]);
@@ -73,11 +72,8 @@ export function ReorderableGrid({
     const overIdx = localVersions.findIndex((v) => v.id === over.id);
     if (activeIdx === -1 || overIdx === -1 || activeIdx === overIdx) return;
 
-    // Optimistic reorder: update DOM immediately so the card settles smoothly
     const newVersions = arrayMove(localVersions, activeIdx, overIdx);
     setLocalVersions(newVersions);
-
-    // Notify parent to save to backend (async)
     onDragEnd(newVersions);
   };
 
