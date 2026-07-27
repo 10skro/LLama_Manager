@@ -3,10 +3,11 @@ import type { TerminalSession } from '@/hooks/useTerminalSessions';
 
 interface TerminalSessionGridProps {
   sessions: TerminalSession[];
+  cardTitleMap: Record<number, string>;
   onClose: (sessionId: string) => void;
 }
 
-export function TerminalSessionGrid({ sessions, onClose }: TerminalSessionGridProps) {
+export function TerminalSessionGrid({ sessions, cardTitleMap, onClose }: TerminalSessionGridProps) {
   if (sessions.length === 0) {
     return (
       <div className="flex items-center justify-center flex-1 p-4 bg-background">
@@ -32,6 +33,7 @@ export function TerminalSessionGrid({ sessions, onClose }: TerminalSessionGridPr
             sessionId={session.sessionId}
             versionId={session.versionId}
             configId={session.configId}
+            cardTitle={cardTitleMap[session.versionId] || ''}
             onClose={onClose}
           />
         </div>

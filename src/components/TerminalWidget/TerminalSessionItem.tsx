@@ -12,6 +12,7 @@ interface TerminalSessionItemProps {
   sessionId: string;
   versionId: number;
   configId: string;
+  cardTitle: string;
   onClose: (sessionId: string) => void;
 }
 
@@ -71,7 +72,7 @@ function mapToXtermTheme(themeId: string): ITheme {
   };
 }
 
-export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemProps) {
+export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalSessionItemProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -172,6 +173,9 @@ export function TerminalSessionItem({ sessionId, onClose }: TerminalSessionItemP
     <div className="flex flex-col h-full bg-background">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/30">
         <span className="text-xs text-foreground/60 font-mono truncate">{sessionId.slice(0, 8)}</span>
+        {cardTitle && (
+          <span className="text-xs text-foreground/40 truncate ml-2">— {cardTitle}</span>
+        )}
         <button
           onClick={handleClose}
           className="text-xs text-foreground/40 hover:text-foreground/80 transition-colors"

@@ -47,6 +47,14 @@ interface AppState {
   settings: AppSettings;
   setSettings: (settings: AppSettings) => void;
 
+  // App Update
+  appUpdateAvailable: boolean;
+  appUpdateVersion: string | null;
+  appUpdateDate: string | null;
+  appUpdateBody: string | null;
+  appUpdateLastChecked: string | null;
+  setAppUpdate: (info: { available: boolean; version: string | null; date: string | null; body: string | null }) => void;
+
   // Notifications
   newBuilds: string[];
   setNewBuilds: (builds: string[]) => void;
@@ -107,6 +115,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   filters: defaultFilters,
   setFilters: (partial) =>
     set((state) => ({ filters: { ...state.filters, ...partial } })),
+
+  // App Update
+  appUpdateAvailable: false,
+  appUpdateVersion: null,
+  appUpdateDate: null,
+  appUpdateBody: null,
+  appUpdateLastChecked: null,
+  setAppUpdate: (info) => set({
+    appUpdateAvailable: info.available,
+    appUpdateVersion: info.version,
+    appUpdateDate: info.date,
+    appUpdateBody: info.body,
+    appUpdateLastChecked: new Date().toISOString(),
+  }),
 
   // Downloads
   activeDownloads: new Map(),

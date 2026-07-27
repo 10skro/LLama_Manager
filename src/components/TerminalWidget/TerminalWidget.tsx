@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { X, Grid, LayoutList } from 'lucide-react';
+import { Grid, LayoutList } from 'lucide-react';
 import { useTerminalSessions } from '@/hooks/useTerminalSessions';
+import { useCardTitleMap } from '@/hooks/useCardTitleMap';
 import { TerminalSessionList } from './TerminalSessionList';
 import { TerminalSessionGrid } from './TerminalSessionGrid';
 import { TerminalSessionItem } from './TerminalSessionItem';
@@ -17,6 +17,7 @@ export function TerminalWidget() {
   // and premature removal of the anti-flash style.
 
   const { sessions, refreshSessions } = useTerminalSessions();
+  const cardTitleMap = useCardTitleMap();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   // Use useRef to track selectedId to avoid re-render cascade on mount:
   // sessions=[] → sessions=[...] → selectedId=null → selectedId=first
@@ -46,10 +47,6 @@ export function TerminalWidget() {
 
   const selectedSession = sessions.find((s) => s.sessionId === selectedId);
 
-  const handleCloseWindow = () => {
-    getCurrentWebviewWindow().close();
-  };
-
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground">
       <DevBanner />
@@ -75,13 +72,6 @@ export function TerminalWidget() {
           >
             <Grid className="h-4 w-4" />
           </button>
-          <button
-            onClick={handleCloseWindow}
-            className="p-1.5 rounded transition-colors text-foreground/40 hover:text-foreground/70 hover:bg-foreground/10"
-            title="Close window"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
@@ -95,6 +85,7 @@ export function TerminalWidget() {
                 sessions={sessions}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
+                cardTitleMap={cardTitleMap}
               />
             </div>
             <div className="flex-1 overflow-hidden">
@@ -103,6 +94,7 @@ export function TerminalWidget() {
                   sessionId={selectedSession.sessionId}
                   versionId={selectedSession.versionId}
                   configId={selectedSession.configId}
+                  cardTitle={cardTitleMap[selectedSession.versionId] || ''}
                   onClose={handleClose}
                 />
               ) : (
@@ -117,7 +109,7 @@ export function TerminalWidget() {
         {/* Grid view: all terminals side by side */}
         {viewMode === 'grid' && (
           <div className="flex-1 overflow-hidden">
-            <TerminalSessionGrid sessions={sessions} onClose={handleClose} />
+            <TerminalSessionGrid sessions={sessions} cardTitleMap={cardTitleMap} onClose={handleClose} />
           </div>
         )}
       </div>

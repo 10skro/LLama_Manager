@@ -5,7 +5,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/hooks/use-toast';
 import { getSettings, saveSettings, selectFolder } from '@/services/settings';
 import { saveGithubToken, hasGithubToken, deleteGithubToken } from '@/services/github-token';
-import { getCatalogLastFetched } from '@/services/github';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,7 +42,7 @@ export function SettingsPage() {
   const [isSavingToken, setIsSavingToken] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('...');
-  const [lastFetched, setLastFetched] = useState<string | null>(null);
+  const appUpdateLastChecked = useAppStore((s) => s.appUpdateLastChecked);
   const [hasChecked, setHasChecked] = useState(true);
 
   // Debounce timers for folder auto-save
@@ -64,10 +63,7 @@ export function SettingsPage() {
     invoke<string>('get_app_version').then(v => setAppVersion(v)).catch(() => {});
   }, []);
 
-  // Load last fetched timestamp on mount
-  useEffect(() => {
-    getCatalogLastFetched().then(ts => setLastFetched(ts)).catch(() => {});
-  }, []);
+
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
@@ -544,7 +540,7 @@ export function SettingsPage() {
               <Label>Last checked</Label>
             </div>
             <Badge variant="outline" className="font-mono text-xs">
-              {lastFetched ? new Date(lastFetched).toLocaleString() : 'Never'}
+              {appUpdateLastChecked ? new Date(appUpdateLastChecked).toLocaleString() : 'Never'}
             </Badge>
           </div>
 

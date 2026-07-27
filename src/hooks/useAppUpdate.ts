@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useAppStore } from '@/store/useAppStore';
 
 interface AppUpdateInfo {
   available: boolean;
@@ -9,22 +10,30 @@ interface AppUpdateInfo {
 }
 
 export function useAppUpdate() {
-  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo>({
-    available: false,
-    version: null,
-    date: null,
-    body: null,
-  });
   const [isChecking, setIsChecking] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Read from global store (shared between Header, Settings, etc.)
+  const appUpdateAvailable = useAppStore((s) => s.appUpdateAvailable);
+  const appUpdateVersion = useAppStore((s) => s.appUpdateVersion);
+  const appUpdateDate = useAppStore((s) => s.appUpdateDate);
+  const appUpdateBody = useAppStore((s) => s.appUpdateBody);
+  const setAppUpdate = useAppStore((s) => s.setAppUpdate);
+
+  const updateInfo = {
+    available: appUpdateAvailable,
+    version: appUpdateVersion,
+    date: appUpdateDate,
+    body: appUpdateBody,
+  };
 
   const checkUpdate = useCallback(async () => {
     try {
       setError(null);
       setIsChecking(true);
       const result = await invoke<AppUpdateInfo>('check_app_update');
-      setUpdateInfo(result);
+      setAppUpdate(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -32,7 +41,7 @@ export function useAppUpdate() {
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [setAppUpdate]);
 
   const installUpdate = useCallback(async () => {
     try {
