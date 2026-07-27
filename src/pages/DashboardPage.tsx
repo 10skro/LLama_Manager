@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { emit } from '@tauri-apps/api/event';
 import { useQueryClient } from '@tanstack/react-query';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useStorageUsage } from '@/hooks/useStorageUsage';
@@ -7,9 +8,10 @@ import { useVersionConfigLinks } from '@/hooks/useVersionConfigLinks';
 import { useConfigs } from '@/hooks/useConfigs';
 
 import { useToast } from '@/hooks/use-toast';
-import { uninstallVersion, getCardCustomizations, duplicateVersion } from '@/services/version';
-import { getVersionOverride } from '@/services/versionOverride';
-import type { CardCustomization, VersionOverride } from '@/types';
+import { uninstallVersion, getCardCustomizations, duplicateVersion, saveCardCustomization } from '@/services/version';
+import { getVersionOverride, saveVersionOverride } from '@/services/versionOverride';
+import { saveVersionConfigLink } from '@/services/versionConfig';
+import type { CardCustomization, VersionOverride, CardClipboardData } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
 import { formatSize } from '@/utils/format';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,7 @@ import {
   Loader2,
   HardDrive, Cpu,
 } from 'lucide-react';
+import { ToastAction } from '@/components/ui/toast';
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
@@ -34,6 +37,10 @@ export function DashboardPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Copy/paste clipboard state
+  const [clipboardData, setClipboardData] = useState<CardClipboardData | null>(null);
+  const [pasteTarget, setPasteTarget] = useState<number | null>(null);
+  const [isPasting, setIsPasting] = useState(false);
   // Card customizations per version (versionId -> customization)
   const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
   // Version overrides per version (versionId -> override)
@@ -143,6 +150,136 @@ export function DashboardPage() {
       }
       return next;
     });
+  };
+
+  // --- Copy / Paste handlers ---
+
+  const handleCopy = (versionId: number) => {
+    const custom = cardCustomizations[versionId];
+    const link = getLink(versionId);
+    const override = versionOverrides[versionId];
+
+    const data: CardClipboardData = {
+      sourceVersionId: versionId,
+    };
+
+    if (custom && (custom.title || custom.header_color || custom.text_color)) {
+      data.customization = {
+        title: custom.title,
+        header_color: custom.header_color,
+        text_color: custom.text_color,
+      };
+    }
+
+    if (link) {
+      data.configLink = {
+        config_type: link.config_type,
+        config_id: link.config_id,
+      };
+    }
+
+    if (override) {
+      data.override = {
+        model_path: override.model_path,
+        mmproj_path: override.mmproj_path,
+      };
+    }
+
+    setClipboardData(data);
+    toast({
+      title: 'Settings copied',
+      description: 'Card settings are ready to paste on another card.',
+      duration: 0,
+      action: (
+        <ToastAction
+          altText="Cancel copy"
+          onClick={() => {
+            setClipboardData(null);
+          }}
+        >
+          Cancel
+        </ToastAction>
+      ),
+    });
+  };
+
+  const handlePasteRequest = (targetVersionId: number) => {
+    if (!clipboardData) return;
+    setPasteTarget(targetVersionId);
+  };
+
+  const handlePasteConfirm = async () => {
+    if (!clipboardData || pasteTarget === null) return;
+    setIsPasting(true);
+    try {
+      const targetId = pasteTarget;
+
+      // 1. Paste customization
+      if (clipboardData.customization) {
+        const { title, header_color, text_color } = clipboardData.customization;
+        if (title || header_color || text_color) {
+          await saveCardCustomization(targetId, title, header_color, text_color);
+          setCardCustomizations(prev => ({
+            ...prev,
+            [targetId]: {
+              version_id: targetId,
+              title,
+              header_color,
+              text_color,
+            },
+          }));
+        }
+      }
+
+      // 2. Paste config link
+      if (clipboardData.configLink) {
+        await saveVersionConfigLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
+        // Force reload of config links
+        if (versions && versions.length > 0) {
+          await loadAll(versions.map(v => v.id));
+        }
+      }
+
+      // 3. Paste override
+      if (clipboardData.override) {
+        const overrideData = clipboardData.override;
+        const hasOverride = overrideData.model_path || overrideData.mmproj_path;
+        if (hasOverride) {
+          await saveVersionOverride(targetId, overrideData.model_path, overrideData.mmproj_path);
+          setVersionOverrides(prev => ({
+            ...prev,
+            [targetId]: {
+              version_id: targetId,
+              model_path: overrideData.model_path,
+              mmproj_path: overrideData.mmproj_path,
+            },
+          }));
+        }
+      }
+
+      // Notify floating terminal window
+      emit('card-customizations-update', null).catch(() => {});
+
+      setClipboardData(null);
+      setPasteTarget(null);
+      toast({
+        title: 'Settings pasted',
+        description: 'Card settings have been applied successfully.',
+      });
+    } catch (err) {
+      console.error('Failed to paste settings:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Paste failed',
+        description: 'Could not apply settings to this card.',
+      });
+    } finally {
+      setIsPasting(false);
+    }
+  };
+
+  const handlePasteCancel = () => {
+    setPasteTarget(null);
   };
 
   const handleDuplicate = async (versionId: number, withSettings: boolean) => {
@@ -266,6 +403,9 @@ export function DashboardPage() {
               onOverrideChange={handleOverrideChange}
               modelFolder={settings?.model_folder}
               mmprojFolder={settings?.mmproj_folder}
+              clipboardData={clipboardData}
+              onCopyClick={handleCopy}
+              onPasteRequest={handlePasteRequest}
             />
           ))}
         </div>
@@ -283,6 +423,39 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Paste Confirmation Dialog */}
+      <Dialog open={pasteTarget !== null} onOpenChange={(open) => !open && setPasteTarget(null)}>
+        <DialogContent className="bg-card border-border/50">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-blue" />
+              Paste Settings
+            </DialogTitle>
+            <DialogDescription>
+              This will replace the current settings of this card with the copied settings (title, color, config, override). This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handlePasteCancel} disabled={isPasting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePasteConfirm}
+              disabled={isPasting}
+            >
+              {isPasting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Pasting...
+                </>
+              ) : (
+                'Paste'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>

@@ -131,3 +131,21 @@ export interface VersionOverride {
   model_path: string | null;
   mmproj_path: string | null;
 }
+
+// Clipboard data for copy/paste card settings between dashboard cards
+export interface CardClipboardData {
+  sourceVersionId: number;
+  customization?: {
+    title: string;
+    header_color: string;
+    text_color: string;
+  };
+  configLink?: {
+    config_type: 'custom';
+    config_id: string;
+  };
+  override?: {
+    model_path: string | null;
+    mmproj_path: string | null;
+  };
+}

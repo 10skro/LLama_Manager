@@ -3,7 +3,7 @@ import { emit } from '@tauri-apps/api/event';
 import { useToast } from '@/hooks/use-toast';
 import { saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import { useTerminalLaunch } from '@/hooks/useTerminalLaunch';
-import type { InstalledVersion, CardCustomization, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
+import type { InstalledVersion, CardCustomization, ConfigEntry, VersionConfigLink, VersionOverride, CardClipboardData } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import {
 import {
   Package, Trash2, List,
   Terminal, SlidersHorizontal, Pencil,
-  Play, Square, Settings, Copy, CopyCheck,
+  Play, Square, Settings, Copy, CopyCheck, ClipboardCheck,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
@@ -64,6 +64,10 @@ interface VersionCardProps {
   // Settings for file selectors
   modelFolder: string | undefined;
   mmprojFolder: string | undefined;
+  // Copy/paste clipboard
+  clipboardData: CardClipboardData | null;
+  onCopyClick: (versionId: number) => void;
+  onPasteRequest: (targetVersionId: number) => void;
 }
 
 export function VersionCard({
@@ -89,6 +93,9 @@ export function VersionCard({
   onOverrideChange,
   modelFolder,
   mmprojFolder,
+  clipboardData,
+  onCopyClick,
+  onPasteRequest,
 }: VersionCardProps) {
   const { toast } = useToast();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
@@ -224,6 +231,9 @@ export function VersionCard({
 
   const hasOverride = override !== null && (override.model_path || override.mmproj_path);
 
+  // Paste button visibility: clipboard has data AND this card is not the source
+  const canPaste = clipboardData !== null && clipboardData.sourceVersionId !== version.id;
+
   // Build descriptive override badge text
   const getOverrideBadgeText = (): string => {
     if (!override) return 'Override active';
@@ -254,7 +264,19 @@ export function VersionCard({
         >
           {displayTitle}
         </p>
-        <DropdownMenu
+        <div className="flex items-center gap-1">
+          {canPaste && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20"
+              title="Paste settings"
+              onClick={() => onPasteRequest(version.id)}
+            >
+              <ClipboardCheck className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <DropdownMenu
           open={editingDropdownId === version.id}
           onOpenChange={(open) => {
             if (open) {
@@ -330,6 +352,7 @@ export function VersionCard({
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {/* Config Display */}
@@ -482,6 +505,10 @@ export function VersionCard({
               <DropdownMenuItem onClick={() => onDuplicateClick(version.id, true)}>
                 <CopyCheck className="h-4 w-4" />
                 <span>Clone with Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onCopyClick(version.id)}>
+                <Copy className="h-4 w-4" />
+                <span>Copy Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
