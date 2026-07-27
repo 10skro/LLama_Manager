@@ -60,7 +60,7 @@ export const catppuccinMocha: Theme = {
     '--accent-foreground': '0 0% 15%',
     '--destructive': hexToHSL(catppuccinMochaColors.red),
     '--destructive-foreground': '0 0% 15%',
-    '--border': hexToHSL(catppuccinMochaColors.crust),
+    '--border': hexToHSL(catppuccinMochaColors.surface0),
     '--input': hexToHSL(catppuccinMochaColors.crust),
     '--ring': hexToHSL(catppuccinMochaColors.blue),
     '--sidebar': hexToHSL(catppuccinMochaColors.crust),
