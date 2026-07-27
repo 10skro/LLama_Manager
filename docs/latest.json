@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.21",
-  "long_description": "# v0.6.21\n\n## Changes\n\n### Features\n\n- Add copy/paste card settings between dashboard cards (title, color, config, override)\n\n### Bug Fixes\n\n- Auto-refresh card titles in terminal widget when card customization changes\n\n### Maintenance\n\n- Remove obsolete release.json (replaced by docs/latest.json)",
-  "pub_date": "2026-07-27T00:00:00Z",
+  "version": "0.6.21",
+  "notes": "Llama Manager 0.6.21",
+  "pub_date": "2026-07-27T16:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.21/Llama.Manager_0.6.21_x64-setup.exe",
-      "signature": ""
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTZRWkVwTTdYanE1dGRSMW4ySjBjUFdja1FVUkhoNEVRWEM4NHRXbnQ2UVFvMEEwdzU3ZjBCT0pxMWhCWldpR1NVVnZqZFA1YlE0OEFnU0RSZEdScXdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTYxNDAwCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMjFfeDY0LXNldHVwLmV4ZQpFTlg3eDdKWFZ4MDQwVy9rZkVwcGREYkVNUXFORFY3QmorVUFSNzVJdkozYU1UZERyK0kwOXhZeE1KdUdOTThzbjVNeGhqSk1YMnFkcWdmK1RoWlVCZz09Cg==",
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.21/Llama%20Manager_0.6.21_x64-setup.exe"
     }
   }
 }
