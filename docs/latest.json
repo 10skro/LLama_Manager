@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.16",
-  "long_description": "# v0.6.16\n\n## Bug Fixes\n- Fetch changelog from latest.json (Tauri v2 updater doesn't expose long_description)\n- Show update status automatically in settings page\n- Handle date format without 'T' separator\n- Correct download URL in latest.json (dot instead of space)",
+  "version": "v0.6.17",
+  "long_description": "# v0.6.17\n\n## Changes\n\n### Features\n- Added bell notification system in Header for app and build updates\n- Added automatic catalog refresh every 60 minutes on startup\n- Added action buttons in bell: \"Install & Restart\" for app updates, \"View in Catalog\" for build updates\n\n### UI / UX Improvements\n- Moved update notifications from Dashboard badge to Header bell dropdown\n- Removed green \"Latest Build\" badge from Dashboard card for cleaner UI\n- Styled notification buttons with theme-consistent Button components\n\n### Documentation\n- Enhanced README with terminal management information",
   "pub_date": "2026-07-27T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.16/Llama.Manager_0.6.16_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSN25sRmkrTUJocXVadE1OTDNvZFRhR3JqU2ZtYVp2TFFNMjl6b1JDTFVnTXVNbUordkZCZ3praS93RVFqR3ZqVk5KSTl3RE1YNVpDQzhySVF2RFhyNk5YcUVEY1NaaFFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTA3MTEwCWZpbGU6TGxhbWEuTWFuYWdlcl8wLjYuMTZfeDY0LXNldHVwLmV4ZQpLSUdnNldpanp5d1RPNHZlRVhkNTE5YnRqVER6TitrTTJoaUxOSldpajIxQ1JXaGdrZHNSYU01TVEyZmdaZldFeTc4b3RmclBFVjBERnZaREJsRm9Edz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.17/Llama.Manager_0.6.17_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSN25sRmkrTUJocWtjU2xKaGFTSldmUGVrbkxONkx0QzJHTnM3RUNEY1N5alg1eEYvZy9hSHVXbHd0aE9nZWdVMTdEb3ZiUGhSMjdKNmpqdzlzRkxNWW5MbGxnSHdYTndVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTEwNzUxCWZpbGU6TGxhbWEuTWFuYWdlcl8wLjYuMTdfeDY0LXNldHVwLmV4ZQpsazFob1FTQ052RFFFYitQclhIanFLcHRKT2p2cERobzdnSy9LUjdEUHE4bXVXKzdzdDlnd2hBS1E2Y3A1UUVwdFlCM1hJelhETGlpVEMrNVdkSXNEQT09Cg=="
     }
   }
 }

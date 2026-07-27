@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useToast } from './use-toast';
 
 interface AppUpdateInfo {
   available: boolean;
