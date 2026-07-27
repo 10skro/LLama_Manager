@@ -1,8 +1,0 @@
-{
-  "tag_name": "v0.6.11",
-  "target_commitish": "main",
-  "name": "v0.6.11",
-  "body": "## Changes\n\n### Bug Fixes\n\n- Terminal widget now applies correct theme when opened after a theme change\n\n### Documentation\n\n- Rewrite README with user-facing feature descriptions\n\n### Maintenance\n\n- Sync version across tauri.conf.json and release.json",
-  "draft": false,
-  "prerelease": false
-}
