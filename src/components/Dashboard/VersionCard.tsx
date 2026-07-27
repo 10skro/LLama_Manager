@@ -234,20 +234,13 @@ export function VersionCard({
   // Paste button visibility: clipboard has data AND this card is not the source
   const canPaste = clipboardData !== null && clipboardData.sourceVersionId !== version.id;
 
-  // Build descriptive override badge text
-  const getOverrideBadgeText = (): string => {
-    if (!override) return 'Override active';
-    const parts: string[] = [];
-    if (override.model_path) {
-      const modelName = override.model_path.split('\\').pop()?.split('/').pop() ?? 'model.gguf';
-      parts.push(`Model: ${modelName}`);
-    }
-    if (override.mmproj_path) {
-      const mmprojName = override.mmproj_path.split('\\').pop()?.split('/').pop() ?? 'mmproj.mmproj';
-      parts.push(`MMProj: ${mmprojName}`);
-    }
-    return parts.join(' + ') || 'Override active';
-  };
+  // Extract override file names for separate badges
+  const overrideModelName = override?.model_path
+    ? override.model_path.split('\\').pop()?.split('/').pop() ?? 'model.gguf'
+    : null;
+  const overrideMmprojName = override?.mmproj_path
+    ? override.mmproj_path.split('\\').pop()?.split('/').pop() ?? 'mmproj.mmproj'
+    : null;
 
   return (
     <Card
@@ -364,9 +357,23 @@ export function VersionCard({
       {/* Override Badge */}
       {hasOverride && (
         <div className="px-3 pt-1.5 pb-1.5">
-          <Badge variant="outline" className="border-iris/30 text-iris text-xs gap-1">
-            <SlidersHorizontal className="h-3 w-3" />
-            {getOverrideBadgeText()}
+          <Badge
+            variant="outline"
+            className="border-iris/30 text-iris text-xs gap-1 max-w-full"
+          >
+            <SlidersHorizontal className="h-3 w-3 shrink-0" />
+            <div className="flex flex-wrap items-center gap-1 min-w-0 line-clamp-2">
+              {overrideModelName && (
+                <span className="truncate" title={`Model: ${overrideModelName}`}>
+                  Model: {overrideModelName}
+                </span>
+              )}
+              {overrideMmprojName && (
+                <span className="truncate" title={`MMProj: ${overrideMmprojName}`}>
+                  MMProj: {overrideMmprojName}
+                </span>
+              )}
+            </div>
           </Badge>
         </div>
       )}
