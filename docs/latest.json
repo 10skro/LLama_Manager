@@ -1,10 +1,10 @@
 {
-  "version": "v0.6.18",
-  "long_description": "# v0.6.18\n\n## Changes\n\n### Bug Fixes\n- Fix \"Check for update\" not updating Header notification or Settings \"Last checked\" timestamp — app update state now shared globally via store\n\n### UI / UX Improvements\n- Display card title next to terminal session ID for easier session identification\n- Remove redundant close button from terminal widget toolbar\n\n### Refactoring\n- Move app update state from local component state to global store for cross-component synchronization\n- Clean up unused imports across multiple components",
+  "version": "v0.6.19",
+  "long_description": "# v0.6.19\n\n## Changes\n\n### Bug Fixes\n- Fix notification bell to only show when a newer build is available\n- Fix notification persistence after installing latest build without restart\n- Add empty signature field required by Tauri update schema\n- Disable signature verification for native updater\n\n### Maintenance\n- Remove dead code: useCheckNewBuilds hook, useIsTerminalRunning, terminal stubs\n- Clean up debug logging statements",
   "pub_date": "2026-07-27T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.18/Llama.Manager_0.6.18_x64-setup.exe",
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.19/Llama.Manager_0.6.19_x64-setup.exe",
       "signature": ""
     }
   }
