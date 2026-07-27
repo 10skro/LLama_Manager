@@ -363,7 +363,7 @@ export function VersionCard({
 
       {/* Override Badge */}
       {hasOverride && (
-        <div className="px-3 pb-1.5">
+        <div className="px-3 pt-1.5 pb-1.5">
           <Badge variant="outline" className="border-iris/30 text-iris text-xs gap-1">
             <SlidersHorizontal className="h-3 w-3" />
             {getOverrideBadgeText()}
