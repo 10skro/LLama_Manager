@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.25",
-  "long_description": "## Changes\n\n### Features\n\n- Add changelog modal shown after app update on next startup\n- Add View Changelog button in notification bell dropdown\n- Add View Changelog button in Settings update card\n\n### Bug Fixes\n\n- Fix installer download URL encoding (dot instead of space) to prevent 404 errors",
-  "pub_date": "2026-07-27T17:24:50Z",
+  "version": "v0.6.52",
+  "long_description": "## Changes\n\n### Features\n\n- Add drag-and-drop card reordering on Dashboard with persistent display order\n\n### Bug Fixes\n\n- Fix Clone with Settings to properly reload customizations\n- Fix Copy/Paste config link to update local state after saving\n- Smooth drag-and-drop card settle animation (eliminates visual snap)\n- Prevent long filenames from overflowing Override dialog badge\n\n### Refactoring\n\n- Extract Dashboard components and context to eliminate prop drilling\n- Unify VersionCard action callbacks into single interface\n- Share color constants across Dashboard components\n- Clean up drag-and-drop overlay system",
+  "pub_date": "2026-07-27T18:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.25/Llama.Manager_0.6.25_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTBkcjJOaU9JbjFkaXRhTEROaUg4aWhmdTZEQitCY2hGeTFhS0tzRi91dCswTWwza3cxaG12NjFrK3Jha0JKSkgxR1AzZTZWanRKRithYjBadW4wdGdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTczMDYxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMjVfeDY0LXNldHVwLmV4ZQpJRmpFRjhKR1RQak03b0t6WW9wdmxBTnpaSmlBM1ZYN1FVdDJNc2wwUG1xSXh0S0Rqa3ZDcmMzSnFSRXVtZnRmYjFtVEtGemNzSlRaYkV6WTdIRGJCZz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.52/Llama.Manager_0.6.52_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXc5cWlkc05IcVNBMkgwTXVZd1VYZ3hLNzlXU0tkeHVMM003Q25EQURJb0RHWlVkbk1iV3lWenZZTHhnMUN2WERJL0hNeWtuUWRlV1JaRDBrYkpzandvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTg1MjMxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTJfeDY0LXNldHVwLmV4ZQpaRmFXbTdDY2pKU0wvaGlHclM3cFN6eTc1UXVnY2RaQkpmSkw5ajVUOGRrRjZ1a25EM0lYbFJURzZuSnRndkhOZmZzSHFwam5YdllNV09ldUpEdi9CZz09Cg=="
     }
   }
 }
