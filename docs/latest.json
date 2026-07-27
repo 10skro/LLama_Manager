@@ -5,7 +5,8 @@
   "platforms": {
     "windows-x86_64": {
       "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.21/Llama.Manager_0.6.21_x64-setup.exe",
-      "sha256": "135E58D7DEFE2C62A3F2F9CD35F5130E9C60817F2BBE12BB6C7D90BAE093FA76"
+      "sha256": "135E58D7DEFE2C62A3F2F9CD35F5130E9C60817F2BBE12BB6C7D90BAE093FA76",
+      "signature": ""
     }
   }
 }
