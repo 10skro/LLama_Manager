@@ -32,14 +32,12 @@ export interface VersionCardActions {
 
 interface ReorderableGridProps {
   versions: InstalledVersion[];
-  reorderMode: boolean;
   onDragEnd: (versions: InstalledVersion[]) => void;
   actions: VersionCardActions;
 }
 
 export function ReorderableGrid({
   versions,
-  reorderMode,
   onDragEnd,
   actions,
 }: ReorderableGridProps) {
@@ -53,16 +51,6 @@ export function ReorderableGrid({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-
-  if (!reorderMode) {
-    return (
-      <div className={GRID_CLASS}>
-        {versions.map((version) => (
-          <VersionCard key={version.id} version={version} actions={actions} />
-        ))}
-      </div>
-    );
-  }
 
   const handleDragEnd = (event: { active: { id: UniqueIdentifier }; over: { id: UniqueIdentifier } | null }) => {
     const over = event.over;

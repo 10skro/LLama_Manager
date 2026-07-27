@@ -17,27 +17,31 @@ import {
 import {
   Trash2, List,
   Terminal, SlidersHorizontal, Pencil,
-  Play, Square, Settings, Copy, CopyCheck, ClipboardCheck,
+  Play, Square, Settings, Copy, CopyCheck, ClipboardCheck, GripVertical,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
 import { useDashboardContext } from './DashboardContext';
 import { HEADER_COLORS, TEXT_COLORS } from './cardTheme';
 import type { VersionCardActions } from './ReorderableGrid';
+import type { DragHandleProps } from './SortableCardItem';
 
 /**
  * VersionCard now only needs `version` + `actions` object.
  * All shared state (customization, override, config, clipboard, editing)
  * comes from DashboardContext.
+ * Optional `dragHandleProps` injected by SortableCardItem for drag-and-drop.
  */
 interface VersionCardProps {
   version: InstalledVersion;
   actions: VersionCardActions;
+  dragHandleProps?: DragHandleProps;
 }
 
 export function VersionCard({
   version,
   actions,
+  dragHandleProps,
 }: VersionCardProps) {
   const { toast } = useToast();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
@@ -209,12 +213,28 @@ export function VersionCard({
         className="px-3 py-2 flex items-center justify-between rounded-t-xl"
         style={{ backgroundColor: headerBg }}
       >
-        <p
-          className="text-sm font-medium text-foreground truncate flex-1"
-          style={{ color: displayTextColor || undefined }}
-        >
-          {displayTitle}
-        </p>
+        {/* Left side: drag handle + title */}
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          {dragHandleProps && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-white/60 hover:text-white hover:bg-white/20 shrink-0 cursor-grab active:cursor-grabbing"
+              title="Drag to reorder"
+              {...dragHandleProps.attributes}
+              {...dragHandleProps.listeners}
+            >
+              <GripVertical className="h-3 w-3" />
+            </Button>
+          )}
+          <p
+            className="text-sm font-medium text-foreground truncate"
+            style={{ color: displayTextColor || undefined }}
+          >
+            {displayTitle}
+          </p>
+        </div>
+        {/* Right side: action buttons */}
         <div className="flex items-center gap-1">
           {canPaste && (
             <Button

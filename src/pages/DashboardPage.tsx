@@ -14,7 +14,6 @@ import {
   getCardCustomizations,
   duplicateVersion,
   bulkSetDisplayOrder,
-  resetDisplayOrder,
   saveCardCustomization,
 } from '@/services/version';
 import { getVersionOverride, saveVersionOverride } from '@/services/versionOverride';
@@ -26,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Package, Trash2, Loader2, HardDrive, Cpu, GripVertical, RotateCcw } from 'lucide-react';
+import { Package, Trash2, Loader2, HardDrive, Cpu } from 'lucide-react';
 import { ToastAction } from '@/components/ui/toast';
 
 import { ReorderableGrid, StatCard, DashboardProvider, useDashboardContext } from '@/components/Dashboard';
@@ -57,10 +56,6 @@ export function DashboardPage() {
   // Dialogs
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Reorder mode
-  const [reorderMode, setReorderMode] = useState(false);
-  const [isReordering, setIsReordering] = useState(false);
 
   // Lifted hooks: shared config links and configs across all version cards
   const { getLink, setLink, removeLink, loadAll } = useVersionConfigLinks();
@@ -125,7 +120,6 @@ export function DashboardPage() {
 
     const orders = newVersions.map((v, i) => ({ versionId: v.id, displayOrder: i }));
 
-    setIsReordering(true);
     try {
       await bulkSetDisplayOrder(orders);
       await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
@@ -140,30 +134,6 @@ export function DashboardPage() {
         title: 'Save failed',
         description: 'Could not save the new card order.',
       });
-    } finally {
-      setIsReordering(false);
-    }
-  };
-
-  const handleResetOrder = async () => {
-    setIsReordering(true);
-    try {
-      await resetDisplayOrder();
-      await queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
-      setReorderMode(false);
-      toast({
-        title: 'Order reset',
-        description: 'Cards returned to default (newest first) order.',
-      });
-    } catch (err) {
-      console.error('Failed to reset order:', err);
-      toast({
-        variant: 'destructive',
-        title: 'Reset failed',
-        description: 'Could not reset the card order.',
-      });
-    } finally {
-      setIsReordering(false);
     }
   };
 
@@ -183,14 +153,10 @@ export function DashboardPage() {
         storageUsage={storageUsage ?? null}
         storageLoading={storageLoading}
         latestInstalled={latestInstalled}
-        reorderMode={reorderMode}
-        setReorderMode={setReorderMode}
-        isReordering={isReordering}
         deleteTarget={deleteTarget}
         setDeleteTarget={setDeleteTarget}
         isDeleting={isDeleting}
         onDragEnd={handleDragEnd}
-        onResetOrder={handleResetOrder}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         toast={toast}
@@ -207,14 +173,10 @@ function DashboardContent({
   storageUsage,
   storageLoading,
   latestInstalled,
-  reorderMode,
-  setReorderMode,
-  isReordering,
   deleteTarget,
   setDeleteTarget,
   isDeleting,
   onDragEnd,
-  onResetOrder,
   onDelete,
   onDuplicate,
   toast,
@@ -224,14 +186,10 @@ function DashboardContent({
   storageUsage: number | null;
   storageLoading: boolean;
   latestInstalled: { build_number: string } | null;
-  reorderMode: boolean;
-  setReorderMode: (v: boolean) => void;
-  isReordering: boolean;
   deleteTarget: number | null;
   setDeleteTarget: (id: number | null) => void;
   isDeleting: boolean;
   onDragEnd: (newVersions: InstalledVersion[]) => void;
-  onResetOrder: () => void;
   onDelete: () => void;
   onDuplicate: (versionId: number, withSettings: boolean) => void;
   toast: (options: any) => void;
@@ -391,37 +349,12 @@ function DashboardContent({
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
       {/* Header */}
-      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
             Overview of your installed llama.cpp builds.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {reorderMode && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onResetOrder}
-              disabled={isReordering}
-              className="gap-2"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset Order
-            </Button>
-          )}
-          <Button
-            variant={reorderMode ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setReorderMode(!reorderMode)}
-            className="gap-2"
-          >
-            <GripVertical className="h-4 w-4" />
-            {reorderMode ? 'Exit Reorder' : 'Reorder'}
-          </Button>
-        </div>
-      </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
@@ -464,7 +397,6 @@ function DashboardContent({
       ) : versions && versions.length > 0 ? (
         <ReorderableGrid
           versions={versions}
-          reorderMode={reorderMode}
           onDragEnd={onDragEnd}
           actions={actions}
         />
