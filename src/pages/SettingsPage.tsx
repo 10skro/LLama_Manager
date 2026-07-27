@@ -603,7 +603,6 @@ export function SettingsPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => setChangelogOpen(true)}
-                    disabled={!updateInfo.body}
                     className="text-peach border-peach/30 hover:bg-peach/10 hover:text-peach"
                   >
                     <FileText className="h-4 w-4" />
@@ -818,8 +817,9 @@ export function SettingsPage() {
       <ChangelogModal
         open={changelogOpen}
         onOpenChange={setChangelogOpen}
+        tagName={updateInfo.version ?? undefined}
         buildNumber={updateInfo.version ?? 'Update'}
-        body={updateInfo.body}
+        body={updateInfo.body || undefined}
       />
       </div> {/* end max-w-3xl mx-auto wrapper */}
     </div>

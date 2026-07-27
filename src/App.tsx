@@ -30,6 +30,7 @@ function App() {
   const { settings } = useAppStore();
   const [showModal, setShowModal] = useState(false);
   const [updateCheckCompleted, setUpdateCheckCompleted] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Post-installation changelog modal
   const [showPostInstallChangelog, setShowPostInstallChangelog] = useState(false);
@@ -37,19 +38,19 @@ function App() {
   const [postInstallChangelogVersion, setPostInstallChangelogVersion] = useState<string | null>(null);
 
   // Show update modal on startup if update available and setting is enabled
-  // Wait for the real update check (isChecking) to finish instead of using an arbitrary timeout
+  // Wait for both the real update check (isChecking) and settings to finish loading
   useEffect(() => {
     if (updateCheckCompleted) return;
 
-    if (!isChecking) {
-      // The update check has completed (isChecking went from true to false)
+    if (!isChecking && settingsLoaded) {
+      // The update check has completed and settings are loaded
       setUpdateCheckCompleted(true);
       const shouldShow = updateInfo.available && (settings?.show_update_modal ?? true);
       if (shouldShow) {
         setShowModal(true);
       }
     }
-  }, [isChecking, updateCheckCompleted, updateInfo.available, settings?.show_update_modal]);
+  }, [isChecking, updateCheckCompleted, updateInfo.available, settings?.show_update_modal, settingsLoaded]);
 
   // Load settings and restore saved theme on app startup
   // Theme is already applied by inline script in index.html from __INITIAL_THEME__ (injected by Rust)
@@ -70,12 +71,22 @@ function App() {
           pending_changelog_body: settings.pending_changelog_body,
         };
         useAppStore.getState().setSettings(merged);
+        setSettingsLoaded(true);
 
         // Show post-installation changelog modal if pending changelog exists
         if (settings.pending_changelog_version && settings.pending_changelog_body) {
+          console.log('[Update] Post-install changelog pending:', {
+            version: settings.pending_changelog_version,
+            bodyLength: settings.pending_changelog_body.length,
+          });
           setPostInstallChangelogVersion(settings.pending_changelog_version);
           setPostInstallChangelogBody(settings.pending_changelog_body);
           setShowPostInstallChangelog(true);
+        } else {
+          console.log('[Update] No post-install changelog pending:', {
+            hasVersion: !!settings.pending_changelog_version,
+            hasBody: !!settings.pending_changelog_body,
+          });
         }
 
         // Only update theme if it actually differs from the current store value

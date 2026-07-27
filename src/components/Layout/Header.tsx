@@ -83,7 +83,6 @@ export function Header() {
                     size="sm"
                     variant="outline"
                     className="flex-1 gap-2"
-                    disabled={!updateInfo.body}
                   >
                     <FileText className="h-4 w-4" />
                     Changelog
@@ -149,8 +148,9 @@ export function Header() {
     <ChangelogModal
       open={changelogOpen}
       onOpenChange={setChangelogOpen}
+      tagName={updateInfo.version ?? undefined}
       buildNumber={updateInfo.version ?? 'Update'}
-      body={updateInfo.body}
+      body={updateInfo.body || undefined}
     />
     </>
   );
