@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.22",
-  "long_description": "# v0.6.22\n\n## Changes\n\n### Security\n\n- Cryptographic signature now properly enforced for auto-updates\n- Updater pubkey configured and signed artifacts generated\n\n### Maintenance\n\n- Enable createUpdaterArtifacts in Tauri bundle config\n- Signed release artifacts (.exe + .sig) for native auto-update",
-  "pub_date": "2026-07-27T00:00:00Z",
+  "version": "v0.6.23",
+  "long_description": "## Changes\n\n### Security\n\n- Replace custom update system with native Tauri updater enabling cryptographic signature verification during installation\n\n### Refactoring\n\n- Remove manual HTTP-based update checks and installer downloads\n- Remove unused `fetch_changelog` function\n- Reduce update module from ~130 lines to ~55 lines using `tauri_plugin_updater` API",
+  "pub_date": "2026-07-27T01:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.22/Llama%20Manager_0.6.22_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTdFQ0crU2laZ3pQbURCM0pHbUpCb0hwclRTN2FlNEM4eTZubFdFdGduVk9rWkJIOHNOUWdSYU1vL2VzZEoxTlI0b1d2eXZKNExURjhlR29GbzRoRWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTYzNTEzCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMjJfeDY0LXNldHVwLmV4ZQpCY1M4SWlYckFEU3VES3oxVm14cGhLcjhwL05tRHhoNm1BSC9YbHdwcXhXc1hjZ0ZzV2QzRVpxSVJmY1FSOHNSdmtvVU5iaTRpcmEwbHFOQkxCYWpEQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.23/Llama%20Manager_0.6.23_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTVkRngzeWd1MHdZdUlPc2pFWWZRT0YyeURvOVJMMWxWakJ0M1M2bWF3d0tYZlY3bElyYkdxRjIvN3BjVnJrcmtWMWV6VWliemU1Vmx1U1QyM1FTQXd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTY1NDMyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuMjNfeDY0LXNldHVwLmV4ZQphaTlLQ0JFTER3VFkvdm5jazBUa3EzamcyK2w5QTEvdG5UM1k5aGlXalk3aVRwM2EyVmpVOVVSbGE1NjhvYnBWa2pUbFJHKzgzdGl0UUFacExLQkhEdz09Cg=="
     }
   }
 }
