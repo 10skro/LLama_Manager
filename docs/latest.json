@@ -4,7 +4,8 @@
   "pub_date": "2026-07-27T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.18/Llama.Manager_0.6.18_x64-setup.exe"
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.18/Llama.Manager_0.6.18_x64-setup.exe",
+      "signature": ""
     }
   }
 }
