@@ -22,11 +22,12 @@
         "https://10skro.github.io/LLama_Manager/latest.json"
       ],
       "dialog": false,
-      "pubkey": ""
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUzMDhFRjZERDJDQTM1NzIKUldSeU5jclNiZThJVTF5TFlTWlFLOEgzRnNJa3pjdlpoTThTbXhVTGZhNnVLZjZIYWh5d0J2QkoK"
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/icon.ico",
