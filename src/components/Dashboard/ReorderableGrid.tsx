@@ -11,7 +11,9 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   rectSortingStrategy,
+  arrayMove,
 } from '@dnd-kit/sortable';
+import { useEffect, useState } from 'react';
 import { SortableCardItem } from './SortableCardItem';
 import { DragStateProvider } from './DragStateContext';
 import { VersionCard } from './VersionCard';
@@ -31,7 +33,7 @@ export interface VersionCardActions {
 interface ReorderableGridProps {
   versions: InstalledVersion[];
   reorderMode: boolean;
-  onDragEnd: (event: { active: { id: UniqueIdentifier }; over: { id: UniqueIdentifier } | null }) => void;
+  onDragEnd: (versions: InstalledVersion[]) => void;
   actions: VersionCardActions;
 }
 
@@ -41,6 +43,13 @@ export function ReorderableGrid({
   onDragEnd,
   actions,
 }: ReorderableGridProps) {
+  const [localVersions, setLocalVersions] = useState(versions);
+
+  // Sync local state when parent versions change (e.g. after backend invalidation)
+  useEffect(() => {
+    setLocalVersions(versions);
+  }, [versions]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -56,19 +65,35 @@ export function ReorderableGrid({
     );
   }
 
+  const handleDragEnd = (event: { active: { id: UniqueIdentifier }; over: { id: UniqueIdentifier } | null }) => {
+    const over = event.over;
+    if (!over) return;
+
+    const activeIdx = localVersions.findIndex((v) => v.id === event.active.id);
+    const overIdx = localVersions.findIndex((v) => v.id === over.id);
+    if (activeIdx === -1 || overIdx === -1 || activeIdx === overIdx) return;
+
+    // Optimistic reorder: update DOM immediately so the card settles smoothly
+    const newVersions = arrayMove(localVersions, activeIdx, overIdx);
+    setLocalVersions(newVersions);
+
+    // Notify parent to save to backend (async)
+    onDragEnd(newVersions);
+  };
+
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragEnd={onDragEnd}
+      onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={versions.map((v) => v.id)}
+        items={localVersions.map((v) => v.id)}
         strategy={rectSortingStrategy}
       >
         <DragStateProvider>
           <div className={GRID_CLASS}>
-            {versions.map((version) => (
+            {localVersions.map((version) => (
               <SortableCardItem key={version.id} versionId={version.id}>
                 <VersionCard version={version} actions={actions} />
               </SortableCardItem>

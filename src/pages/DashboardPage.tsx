@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { useQueryClient } from '@tanstack/react-query';
-import type { UniqueIdentifier } from '@dnd-kit/core';
+
+import type { InstalledVersion } from '@/types';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useStorageUsage } from '@/hooks/useStorageUsage';
 import { useLatestBuildInfo } from '@/hooks/useLatestBuildInfo';
@@ -119,19 +120,8 @@ export function DashboardPage() {
 
   // --- Reorder handlers ---
 
-  const handleDragEnd = async (event: { active: { id: UniqueIdentifier }; over: { id: UniqueIdentifier } | null }) => {
-    const over = event.over;
-    if (!over || !versions) return;
-
-    const activeId = event.active.id as number;
-    const overId = over.id as number;
-    const oldIndex = versions.findIndex((v) => v.id === activeId);
-    const newIndex = versions.findIndex((v) => v.id === overId);
-    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-
-    const newVersions = [...versions];
-    const [moved] = newVersions.splice(oldIndex, 1);
-    newVersions.splice(newIndex, 0, moved);
+  const handleDragEnd = async (newVersions: InstalledVersion[]) => {
+    if (!versions || newVersions.length !== versions.length) return;
 
     const orders = newVersions.map((v, i) => ({ versionId: v.id, displayOrder: i }));
 
@@ -240,7 +230,7 @@ function DashboardContent({
   deleteTarget: number | null;
   setDeleteTarget: (id: number | null) => void;
   isDeleting: boolean;
-  onDragEnd: (event: { active: { id: UniqueIdentifier }; over: { id: UniqueIdentifier } | null }) => void;
+  onDragEnd: (newVersions: InstalledVersion[]) => void;
   onResetOrder: () => void;
   onDelete: () => void;
   onDuplicate: (versionId: number, withSettings: boolean) => void;

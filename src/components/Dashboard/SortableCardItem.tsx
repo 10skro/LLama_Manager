@@ -25,11 +25,22 @@ export function SortableCardItem({
   const isDropTarget = overId === versionId && !isDragging;
   const isGhost = isDragging;
 
-  // During drag: let DnD-kit control the dragged card's transform (pointer follow).
-  // During settle: apply the computed transform with smooth transition.
+  // Track the previous isDragging state to detect the exact frame the drag ends.
+  // On that frame, apply a smooth CSS transition so the card glides back to its slot
+  // instead of snapping instantly.
+  const prevDragging = React.useRef(isDragging);
+  const justReleased = !isDragging && prevDragging.current;
+  prevDragging.current = isDragging;
+
+  const settleTransition = 'transform 0.2s cubic-bezier(0.25, 0.4, 0.25, 0.95)';
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? undefined : transition,
+    transition: isDragging
+      ? undefined
+      : justReleased
+        ? settleTransition
+        : transition,
     opacity: isGhost ? 0.3 : 1,
     zIndex: isDragging ? 10 : isDropTarget ? 5 : 1,
   };
