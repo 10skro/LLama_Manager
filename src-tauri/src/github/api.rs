@@ -616,21 +616,34 @@ fn extract_changelog_content(body: &str) -> String {
     result
 }
 
-/// Check which available builds are not yet installed.
-/// Uses triplet (build_number, backend, architecture) to correctly distinguish
-/// x64 and arm64 variants of the same build.
+/// Extract the numeric part from a build_number like "b10146" -> 10146.
+fn extract_build_number(build_number: &str) -> Option<u64> {
+    build_number.strip_prefix('b')?.parse().ok()
+}
+
+/// Check for builds newer than the latest installed version.
+/// Only notifies if there's a build with a higher build_number than the
+/// highest installed build_number. Older available builds are ignored.
 pub fn check_for_new_builds(
     installed: &[InstalledVersion],
     available_builds: &[Build],
 ) -> Vec<Build> {
-    let installed_keys: HashSet<(String, String, String)> = installed
+    // Find the highest installed build_number
+    let latest_installed = installed
         .iter()
-        .map(|v| (v.build_number.clone(), v.backend.clone(), v.architecture.clone()))
-        .collect();
+        .filter_map(|v| extract_build_number(&v.build_number))
+        .max();
 
+    // If nothing is installed, return all available builds
+    let latest_installed = match latest_installed {
+        Some(n) => n,
+        None => return available_builds.to_vec(),
+    };
+
+    // Only return builds with a higher build_number than the latest installed
     available_builds
         .iter()
-        .filter(|b| !installed_keys.contains(&(b.build_number.clone(), b.backend.clone(), b.architecture.clone())))
+        .filter(|b| extract_build_number(&b.build_number).map_or(false, |n| n > latest_installed))
         .cloned()
         .collect()
 }

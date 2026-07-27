@@ -35,7 +35,8 @@ pub async fn check_new_builds(
     let available_builds = crate::github::api::fetch_builds_from_cache_or_api(&state_github, &state_db, DEFAULT_RELEASE_LIMIT, FetchMode::Conditional)
         .await
         .map_err(|e| e.to_string())?;
-    Ok(crate::github::api::check_for_new_builds(&installed, &available_builds))
+    let new = crate::github::api::check_for_new_builds(&installed, &available_builds);
+    Ok(new)
 }
 
 /// Fetch a specific release by its tag name.

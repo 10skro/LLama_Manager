@@ -81,8 +81,6 @@ interface AppState {
   setRunningTerminal: (versionId: number, sessionId: string) => void;
   removeRunningTerminal: (versionId: number) => void;
   removeRunningTerminalBySessionId: (sessionId: string) => void;
-  isTerminalRunning: (versionId: number) => boolean;
-  getRunningSessionId: (versionId: number) => string | undefined;
   syncRunningTerminals: (sessions: { sessionId: string; versionId: number }[]) => void;
 }
 
@@ -247,8 +245,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       return { runningTerminals: next };
     }),
-  isTerminalRunning: () => false, // computed in getter below
-  getRunningSessionId: () => undefined, // computed in getter below
   syncRunningTerminals: (sessions) =>
     set(() => {
       const map: Record<number, string> = {};
@@ -260,11 +256,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 // Computed helpers (use directly in components)
-export function useIsTerminalRunning(versionId: number): boolean {
-  const runningTerminals = useAppStore((s) => s.runningTerminals);
-  return versionId in runningTerminals;
-}
-
 export function useGetRunningSessionId(versionId: number): string | undefined {
   const runningTerminals = useAppStore((s) => s.runningTerminals);
   return runningTerminals[versionId];

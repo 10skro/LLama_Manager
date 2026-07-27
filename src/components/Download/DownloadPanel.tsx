@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { listen } from '@tauri-apps/api/event';
 import { cancelDownload } from '@/services/download';
+import { checkNewBuilds } from '@/services/github';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseKey } from '@/utils/buildKey';
 import { Button } from '@/components/ui/button';
@@ -96,6 +97,29 @@ export function DownloadPanel() {
               }
             }
             queryClient.invalidateQueries({ queryKey: ['installed-versions'] });
+
+            // Re-check new builds after successful installation to update notification bell
+            // Only trigger on the SECOND "completed" event (downloaded:0, total:0) which comes
+            // from post_download_tasks AFTER the DB insert has been committed.
+            if (p.status === 'completed' && p.downloaded === 0 && p.total === 0) {
+              (async () => {
+                try {
+                  console.log('[DownloadPanel] Installed build_number:', p.build_number);
+                  // Brief pause to ensure DB commit is fully propagated
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                  const newBuilds = await checkNewBuilds();
+                  console.log('[DownloadPanel] checkNewBuilds() returned:', newBuilds.length, 'builds');
+                  if (newBuilds.length > 0) {
+                    const buildLabels = newBuilds.map((b: any) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+                    useAppStore.getState().setNewBuilds(buildLabels);
+                  } else {
+                    useAppStore.getState().setNewBuilds([]);
+                  }
+                } catch (err) {
+                  console.error('Failed to re-check new builds after installation:', err);
+                }
+              })();
+            }
           }
         });
         if (!destroyed) unlisten = cleanup;
