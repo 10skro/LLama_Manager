@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.60",
-  "notes": "## Changes\n\n### Features\n- Unify changelog rendering with ReactMarkdown for consistent styling across all views\n\n### Bug Fixes\n- Persist changelog in backend to eliminate race condition on app restart\n- Add update flow logging and warn instead of silently bypassing on terminal check failure\n- Prevent long config names from overflowing table cells and delete dialog",
-  "pub_date": "2026-07-28T16:00:00Z",
+  "version": "v0.6.61",
+  "notes": "## Changes\n\n### Bug Fixes\n- Download cancellation no longer logged as error (now info level)\n- Download errors are now persisted to database for troubleshooting\n- ANSI escape codes removed from log files (plain text only)\n\n### Refactoring\n- Removed unused database methods and dead code\n- Fixed 21 Clippy warnings for improved code quality",
+  "pub_date": "2026-07-28T17:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.60/Llama.Manager_0.6.60_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTVoRlY0Uk5ZVXI3VHBWeGlzckpLTlI2MUxCcU1ITXExbHhxaC9BaUJGVWdZVWRHSmYzTFUxVk9RbkZVYlZFeVpNRWpyL0lpcGdXYVRKNGVJSnkvWkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjU0OTk1CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjBfeDY0LXNldHVwLmV4ZQpxQUM2TEoxdnlBQmx3cEVjcm5IOFRrRk5VM2xFdXBoSENEU1FXazNtZEI2VjZQWnVwaVE1VVhxeXlxZDhUUVIxeEo1cks2N0FtYS94RU0ybVBXZkZEZz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.61/Llama.Manager_0.6.61_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXh6ZlY1UjVRZGN2WENaZG1LSHNLSi9rdUNGVnpPQWxkdDc4Y3F3TVVSbWd4dElSbzJ2QmRhY0tkbkUwZ2pXdDhGT3BnNS80czlTRzNhNEl5My9xNWdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjU5ODQxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjFfeDY0LXNldHVwLmV4ZQpuUWVjL0QxNDRVUFNSRW9tS1o2eUNxS1cwaVZJM0tkbGhHZVI1TFl0N1p6S1RFbDZNd0l6MGRHcVU1VjdqSGdHZUxQQW9BdWtMc3FjNjZlTk5zTWlDUT09Cg=="
     }
   }
 }
