@@ -478,6 +478,9 @@ pub fn run_tauri_app() {
             // Create required directories
             setup_directories(&app_dir).map_err(|e| e.to_string())?;
 
+            // Initialize file-based logging (must be after directories are created)
+            init_logging(&app_dir).map_err(|e| e.to_string())?;
+
             // Initialize database
             let db_path = app_dir.join("database").join("llama.db");
             let db = DbManager::new(&db_path).map_err(|e| e.to_string())?;
@@ -644,5 +647,59 @@ fn setup_directories(base: &PathBuf) -> Result<(), AppError> {
         let path = base.join(dir);
         std::fs::create_dir_all(&path)?;
     }
+    Ok(())
+}
+
+/// Initialize tracing-subscriber with file logging to `%APPDATA%/llama-manager/logs/app.log`.
+/// In debug builds, also logs to stdout for developer convenience.
+fn init_logging(app_dir: &PathBuf) -> Result<(), AppError> {
+    use tracing_subscriber::prelude::*;
+
+    let log_path = app_dir.join("logs").join("app.log");
+    let log_file = std::fs::File::create(&log_path)
+        .map_err(|e| AppError::Generic(format!("Failed to create log file at {:?}: {}", log_path, e)))?;
+
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| {
+            #[cfg(debug_assertions)]
+            {
+                tracing_subscriber::EnvFilter::new("debug")
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                tracing_subscriber::EnvFilter::new("info")
+            }
+        });
+
+    // File logging layer
+    let file_layer = tracing_subscriber::fmt::layer()
+        .with_writer(log_file)
+        .with_filter(env_filter);
+
+    // Build subscriber with registry (supports .with() for layers)
+    let registry = tracing_subscriber::registry().with(file_layer);
+
+    #[cfg(debug_assertions)]
+    {
+        let console_layer = tracing_subscriber::fmt::layer()
+            .with_writer(std::io::stdout);
+        registry
+            .with(console_layer)
+            .try_init()
+            .map_err(|e| AppError::Generic(format!("Failed to set global tracing subscriber: {}", e)))?;
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        registry
+            .try_init()
+            .map_err(|e| AppError::Generic(format!("Failed to set global tracing subscriber: {}", e)))?;
+    }
+
+    // Bridge `log` crate macros (log::info!, log::warn!, etc.) to the tracing subscriber
+    tracing_log::LogTracer::init()
+        .map_err(|e| AppError::Generic(format!("Failed to set log tracer: {}", e)))?;
+
+    log::info!("Logging initialized -> {:?}", log_path);
+
     Ok(())
 }

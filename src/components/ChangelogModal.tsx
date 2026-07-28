@@ -82,7 +82,7 @@ export function ChangelogModal({ open, onOpenChange, tagName, buildNumber, body 
             </div>
           ) : error ? (
             <p className="text-sm text-red-400">{error}</p>
-          ) : changelog ? (
+          ) : changelog != null ? (
             <div className="prose prose-invert prose-sm max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>{changelog}</ReactMarkdown>
             </div>

@@ -90,7 +90,7 @@ export function Header() {
                   <Button
                     onClick={async () => {
                       // Persist changelog for post-install display
-                      if (settings && updateInfo.version && updateInfo.body) {
+                      if (settings && updateInfo.version && updateInfo.body != null) {
                         await saveSettings({
                           ...settings,
                           pending_changelog_version: updateInfo.version,
@@ -150,7 +150,7 @@ export function Header() {
       onOpenChange={setChangelogOpen}
       tagName={updateInfo.version ?? undefined}
       buildNumber={updateInfo.version ?? 'Update'}
-      body={updateInfo.body || undefined}
+      body={updateInfo.body ?? undefined}
     />
     </>
   );

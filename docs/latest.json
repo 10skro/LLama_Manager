@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.54",
-  "long_description": "## Changes\n\n### Features\n\n- Warn user and gracefully stop running servers before installing app updates\n- Append newly installed version cards to the end of the dashboard list",
-  "pub_date": "2026-07-28T09:57:47Z",
+  "version": "v0.6.55",
+  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix changelog display showing \"No changelog available\" in UpdateModal, notification bell, and post-install modal\n- Fix post-install changelog modal not appearing after app restart\n\n### Maintenance\n\n- Add file-based logging to `%APPDATA%/llama-manager/logs/app.log` for future debugging",
+  "pub_date": "2026-07-28T10:44:54Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.54/Llama.Manager_0.6.54_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXhhWXk2Z2pOT2VLZ29yT2ZqdWJTQStxRVhxU1h3dTR5VHR5Q2I0MzF2a3ltZmVJZm5NdXZoUW1FaHdrSlNmMnFBSWpxMU9VbDlBZzh4THl1T0crdXc4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjMyNjM1CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTRfeDY0LXNldHVwLmV4ZQpldHk0b1N4d1pzOTZhcmgzZVBFck1LN0oyZkEydGYxaGV1OUFES3FTa0pCYkFLTUJOOFRzNllnRlBvSnRDeWR2dndsRjBxM0pIc1U5SXlyOW0vdVVEQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.55/Llama.Manager_0.6.55_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTFsbHZjeDMyMlRpZGdsdUZXcDB6VXdXdWNrNGhya1VPcGZQVzJCbk1ycFdEeVVseG9EWnhQOGRUV3RQaTZWMjlYZXRYR1RkMmNNYThJOVd0aDRKR1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjM1NDcyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTVfeDY0LXNldHVwLmV4ZQpOeVJPMW1JR0lTcTBYa0NHTlFhajVLUlNtRHNESE5iWGxscTVqZ3hPODNGZGdTOVJnaTJTVUJ2YXpJK0ZDNXBqS3R0UE5EUmU2SW9SdnhJWmRmZXRBZz09Cg=="
     }
   }
 }
