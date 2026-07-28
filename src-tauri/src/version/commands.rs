@@ -7,7 +7,7 @@ use crate::db::connection::DbManager;
 use crate::download::commands::spawn_progress_forwarder;
 use crate::download::manager::DownloadManager;
 use crate::db::repo;
-use crate::models::types::{Build, InstalledVersion, VersionConfigLink, VersionOverride};
+use crate::models::types::{AppError, Build, InstalledVersion, VersionConfigLink, VersionOverride};
 use crate::version::manager::VersionManager;
 
 /// List all installed versions from the database.
@@ -80,6 +80,7 @@ pub async fn get_storage_usage(
 }
 
 /// Start installing a new version (download + post-download tasks).
+#[allow(clippy::too_many_arguments)]
 pub async fn install_version(
     app: AppHandle,
     state_db: State<'_, DbManager>,
@@ -122,11 +123,18 @@ pub async fn install_version(
     // Spawn post-download tasks (extract, validate, register) in background
     let db_clone = (*state_db).clone();
     tokio::spawn(async move {
-        let result = VersionManager::post_download_tasks(&db_clone, download_id, paths, tx, download_rx).await;
+        let result = VersionManager::post_download_tasks(&db_clone, download_id, paths.clone(), tx, download_rx).await;
         match result {
             Ok(_) => {},
+            Err(AppError::Cancelled) => {
+                log::info!("Installation cancelled: build {}", paths.build_number);
+            }
             Err(e) => {
-                log::error!("Post-download tasks failed: {}", e);
+                // Persist error message in DB
+                if let Ok(conn) = db_clone.lock_conn() {
+                    let _ = repo::update_download_error(&conn, download_id, &e.to_string());
+                }
+                log::error!("Post-download tasks failed for {}: {}", paths.build_number, e);
             }
         }
     });

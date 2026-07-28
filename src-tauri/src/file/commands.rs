@@ -48,7 +48,7 @@ pub fn scan_files(folder_path: &str, extensions: &[&str]) -> Result<Vec<ModelFil
     }
 
     // Sort by name for consistent ordering
-    files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    files.sort_by_key(|a| a.name.to_lowercase());
 
     Ok(files)
 }

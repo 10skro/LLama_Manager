@@ -16,7 +16,7 @@ impl SettingsManager {
 
         let storage_path = map
             .remove("storage_path")
-            .unwrap_or_else(|| "".to_string());
+            .unwrap_or_default();
 
         let theme = map.remove("theme").unwrap_or_else(|| "dark".to_string());
 

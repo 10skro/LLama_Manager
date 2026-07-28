@@ -10,7 +10,7 @@ use tauri_plugin_dialog::DialogExt;
 /// Get current application settings from the database.
 pub fn get_settings(state: State<'_, DbManager>) -> Result<serde_json::Value, String> {
     let settings = SettingsManager::get_settings(&state).map_err(|e| e.to_string())?;
-    Ok(serde_json::to_value(settings).map_err(|e| e.to_string())?)
+    serde_json::to_value(settings).map_err(|e| e.to_string())
 }
 
 /// Save application settings to the database.

@@ -100,9 +100,9 @@ impl FileManager {
 
                 // Skip directory entries (they'll be created automatically)
                 if file.is_dir() {
-                    let full_path = target.join(&outpath);
+                    let full_path = target.join(outpath);
                     // ZIP SLIP prevention: validate path is within target directory
-                    if !is_path_safe(target, &outpath) {
+                    if !is_path_safe(target, outpath) {
                         log::warn!("Skipping unsafe ZIP entry (ZIP SLIP): {:?}", outpath);
                         continue;
                     }
@@ -110,10 +110,10 @@ impl FileManager {
                     continue;
                 }
 
-                let full_path = target.join(&outpath);
+                let full_path = target.join(outpath);
 
                 // ZIP SLIP prevention: validate path is within target directory
-                if !is_path_safe(target, &outpath) {
+                if !is_path_safe(target, outpath) {
                     return Err(AppError::Extraction(format!(
                         "Unsafe ZIP entry detected (ZIP SLIP prevention): {:?}",
                         outpath

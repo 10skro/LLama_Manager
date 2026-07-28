@@ -35,7 +35,7 @@ pub fn spawn_progress_forwarder(
             }
 
             // DB write throttling (every 5 events or terminal) - keep existing logic
-            if is_terminal || update_counter % DB_WRITE_INTERVAL == 0 {
+            if is_terminal || update_counter.is_multiple_of(DB_WRITE_INTERVAL) {
                 let id = download_id.unwrap_or(progress.download_id);
                 if let Ok(conn) = db.lock_conn() {
                     // Map "downloaded" -> "completed" for DB writes so post_download_tasks can proceed

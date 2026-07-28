@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::path::PathBuf;
 
 use crate::models::types::AppError;
 
@@ -20,7 +19,7 @@ pub fn mask_path(path: &str) -> String {
 }
 
 /// Create required application directories under the app data folder.
-pub fn setup_directories(base: &PathBuf) -> Result<(), AppError> {
+pub fn setup_directories(base: &Path) -> Result<(), AppError> {
     let dirs = ["versions", "database", "downloads", "logs"];
     for dir in &dirs {
         let path = base.join(dir);
