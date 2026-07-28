@@ -1,4 +1,4 @@
-﻿{
+{
   "version": "v0.6.54",
   "long_description": "## Changes\n\n### Features\n\n- Warn user and gracefully stop running servers before installing app updates\n- Append newly installed version cards to the end of the dashboard list",
   "pub_date": "2026-07-28T09:57:47Z",
