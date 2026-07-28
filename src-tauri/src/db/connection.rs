@@ -14,25 +14,17 @@ pub struct DbManager {
 
 struct DbManagerInner {
     conn: Mutex<Connection>,
-    db_path: String,
 }
 
 impl DbManager {
     /// Create a new DbManager, opening (or creating) the database at the given path.
     pub fn new(db_path: &Path) -> Result<Self, AppError> {
-        let path_str = db_path.to_string_lossy().to_string();
         let conn = Connection::open(db_path)?;
         Ok(Self {
             inner: Arc::new(DbManagerInner {
                 conn: Mutex::new(conn),
-                db_path: path_str,
             }),
         })
-    }
-
-    /// Get the database path string.
-    pub fn db_path(&self) -> &str {
-        &self.inner.db_path
     }
 
     /// Initialize all required tables.

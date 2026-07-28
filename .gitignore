@@ -57,3 +57,6 @@ Llama.Manager_*.exe.sig
 
 # Local backup of signing keys (never commit these!)
 backups/
+
+# Analysis files (local only)
+suppressions-warnings.md

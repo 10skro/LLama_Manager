@@ -52,29 +52,6 @@ pub fn delete_version(conn: &Connection, id: i64) -> Result<bool, AppError> {
     Ok(rows > 0)
 }
 
-pub fn get_version_by_build(conn: &Connection, build: &str, backend: &str, architecture: &str) -> Result<Option<InstalledVersion>, AppError> {
-    let mut stmt = conn.prepare(
-        "SELECT id, build_number, backend, architecture, install_path, installed_at, status, download_id
-         FROM installed_versions WHERE build_number = ?1 AND backend = ?2 AND architecture = ?3",
-    )?;
-
-    let mut rows = stmt.query(params![build, backend, architecture])?;
-    if let Some(row) = rows.next()? {
-        Ok(Some(InstalledVersion {
-            id: row.get(0)?,
-            build_number: row.get(1)?,
-            backend: row.get(2)?,
-            architecture: row.get(3)?,
-            install_path: row.get(4)?,
-            installed_at: row.get(5)?,
-            status: row.get(6)?,
-            download_id: row.get(7)?,
-        }))
-    } else {
-        Ok(None)
-    }
-}
-
 /// Fetch a single installed version by its primary key ID.
 /// Used by `uninstall_version` to avoid loading the entire table.
 pub fn get_version_by_id(conn: &Connection, id: i64) -> Result<Option<InstalledVersion>, AppError> {
@@ -226,15 +203,6 @@ pub fn get_active_downloads(conn: &Connection) -> Result<Vec<DownloadRecord>, Ap
     })?;
 
     Ok(downloads.collect::<Result<Vec<_>, rusqlite::Error>>()?)
-}
-
-pub fn cancel_download(conn: &Connection, id: i64) -> Result<bool, AppError> {
-    let now = Local::now().to_rfc3339();
-    let rows = conn.execute(
-        "UPDATE downloads SET status = 'cancelled', updated_at = ?1 WHERE id = ?2 AND status IN ('pending', 'downloading')",
-        params![now, id],
-    )?;
-    Ok(rows > 0)
 }
 
 /// Delete old download records that are in terminal states (completed, failed, cancelled)

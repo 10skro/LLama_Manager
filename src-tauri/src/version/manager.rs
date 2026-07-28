@@ -15,12 +15,13 @@ use crate::models::types::{
 pub struct VersionManager;
 
 /// Holds paths and metadata needed for post-download installation steps.
+#[derive(Clone)]
 pub struct InstallPaths {
-    download_path: String,
-    install_path: String,
-    build_number: String,
-    backend: String,
-    architecture: String,
+    pub(crate) download_path: String,
+    pub(crate) install_path: String,
+    pub(crate) build_number: String,
+    pub(crate) backend: String,
+    pub(crate) architecture: String,
 }
 
 impl VersionManager {
@@ -124,6 +125,10 @@ impl VersionManager {
         match download_rx.await {
             Ok(DownloadResult::Completed) => {},
             Ok(DownloadResult::Failed(msg)) => {
+                // Persist error message in DB
+                if let Ok(conn) = db.lock_conn() {
+                    let _ = repo::update_download_error(&conn, download_id, &msg);
+                }
                 let _ = progress_tx.send(DownloadProgress {
                     download_id,
                     build_number: paths.build_number.clone(),
