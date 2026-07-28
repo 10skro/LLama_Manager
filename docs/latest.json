@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.58",
-  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix UI freeze when stopping terminal servers — kill_terminal now runs asynchronously\n- Add \"Stopping...\" status badge during server shutdown for visual feedback",
-  "pub_date": "2026-07-28T12:00:00Z",
+  "version": "v0.6.59",
+  "notes": "## Changes\n\n### Bug Fixes\n\n- Silence expected LogTracer::init() warning caused by Tauri double-initialization\n\n### Refactoring\n\n- Extract logging initialization into dedicated module for cleaner code organization\n- Slim lib.rs by moving utility functions to their proper modules\n\n### Maintenance\n\n- Replace single app.log with session-based log files (app-TIMESTAMP.log, max 20)\n- Add session header with version, build mode, and platform info on startup\n- Filter console output to warn+ only in debug builds (file logs still capture everything)\n- Remove verbose terminal debug emit calls from terminal reader threads\n- Downgrade GitHub API operational logs from info to debug level\n- Clean up console.log debug noise from frontend components",
+  "pub_date": "2026-07-28T14:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.58/Llama.Manager_0.6.58_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXdtVFc4MkQyNVExRnBYQUorWTZtYkdJOFRLK1FlYTg1Vm1FaWNkMkdRS3A1TktZMlozQmtuTXpqTTY4a0wzOGkrSGFrY3hEa0tmcmJSMFVKUFNwWHdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjM3ODc1CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNThfeDY0LXNldHVwLmV4ZQp1YytxZ0l6cCtqQ3ZKZGFiVkFPTm1BNnJNK2pEb3Nad1Jlc1U0bzZqYkNPS2I1SWZTWmpuL1NxTTRxbmgrMDNqMGVuZmFxOUFtN25kMmRvckt5QkxBZz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.59/Llama.Manager_0.6.59_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTREd2NXQmlmTXVpbDl1d0NUT051aUlDWVcvR1FBd3VsZ29DcHRHYWp1RmkySmgxYWRUZXpYSzBOYnoydENaeWxka2FxUnJUenlmc1g1WVZhNkxsTEFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjUxNjcyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTlfeDY0LXNldHVwLmV4ZQpYRHJOTGU0YVN4Mjc5N1k0VmJNNmMxd1JWVU1qVTBTNXVWOTcrUTRoN21CVUlhRVQ5MWdkNW1RamI0R1grTG1DdmlGdXFTYUJiNW9FdFFzUUFjbnBDQT09Cg=="
     }
   }
 }

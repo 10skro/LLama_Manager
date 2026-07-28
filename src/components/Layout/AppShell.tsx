@@ -33,7 +33,6 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     const unlisten = listen<string>('terminal-exit', (event) => {
       const sessionId = event.payload;
-      console.log('[APP] terminal-exit event for session:', sessionId);
       // Remove from running terminals tracking
       removeRunningTerminalBySessionId(sessionId);
     });

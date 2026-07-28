@@ -104,11 +104,9 @@ export function DownloadPanel() {
             if (p.status === 'completed' && p.downloaded === 0 && p.total === 0) {
               (async () => {
                 try {
-                  console.log('[DownloadPanel] Installed build_number:', p.build_number);
                   // Brief pause to ensure DB commit is fully propagated
                   await new Promise(resolve => setTimeout(resolve, 300));
                   const newBuilds = await checkNewBuilds();
-                  console.log('[DownloadPanel] checkNewBuilds() returned:', newBuilds.length, 'builds');
                   if (newBuilds.length > 0) {
                     const buildLabels = newBuilds.map((b: any) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
                     useAppStore.getState().setNewBuilds(buildLabels);

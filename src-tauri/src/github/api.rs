@@ -259,7 +259,7 @@ pub async fn fetch_latest_builds(
     github_client: &GithubClient,
     release_limit: usize,
 ) -> Result<FetchResult, AppError> {
-    log::info!("Fetching latest builds from GitHub API...");
+    log::debug!("Fetching latest builds from GitHub API...");
 
     // Ensure per_page is at least as large as release_limit so we get enough releases
     // GitHub API defaults to 30 per page, which would cap results if release_limit > 30
@@ -272,11 +272,11 @@ pub async fn fetch_latest_builds(
         .await?;
 
     let status = response.status();
-    log::info!("GitHub API response status: {}", status);
+    log::debug!("GitHub API response status: {}", status);
 
     // Handle 304 Not Modified - use cached builds
     if status.as_u16() == 304 {
-        log::info!("GitHub API returned 304 Not Modified, using cached builds.");
+            log::debug!("GitHub API returned 304 Not Modified, using cached builds.");
         return Ok(FetchResult::CacheHit);
     }
 
@@ -287,12 +287,12 @@ pub async fn fetch_latest_builds(
         if let Ok(etag_str) = etag.to_str() {
             let mut cached_etag = github_client.etag.lock().unwrap();
             *cached_etag = Some(etag_str.to_string());
-            log::info!("Cached ETag: {}", etag_str);
+            log::debug!("Cached ETag: {}", etag_str);
         }
     }
 
     let releases: Vec<GitHubRelease> = response.json().await?;
-    log::info!("Fetched {} releases from GitHub API.", releases.len());
+    log::debug!("Fetched {} releases from GitHub API.", releases.len());
 
     // Take only the `release_limit` most recent releases
     // GitHub API returns releases sorted by published_at descending
@@ -301,7 +301,7 @@ pub async fn fetch_latest_builds(
         builds.extend(parse_release_into_builds(&release));
     }
 
-    log::info!("Parsed {} builds from {} releases (filtered to allowed variants).", builds.len(), release_limit);
+    log::debug!("Parsed {} builds from {} releases (filtered to allowed variants).", builds.len(), release_limit);
 
     Ok(FetchResult::Fresh(builds))
 }
@@ -323,11 +323,11 @@ pub async fn fetch_builds_from_cache_or_api(
     // For Conditional mode, check if DB cache is fresh
     if mode != FetchMode::ForceRefresh {
         if is_cache_fresh(db) {
-            log::info!("Cache is fresh (within TTL), returning cached builds from database.");
+            log::debug!("Cache is fresh (within TTL), returning cached builds from database.");
             let conn = db.lock_conn()?;
             match get_cached_builds(&conn) {
                 Ok(cached) if !cached.is_empty() => {
-                    log::info!("Returned {} cached builds (cache fresh).", cached.len());
+                    log::debug!("Returned {} cached builds (cache fresh).", cached.len());
                     return Ok(cached);
                 }
                 Ok(_) => {
@@ -338,7 +338,7 @@ pub async fn fetch_builds_from_cache_or_api(
                 }
             }
         } else {
-            log::info!("Cache is stale or missing, will check with GitHub API.");
+            log::debug!("Cache is stale or missing, will check with GitHub API.");
         }
     }
 
@@ -346,7 +346,7 @@ pub async fn fetch_builds_from_cache_or_api(
     match fetch_latest_builds(github_client, release_limit).await {
         Ok(FetchResult::Fresh(builds)) => {
             // 200 OK with fresh data - update cache and persist metadata
-            log::info!("Caching {} builds to database.", builds.len());
+            log::debug!("Caching {} builds to database.", builds.len());
 
             // Persist ETag and timestamp to DB (brief lock, no await after)
             let current_etag = github_client.etag.lock().unwrap().clone();
@@ -362,7 +362,7 @@ pub async fn fetch_builds_from_cache_or_api(
         }
         Ok(FetchResult::CacheHit) => {
             // 304 Not Modified - use cached builds without updating timestamp
-            log::info!("GitHub API returned 304 Not Modified, using cached builds.");
+        log::debug!("GitHub API returned 304 Not Modified, using cached builds.");
             let conn = db.lock_conn()?;
             match get_cached_builds(&conn) {
                 Ok(cached) if !cached.is_empty() => {
@@ -381,7 +381,7 @@ pub async fn fetch_builds_from_cache_or_api(
             let conn = db.lock_conn()?;
             match get_cached_builds(&conn) {
                 Ok(cached) if !cached.is_empty() => {
-                    log::info!("Fell back to {} cached builds.", cached.len());
+                    log::debug!("Fell back to {} cached builds.", cached.len());
                     Ok(cached)
                 }
                 Ok(_) => Err(AppError::Generic("No cached builds available".to_string())),
@@ -410,7 +410,7 @@ pub async fn fetch_release_by_tag(
         "https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{}",
         tag_name
     );
-    log::info!("Fetching release by tag '{}' from GitHub API...", tag_name);
+    log::debug!("Fetching release by tag '{}' from GitHub API...", tag_name);
 
     let response = github_client
         .build_request(&url, false)
@@ -418,7 +418,7 @@ pub async fn fetch_release_by_tag(
         .await?;
 
     let status = response.status();
-    log::info!("GitHub API response status: {}", status);
+    log::debug!("GitHub API response status: {}", status);
 
     // Handle 404 - tag not found
     if status.as_u16() == 404 {
@@ -431,7 +431,7 @@ pub async fn fetch_release_by_tag(
     let response = response.error_for_status()?;
 
     let release: GitHubRelease = response.json().await?;
-    log::info!(
+    log::debug!(
         "Fetched release '{}' with {} assets from GitHub API.",
         release.tag_name,
         release.assets.len()
@@ -439,7 +439,7 @@ pub async fn fetch_release_by_tag(
 
     let builds = parse_release_into_builds(&release);
 
-    log::info!(
+    log::debug!(
         "Parsed {} builds from release '{}' (filtered to allowed variants).",
         builds.len(),
         release.tag_name
@@ -467,7 +467,7 @@ pub async fn search_builds(
         return Ok(Vec::new());
     }
 
-    log::info!("Searching for builds matching '{}' (normalized: '{}')...", query, normalized);
+    log::debug!("Searching for builds matching '{}' (normalized: '{}')...", query, normalized);
 
     // Fetch releases from GitHub (skip ETag caching to ensure fresh data for search)
     // Ensure per_page is at least as large as max_releases so we get enough releases
@@ -480,11 +480,11 @@ pub async fn search_builds(
         .await?;
 
     let status = response.status();
-    log::info!("GitHub API search response status: {}", status);
+    log::debug!("GitHub API search response status: {}", status);
 
     let response = response.error_for_status()?;
     let releases: Vec<GitHubRelease> = response.json().await?;
-    log::info!("Fetched {} releases for search.", releases.len());
+    log::debug!("Fetched {} releases for search.", releases.len());
 
     let mut matching_builds: Vec<Build> = Vec::new();
     // Deduplicate by the full triplet (build_number, backend, architecture) to correctly
@@ -512,7 +512,7 @@ pub async fn search_builds(
         num_b.cmp(&num_a)
     });
 
-    log::info!("Found {} builds matching '{}'.", matching_builds.len(), query);
+    log::debug!("Found {} builds matching '{}'.", matching_builds.len(), query);
     Ok(matching_builds)
 }
 
@@ -526,7 +526,7 @@ pub async fn fetch_release_changelog(
         "https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{}",
         tag_name
     );
-    log::info!("Fetching changelog for tag '{}' from GitHub API...", tag_name);
+    log::debug!("Fetching changelog for tag '{}' from GitHub API...", tag_name);
 
     let response = github_client
         .build_request(&url, true) // skip etag for changelog

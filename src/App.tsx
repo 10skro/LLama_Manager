@@ -75,18 +75,9 @@ function App() {
 
         // Show post-installation changelog modal if pending changelog exists
         if (settings.pending_changelog_version && settings.pending_changelog_body) {
-          console.log('[Update] Post-install changelog pending:', {
-            version: settings.pending_changelog_version,
-            bodyLength: settings.pending_changelog_body.length,
-          });
           setPostInstallChangelogVersion(settings.pending_changelog_version);
           setPostInstallChangelogBody(settings.pending_changelog_body);
           setShowPostInstallChangelog(true);
-        } else {
-          console.log('[Update] No post-install changelog pending:', {
-            hasVersion: !!settings.pending_changelog_version,
-            hasBody: !!settings.pending_changelog_body,
-          });
         }
 
         // Only update theme if it actually differs from the current store value
