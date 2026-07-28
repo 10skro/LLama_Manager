@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, AlertTriangle } from 'lucide-react';
+import { ChangelogRenderer } from '@/components/ChangelogRenderer';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useAppStore } from '@/store/useAppStore';
 import { saveSettings } from '@/services/settings';
@@ -78,40 +79,6 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
     await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
   };
 
-  // Parse changelog body: support basic markdown-like formatting
-  const renderChangelog = (body: string | null) => {
-    if (!body) return <p className="text-sm text-muted-foreground">No changelog available.</p>;
-
-    return (
-      <div className="space-y-2 text-sm [&>p]:text-muted-foreground">
-        {body.split('\n').map((line, i) => {
-          // Skip empty lines
-          if (!line.trim()) return <div key={i} className="h-2" />;
-
-          // Headers
-          if (line.startsWith('## ')) {
-            return <p key={i} className="font-semibold text-foreground mt-2">{line.replace('## ', '')}</p>;
-          }
-          if (line.startsWith('# ')) {
-            return <p key={i} className="font-bold text-foreground mt-2">{line.replace('# ', '')}</p>;
-          }
-
-          // Bullet points
-          if (line.startsWith('- ') || line.startsWith('* ')) {
-            return (
-              <p key={i} className="flex gap-2">
-                <span className="text-muted-foreground mt-0.5">•</span>
-                <span className="text-muted-foreground">{line.replace(/^[-*]\s/, '')}</span>
-              </p>
-            );
-          }
-
-          return <p key={i} className="text-muted-foreground">{line}</p>;
-        })}
-      </div>
-    );
-  };
-
   return (
     <>
       {/* Main update dialog */}
@@ -129,7 +96,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
           </DialogHeader>
 
           <div className="max-h-60 overflow-y-auto pr-1">
-            {renderChangelog(updateInfo.body)}
+            <ChangelogRenderer body={updateInfo.body} />
           </div>
 
           <div className="flex items-center gap-2 pt-2">
