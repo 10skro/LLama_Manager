@@ -1,7 +1,7 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, useGetRunningSessionId } from '@/store/useAppStore';
-import { emit } from '@tauri-apps/api/event';
+import { useAppStore, useGetRunningSessionId, useGetStoppingSessionId } from '@/store/useAppStore';
+import { emit, listen } from '@tauri-apps/api/event';
 import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
 
 /**
@@ -85,13 +85,34 @@ export function useTerminalLaunch({
   onError,
 }: UseTerminalLaunchParams) {
   const setRunningTerminal = useAppStore((state) => state.setRunningTerminal);
+  const removeRunningTerminal = useAppStore((state) => state.removeRunningTerminal);
+  const setStoppingTerminal = useAppStore((state) => state.setStoppingTerminal);
+  const removeStoppingTerminal = useAppStore((state) => state.removeStoppingTerminal);
   const injectingRef = useRef(false);
 
   // Check if this version's terminal is currently running
   // IMPORTANT: Hook must be called unconditionally (Rules of Hooks)
   // Tracking by version_id so multiple cards with the SAME config can run independently
   const runningSessionId = useGetRunningSessionId(version.id);
+  const stoppingSessionId = useGetStoppingSessionId(version.id);
   const isRunning = !!runningSessionId && configLink !== null;
+  const isStopping = !!stoppingSessionId;
+
+  // Listen for terminal-exit events to clear stopping state
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    listen<string>('terminal-exit', (event) => {
+      // Check if this exit event matches a stopping terminal for this version
+      const currentStoppingId = useAppStore.getState().stoppingTerminals[version.id];
+      if (currentStoppingId === event.payload) {
+        removeStoppingTerminal(version.id);
+      }
+    }).then((u) => { unlisten = u; }).catch(() => {});
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [version.id, removeStoppingTerminal]);
 
   const handlePlay = useCallback(async () => {
     // Guard: no config link or already injecting
@@ -168,20 +189,26 @@ export function useTerminalLaunch({
 
     injectingRef.current = true;
     try {
+      // Immediately move from running → stopping (UI shows "Stopping...")
+      removeRunningTerminal(version.id);
+      setStoppingTerminal(version.id, sessionId);
+
+      // Kill is async (non-blocking) — returns immediately, taskkill runs on a blocking thread.
+      // A "terminal-exit" event is emitted when the process tree is confirmed dead.
       await invoke<string>('kill_terminal', {
         sessionId: sessionId,
       });
 
-      // Remove from running terminals tracking by version_id
-      useAppStore.getState().removeRunningTerminal(version.id);
       // Notify floating terminal window of session changes
       emit('terminal-sessions-update', null).catch(() => {});
     } catch (err) {
       onError?.(`Failed to stop server: ${String(err)}`);
+      // On error, clear stopping state so the UI recovers
+      removeStoppingTerminal(version.id);
     } finally {
       injectingRef.current = false;
     }
-  }, [configLink, onError]);
+  }, [configLink, onError, version.id, removeRunningTerminal, setStoppingTerminal, removeStoppingTerminal]);
 
   // Toggle: if running → stop, else → start
   // Read current state at call time to avoid stale closure issues
@@ -190,25 +217,13 @@ export function useTerminalLaunch({
     // Track by version_id so each card is independent
     const currentSessionId = useAppStore.getState().runningTerminals[version.id];
     if (currentSessionId) {
-      // Currently running → stop
-      injectingRef.current = true;
-      try {
-        await invoke<string>('kill_terminal', {
-          sessionId: currentSessionId,
-        });
-        useAppStore.getState().removeRunningTerminal(version.id);
-        // Notify floating terminal window of session changes
-        emit('terminal-sessions-update', null).catch(() => {});
-      } catch (err) {
-        onError?.(`Failed to stop server: ${String(err)}`);
-      } finally {
-        injectingRef.current = false;
-      }
+      // Currently running → stop (reuse handleStop for consistent stopping flow)
+      await handleStop();
     } else {
       // Not running → play (reuse handlePlay)
       await handlePlay();
     }
-  }, [configLink, handlePlay, onError]);
+  }, [configLink, handlePlay, handleStop]);
 
   const hasConfig = configLink !== null;
 
@@ -217,6 +232,7 @@ export function useTerminalLaunch({
     handleStop,
     handleToggle,
     isRunning,
+    isStopping,
     hasConfig,
   };
 }

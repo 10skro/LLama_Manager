@@ -82,6 +82,12 @@ interface AppState {
   removeRunningTerminal: (versionId: number) => void;
   removeRunningTerminalBySessionId: (sessionId: string) => void;
   syncRunningTerminals: (sessions: { sessionId: string; versionId: number }[]) => void;
+
+  // Stopping terminals tracking (version_id -> session_id)
+  // Set when kill is initiated, cleared when terminal-exit event fires.
+  stoppingTerminals: Record<number, string>;
+  setStoppingTerminal: (versionId: number, sessionId: string) => void;
+  removeStoppingTerminal: (versionId: number) => void;
 }
 
 const initialTheme = getInitialTheme();
@@ -253,10 +259,28 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       return { runningTerminals: map };
     }),
+
+  // Stopping terminals tracking (version_id -> session_id)
+  stoppingTerminals: {},
+  setStoppingTerminal: (versionId, sessionId) =>
+    set((state) => ({
+      stoppingTerminals: { ...state.stoppingTerminals, [versionId]: sessionId },
+    })),
+  removeStoppingTerminal: (versionId) =>
+    set((state) => {
+      const next = { ...state.stoppingTerminals };
+      delete next[versionId];
+      return { stoppingTerminals: next };
+    }),
 }));
 
 // Computed helpers (use directly in components)
 export function useGetRunningSessionId(versionId: number): string | undefined {
   const runningTerminals = useAppStore((s) => s.runningTerminals);
   return runningTerminals[versionId];
+}
+
+export function useGetStoppingSessionId(versionId: number): string | undefined {
+  const stoppingTerminals = useAppStore((s) => s.stoppingTerminals);
+  return stoppingTerminals[versionId];
 }
