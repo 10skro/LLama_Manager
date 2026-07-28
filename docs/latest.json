@@ -1,11 +1,11 @@
-{
-  "version": "v0.6.53",
-  "long_description": "## Changes\n\n### Features\n\n- Remove Reorder toggle: drag-and-drop is now always active with inline GripVertical handle in each card's header bar\n\n### Bug Fixes\n\n- Enable changelog buttons when update is available (no longer blocked by missing release body)\n- Fix show_update_modal race condition on startup (setting now respected after async settings load)\n- Fix Override button hover to use native outline variant behavior (eliminates conflicting hover classes)",
-  "pub_date": "2026-07-27T19:00:00Z",
+﻿{
+  "version": "v0.6.54",
+  "long_description": "## Changes\n\n### Features\n\n- Warn user and gracefully stop running servers before installing app updates\n- Append newly installed version cards to the end of the dashboard list",
+  "pub_date": "2026-07-28T09:57:47Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.53/Llama.Manager_0.6.53_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXhKVVo5WU5oKzFBdU9CVVdUS1RGdC9SeG42dDlDZUVBSHdUeTlKNVlod3VVc2UrMkFYWkVhdXhoMzhzZytoZW96U2ZSeGdQQ2lEN2theCtETXVVQXcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTg4Njc5CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTNfeDY0LXNldHVwLmV4ZQoxU3hMSU9IbzVSWmk5dnBaYjJSUVJkaTl6UWN2Q2xabDhhRWRtVk5tZDRrY1ZMVHJiU2lvRnFWNEloUy9oOXA1ckhydlcyWHlaOFo3R3V0bUgzcVJBdz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.54/Llama.Manager_0.6.54_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXhhWXk2Z2pOT2VLZ29yT2ZqdWJTQStxRVhxU1h3dTR5VHR5Q2I0MzF2a3ltZmVJZm5NdXZoUW1FaHdrSlNmMnFBSWpxMU9VbDlBZzh4THl1T0crdXc4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjMyNjM1CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTRfeDY0LXNldHVwLmV4ZQpldHk0b1N4d1pzOTZhcmgzZVBFck1LN0oyZkEydGYxaGV1OUFES3FTa0pCYkFLTUJOOFRzNllnRlBvSnRDeWR2dndsRjBxM0pIc1U5SXlyOW0vdVVEQT09Cg=="
     }
   }
 }
