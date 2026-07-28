@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.55",
-  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix changelog display showing \"No changelog available\" in UpdateModal, notification bell, and post-install modal\n- Fix post-install changelog modal not appearing after app restart\n\n### Maintenance\n\n- Add file-based logging to `%APPDATA%/llama-manager/logs/app.log` for future debugging",
-  "pub_date": "2026-07-28T10:44:54Z",
+  "version": "v0.6.56",
+  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix changelog display showing \"No changelog available\" in UpdateModal, notification bell, and post-install modal\n- Fix post-install changelog modal not appearing after app restart\n- Fix crash on startup caused by logger initialization conflict with Tauri\n\n### Maintenance\n\n- Add file-based logging to `%APPDATA%/llama-manager/logs/app.log` for future debugging",
+  "pub_date": "2026-07-28T10:53:53Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.55/Llama.Manager_0.6.55_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTFsbHZjeDMyMlRpZGdsdUZXcDB6VXdXdWNrNGhya1VPcGZQVzJCbk1ycFdEeVVseG9EWnhQOGRUV3RQaTZWMjlYZXRYR1RkMmNNYThJOVd0aDRKR1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjM1NDcyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTVfeDY0LXNldHVwLmV4ZQpOeVJPMW1JR0lTcTBYa0NHTlFhajVLUlNtRHNESE5iWGxscTVqZ3hPODNGZGdTOVJnaTJTVUJ2YXpJK0ZDNXBqS3R0UE5EUmU2SW9SdnhJWmRmZXRBZz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.56/Llama.Manager_0.6.56_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVThldW1GcHNpZXNGZGQvYTlaYWd5UXpjMU5ibXUvQ09hNG1UVHNRYWZsOElrUW85cm1mbUs3enhneEVIM09NYkRKazF2QUMvQnh3cGZXT3lySFJXZGdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjM2MDIyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTZfeDY0LXNldHVwLmV4ZQpGR3RRS1NQZS9JVGxWcERRYkhveVl0dEo5SGt1MEtDTUM5WHlwcmtnQTBndnpMc0RDVFQwSERRVGZnYks0dC9LVnlOMU9IRUFaMnFyeFBwdCtiUHlDQT09Cg=="
     }
   }
 }

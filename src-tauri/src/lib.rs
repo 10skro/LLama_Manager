@@ -695,9 +695,12 @@ fn init_logging(app_dir: &PathBuf) -> Result<(), AppError> {
             .map_err(|e| AppError::Generic(format!("Failed to set global tracing subscriber: {}", e)))?;
     }
 
-    // Bridge `log` crate macros (log::info!, log::warn!, etc.) to the tracing subscriber
-    tracing_log::LogTracer::init()
-        .map_err(|e| AppError::Generic(format!("Failed to set log tracer: {}", e)))?;
+    // Bridge `log` crate macros (log::info!, log::warn!, etc.) to the tracing subscriber.
+    // This may fail if Tauri already initialized the logger — that's acceptable,
+    // tracing subscriber still captures tracing:: events.
+    if let Err(e) = tracing_log::LogTracer::init() {
+        eprintln!("Warning: could not bridge log crate to tracing: {}", e);
+    }
 
     log::info!("Logging initialized -> {:?}", log_path);
 
