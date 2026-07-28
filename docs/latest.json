@@ -1,6 +1,6 @@
 {
   "version": "v0.6.57",
-  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix changelog display showing \"No changelog available\" in UpdateModal, notification bell, and post-install modal\n- Fix post-install changelog modal not appearing after app restart\n- Fix crash on startup caused by logger initialization conflict with Tauri\n- Deduplicate concurrent check_app_update and fetch_builds calls on startup\n\n### Maintenance\n\n- Add file-based logging to `%APPDATA%/llama-manager/logs/app.log` for future debugging",
+  "long_description": "## Changes\n\n### Bug Fixes\n\n- Deduplicate concurrent check_app_update and fetch_builds calls on startup",
   "pub_date": "2026-07-28T11:00:57Z",
   "platforms": {
     "windows-x86_64": {
