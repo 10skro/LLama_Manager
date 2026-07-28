@@ -48,7 +48,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
     }
 
     // Persist changelog so it can be shown on next startup after the update
-    if (settings && updateInfo.version && updateInfo.body) {
+    if (settings && updateInfo.version && updateInfo.body != null) {
       await saveSettings({
         ...settings,
         pending_changelog_version: updateInfo.version,
@@ -74,7 +74,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
     setStoppingServers(false);
 
     // Persist changelog so it can be shown on next startup after the update
-    if (settings && updateInfo.version && updateInfo.body) {
+    if (settings && updateInfo.version && updateInfo.body != null) {
       await saveSettings({
         ...settings,
         pending_changelog_version: updateInfo.version,
