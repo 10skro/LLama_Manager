@@ -57,11 +57,14 @@ export function useAppUpdate() {
     return promise;
   }, [setAppUpdate]);
 
-  const installUpdate = useCallback(async () => {
+  const installUpdate = useCallback(async (changelogVersion?: string, changelogBody?: string) => {
     try {
       setError(null);
       setIsInstalling(true);
-      await invoke('install_app_update');
+      await invoke('install_app_update', {
+        changelogVersion: changelogVersion || null,
+        changelogBody: changelogBody || null,
+      });
       // The app will restart after install, so we don't reset state here
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

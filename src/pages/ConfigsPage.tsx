@@ -166,16 +166,16 @@ export function ConfigsPage() {
             <TableBody>
               {entries.map((entry) => (
                 <TableRow key={`${entry.type}-${entry.id}`} className="border-border/50">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <Terminal className="h-4 w-4 text-muted-foreground" />
+                  <TableCell className="font-medium max-w-xs truncate">
+                    <div className="flex items-center gap-2 truncate">
+                      <Terminal className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       {entry.color && (
                         <span
                           className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: getColorHex(entry.color) }}
                         />
                       )}
-                      {entry.name}
+                      <span className="truncate">{entry.name}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -223,7 +223,9 @@ export function ConfigsPage() {
               Delete Config
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+              Are you sure you want to delete{' '}
+              <strong className="break-all">{deleteTarget?.name}</strong>
+              {' '}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

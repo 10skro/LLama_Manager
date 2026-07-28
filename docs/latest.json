@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.59",
-  "notes": "## Changes\n\n### Bug Fixes\n\n- Silence expected LogTracer::init() warning caused by Tauri double-initialization\n\n### Refactoring\n\n- Extract logging initialization into dedicated module for cleaner code organization\n- Slim lib.rs by moving utility functions to their proper modules\n\n### Maintenance\n\n- Replace single app.log with session-based log files (app-TIMESTAMP.log, max 20)\n- Add session header with version, build mode, and platform info on startup\n- Filter console output to warn+ only in debug builds (file logs still capture everything)\n- Remove verbose terminal debug emit calls from terminal reader threads\n- Downgrade GitHub API operational logs from info to debug level\n- Clean up console.log debug noise from frontend components",
-  "pub_date": "2026-07-28T14:00:00Z",
+  "version": "v0.6.60",
+  "notes": "## Changes\n\n### Features\n- Unify changelog rendering with ReactMarkdown for consistent styling across all views\n\n### Bug Fixes\n- Persist changelog in backend to eliminate race condition on app restart\n- Add update flow logging and warn instead of silently bypassing on terminal check failure\n- Prevent long config names from overflowing table cells and delete dialog",
+  "pub_date": "2026-07-28T16:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.59/Llama.Manager_0.6.59_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTREd2NXQmlmTXVpbDl1d0NUT051aUlDWVcvR1FBd3VsZ29DcHRHYWp1RmkySmgxYWRUZXpYSzBOYnoydENaeWxka2FxUnJUenlmc1g1WVZhNkxsTEFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjUxNjcyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTlfeDY0LXNldHVwLmV4ZQpYRHJOTGU0YVN4Mjc5N1k0VmJNNmMxd1JWVU1qVTBTNXVWOTcrUTRoN21CVUlhRVQ5MWdkNW1RamI0R1grTG1DdmlGdXFTYUJiNW9FdFFzUUFjbnBDQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.60/Llama.Manager_0.6.60_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTVoRlY0Uk5ZVXI3VHBWeGlzckpLTlI2MUxCcU1ITXExbHhxaC9BaUJGVWdZVWRHSmYzTFUxVk9RbkZVYlZFeVpNRWpyL0lpcGdXYVRKNGVJSnkvWkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjU0OTk1CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjBfeDY0LXNldHVwLmV4ZQpxQUM2TEoxdnlBQmx3cEVjcm5IOFRrRk5VM2xFdXBoSENEU1FXazNtZEI2VjZQWnVwaVE1VVhxeXlxZDhUUVIxeEo1cks2N0FtYS94RU0ybVBXZkZEZz09Cg=="
     }
   }
 }

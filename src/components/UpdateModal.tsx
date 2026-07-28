@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, AlertTriangle } from 'lucide-react';
+import { ChangelogRenderer } from '@/components/ChangelogRenderer';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useAppStore } from '@/store/useAppStore';
 import { saveSettings } from '@/services/settings';
@@ -34,28 +35,29 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   };
 
   const handleInstall = async () => {
+    let serversRunning = false;
+
     try {
       // Check if any terminal sessions are currently running
       const activeSessions = await invoke<Array<{ sessionId: string }>>('list_active_terminals');
 
       if (activeSessions.length > 0) {
-        // Show warning dialog asking for confirmation
-        setShowWarning(true);
-        return;
+        serversRunning = true;
       }
-    } catch {
-      // If check fails, proceed without warning (fail-safe)
+    } catch (err) {
+      // If check fails, assume servers might be running (safe-by-default)
+      console.error('Failed to check active terminals before update:', err);
+      serversRunning = true;
     }
 
-    // Persist changelog so it can be shown on next startup after the update
-    if (settings && updateInfo.version && updateInfo.body != null) {
-      await saveSettings({
-        ...settings,
-        pending_changelog_version: updateInfo.version,
-        pending_changelog_body: updateInfo.body,
-      });
+    if (serversRunning) {
+      // Show warning dialog asking for confirmation
+      setShowWarning(true);
+      return;
     }
-    await installUpdate();
+
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
   };
 
   const handleConfirmWithServers = async () => {
@@ -73,49 +75,8 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     setStoppingServers(false);
 
-    // Persist changelog so it can be shown on next startup after the update
-    if (settings && updateInfo.version && updateInfo.body != null) {
-      await saveSettings({
-        ...settings,
-        pending_changelog_version: updateInfo.version,
-        pending_changelog_body: updateInfo.body,
-      });
-    }
-    await installUpdate();
-  };
-
-  // Parse changelog body: support basic markdown-like formatting
-  const renderChangelog = (body: string | null) => {
-    if (!body) return <p className="text-sm text-muted-foreground">No changelog available.</p>;
-
-    return (
-      <div className="space-y-2 text-sm [&>p]:text-muted-foreground">
-        {body.split('\n').map((line, i) => {
-          // Skip empty lines
-          if (!line.trim()) return <div key={i} className="h-2" />;
-
-          // Headers
-          if (line.startsWith('## ')) {
-            return <p key={i} className="font-semibold text-foreground mt-2">{line.replace('## ', '')}</p>;
-          }
-          if (line.startsWith('# ')) {
-            return <p key={i} className="font-bold text-foreground mt-2">{line.replace('# ', '')}</p>;
-          }
-
-          // Bullet points
-          if (line.startsWith('- ') || line.startsWith('* ')) {
-            return (
-              <p key={i} className="flex gap-2">
-                <span className="text-muted-foreground mt-0.5">•</span>
-                <span className="text-muted-foreground">{line.replace(/^[-*]\s/, '')}</span>
-              </p>
-            );
-          }
-
-          return <p key={i} className="text-muted-foreground">{line}</p>;
-        })}
-      </div>
-    );
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
   };
 
   return (
@@ -135,7 +96,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
           </DialogHeader>
 
           <div className="max-h-60 overflow-y-auto pr-1">
-            {renderChangelog(updateInfo.body)}
+            <ChangelogRenderer body={updateInfo.body} />
           </div>
 
           <div className="flex items-center gap-2 pt-2">

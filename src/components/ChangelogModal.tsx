@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { ChangelogRenderer } from '@/components/ChangelogRenderer';
 import { fetchReleaseChangelog } from '@/services/github';
 
 interface ChangelogModalProps {
@@ -83,9 +81,7 @@ export function ChangelogModal({ open, onOpenChange, tagName, buildNumber, body 
           ) : error ? (
             <p className="text-sm text-red-400">{error}</p>
           ) : changelog != null ? (
-            <div className="prose prose-invert prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>{changelog}</ReactMarkdown>
-            </div>
+            <ChangelogRenderer body={changelog} />
           ) : (
             <p className="text-sm text-muted-foreground">No changelog available for this release.</p>
           )}

@@ -43,7 +43,9 @@ pub fn kill_terminal(
 pub fn list_active_terminals(
     state_terminal: State<'_, TerminalManager>,
 ) -> Vec<ActiveTerminalInfo> {
-    state_terminal.list_active_sessions()
+    let sessions = state_terminal.list_active_sessions();
+    log::info!("[UPDATE] list_active_terminals: {} session(s) found", sessions.len());
+    sessions
 }
 
 /// Get the active terminal session for a given config_id.
@@ -59,7 +61,8 @@ pub fn get_terminal_by_config(
 pub fn kill_all_terminals(
     state_terminal: State<'_, TerminalManager>,
 ) {
-    state_terminal.kill_all();
+    let killed = state_terminal.kill_all();
+    log::info!("[UPDATE] kill_all_terminals: killed {} session(s)", killed);
 }
 
 /// Get the buffered output for a terminal session.
