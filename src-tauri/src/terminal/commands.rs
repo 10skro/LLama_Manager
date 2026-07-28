@@ -52,6 +52,13 @@ pub fn get_terminal_by_config(
     state_terminal.get_session_by_config_id(&config_id)
 }
 
+/// Kill all terminal sessions and their child processes.
+pub fn kill_all_terminals(
+    state_terminal: State<'_, TerminalManager>,
+) {
+    state_terminal.kill_all();
+}
+
 /// Get the buffered output for a terminal session.
 /// Returns the last ~4KB of output for late-joining viewers.
 pub fn get_terminal_buffer(
