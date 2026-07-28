@@ -102,13 +102,6 @@ impl GithubClient {
     }
 }
 
-/// Load the persisted ETag from the settings table.
-/// Returns None if no ETag is stored or on any DB error.
-fn load_persisted_etag(db: &crate::db::connection::DbManager) -> Option<String> {
-    let conn = db.lock_conn().ok()?;
-    get_setting(&conn, SETTING_GITHUB_ETAG).ok()?.clone()
-}
-
 /// Load the last fetched timestamp from the settings table.
 /// Returns None if not set or on any DB error.
 fn load_last_fetched_at(db: &crate::db::connection::DbManager) -> Option<String> {

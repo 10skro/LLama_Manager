@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.61",
-  "notes": "## Changes\n\n### Bug Fixes\n- Download cancellation no longer logged as error (now info level)\n- Download errors are now persisted to database for troubleshooting\n- ANSI escape codes removed from log files (plain text only)\n\n### Refactoring\n- Removed unused database methods and dead code\n- Fixed 21 Clippy warnings for improved code quality",
-  "pub_date": "2026-07-28T17:00:00Z",
+  "version": "v0.6.62",
+  "notes": "## Changes\n\n### Refactoring\n- Remove 9 unused code elements (182 lines) improving codebase cleanliness\n\n### Maintenance\n- Remove `#![allow(dead_code)]` compiler directive — no longer needed",
+  "pub_date": "2026-07-29T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.61/Llama.Manager_0.6.61_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXh6ZlY1UjVRZGN2WENaZG1LSHNLSi9rdUNGVnpPQWxkdDc4Y3F3TVVSbWd4dElSbzJ2QmRhY0tkbkUwZ2pXdDhGT3BnNS80czlTRzNhNEl5My9xNWdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjU5ODQxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjFfeDY0LXNldHVwLmV4ZQpuUWVjL0QxNDRVUFNSRW9tS1o2eUNxS1cwaVZJM0tkbGhHZVI1TFl0N1p6S1RFbDZNd0l6MGRHcVU1VjdqSGdHZUxQQW9BdWtMc3FjNjZlTk5zTWlDUT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.62/Llama.Manager_0.6.62_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTFBV1NmdFhkS1RpY1VZTUd6MTJ2UjUwQnR2Y3BzaElrT3Rxdm9aYmJsYVJJcHBaM3NGVkdqUXEySytOOVl4L1duM3d6WS9pY3NadHBTY0ZraUhpUlFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjgxODgxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjJfeDY0LXNldHVwLmV4ZQpabUJySjZ2YlRQbHExbHRyenBpZHNCRkR1YzVpUTFtYXZsUXV3THg4c3B1bHJ4dThabHhHdXg4UWZZVTRkUVNnQWsvRWdOcDJuR3NpUEJsay9PcVFCUT09Cg=="
     }
   }
 }

@@ -38,24 +38,12 @@ pub struct TerminalOutputEvent {
 /// Shared between the reader thread and the command thread.
 pub struct OutputBuffer {
     inner: Arc<Mutex<VecDeque<char>>>,
-    max_len: usize,
 }
 
 impl OutputBuffer {
-    pub fn new(max_len: usize) -> Self {
+    pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(VecDeque::new())),
-            max_len,
-        }
-    }
-
-    pub fn push(&self, text: &str) {
-        let mut buf = self.inner.lock().unwrap();
-        for c in text.chars() {
-            buf.push_back(c);
-            if buf.len() > self.max_len {
-                buf.pop_front();
-            }
         }
     }
 
@@ -180,7 +168,7 @@ impl TerminalManager {
             session_id, pid, version_id, config_id);
 
         // Store session with output buffer (4 KB circular buffer)
-        let output_buffer = OutputBuffer::new(4096);
+        let output_buffer = OutputBuffer::new();
         let buffer_arc = output_buffer.clone_arc();
 
         let session = TerminalSession {
@@ -495,13 +483,6 @@ impl TerminalManager {
         }
     }
 
-    /// Check if a session is still alive (process hasn't exited).
-    pub fn is_session_alive(&self, session_id: &str) -> bool {
-        match self.sessions.lock() {
-            Ok(sessions) => sessions.contains_key(session_id),
-            Err(_) => false,
-        }
-    }
 }
 
 impl Default for TerminalManager {

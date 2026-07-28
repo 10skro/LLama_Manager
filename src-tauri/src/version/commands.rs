@@ -23,42 +23,6 @@ pub fn uninstall_version(
     VersionManager::uninstall_version(&state, id).map(|_| true).map_err(|e| e.to_string())
 }
 
-/// Open a folder in the system file explorer (Windows: explorer.exe).
-/// Validates that the path is within the storage directory.
-pub fn open_folder(
-    app: AppHandle,
-    state_db: State<'_, DbManager>,
-    path: String,
-) -> Result<String, String> {
-    // Get the actual storage base (respects user-configured custom path)
-    let fallback_path = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?
-        .to_string_lossy()
-        .to_string();
-    let storage_dir = std::path::PathBuf::from(SettingsManager::get_storage_path(&state_db, &fallback_path));
-
-    // Canonicalize both paths to resolve .. and symlinks
-    let canonical_storage = storage_dir.canonicalize()
-        .map_err(|e| format!("Storage directory not found: {}", e))?;
-    let path_buf = std::path::PathBuf::from(&path);
-    let canonical_path = path_buf.canonicalize()
-        .map_err(|e| format!("Path not found: {}", e))?;
-
-    // Check that the canonical path starts with the canonical storage dir
-    if !canonical_path.starts_with(&canonical_storage) {
-        return Err("Access denied: path is outside the storage directory".to_string());
-    }
-
-    std::process::Command::new("explorer")
-        .arg(&path)
-        .spawn()
-        .map_err(|e| format!("Failed to open folder: {}", e))?;
-
-    Ok("Folder opened".to_string())
-}
-
 /// Calculate total storage usage of installed versions.
 pub async fn get_storage_usage(
     app: AppHandle,

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod cards;
 mod config;
 mod custom_command;
@@ -85,14 +83,6 @@ fn uninstall_version(
     id: i64,
 ) -> Result<bool, String> {
     version::commands::uninstall_version(state, id)
-}
-#[tauri::command]
-fn open_folder(
-    app: tauri::AppHandle,
-    state_db: State<'_, DbManager>,
-    path: String,
-) -> Result<String, String> {
-    version::commands::open_folder(app, state_db, path)
 }
 #[tauri::command]
 async fn get_storage_usage(
@@ -601,7 +591,6 @@ pub fn run_tauri_app() {
             get_catalog_last_fetched,
             get_installed_versions,
             uninstall_version,
-            open_folder,
             get_storage_usage,
             install_version,
             get_version_config_link,

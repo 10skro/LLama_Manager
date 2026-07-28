@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use tokio::sync::mpsc;
 
-use crate::models::types::{AppError, DownloadProgress, VersionInfo};
+use crate::models::types::{AppError, DownloadProgress};
 
 /// File operations: ZIP extraction, validation, cleanup.
 pub struct FileManager;
@@ -199,42 +199,6 @@ impl FileManager {
         }
 
         Ok(true)
-    }
-
-    /// Detect version info from an installed directory.
-    pub fn detect_version_info(install_path: &str) -> Result<VersionInfo, AppError> {
-        let path = Path::new(install_path);
-
-        let has_cli = path.join("llama-cli.exe").exists();
-        let has_server = path.join("llama-server.exe").exists();
-        let has_quantize = path.join("llama-quantize.exe").exists();
-
-        // Try to detect backend from available binaries
-        let has_cuda = path.join("llama-bench.exe").exists()
-            && path.join("llama-cli.exe").exists();
-        let has_vulkan = path.join("llama-vulkan.exe").exists()
-            || has_cuda; // simplified heuristic
-
-        let backend = if has_vulkan {
-            "Vulkan".to_string()
-        } else if has_cuda {
-            "CUDA".to_string()
-        } else {
-            "CPU".to_string()
-        };
-
-        // Try to extract build number from directory name
-        // Directory format is "{build_number}_{backend}_{architecture}", so split and take first part
-        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
-        let build_number = dir_name.split('_').next().unwrap_or(dir_name).to_string();
-
-        Ok(VersionInfo {
-            build_number,
-            backend,
-            has_cli,
-            has_server,
-            has_quantize,
-        })
     }
 
     /// Recursively delete a version directory.

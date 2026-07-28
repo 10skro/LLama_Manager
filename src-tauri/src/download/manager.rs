@@ -166,11 +166,6 @@ impl DownloadManager {
         }
     }
 
-    /// Get current progress for a download.
-    pub async fn get_progress(&self, download_id: i64) -> Option<DownloadProgress> {
-        let active = self.active_downloads.lock().await;
-        active.get(&download_id).map(|ad| ad.progress.clone())
-    }
 }
 
 impl Default for DownloadManager {

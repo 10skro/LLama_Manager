@@ -393,32 +393,4 @@ impl VersionManager {
         Ok(total_size)
     }
 
-    /// Open a folder in the system file explorer.
-    pub fn open_folder(path: &str) -> Result<(), AppError> {
-        #[cfg(windows)]
-        {
-            std::process::Command::new("explorer")
-                .arg(path)
-                .spawn()
-                .map_err(|e| AppError::Generic(format!("Failed to open explorer: {}", e)))?;
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            std::process::Command::new("open")
-                .arg(path)
-                .spawn()
-                .map_err(|e| AppError::Generic(format!("Failed to open finder: {}", e)))?;
-        }
-
-        #[cfg(target_os = "linux")]
-        {
-            std::process::Command::new("xdg-open")
-                .arg(path)
-                .spawn()
-                .map_err(|e| AppError::Generic(format!("Failed to open file manager: {}", e)))?;
-        }
-
-        Ok(())
-    }
 }
