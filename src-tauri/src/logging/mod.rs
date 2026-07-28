@@ -69,11 +69,10 @@ pub fn init(app_dir: &PathBuf) -> Result<(), AppError> {
     }
 
     // Bridge `log` crate macros (log::info!, log::warn!, etc.) to the tracing subscriber.
-    // This may fail if Tauri already initialized the logger — that's acceptable,
-    // tracing subscriber still captures tracing:: events.
-    if let Err(e) = tracing_log::LogTracer::init() {
-        eprintln!("Warning: could not bridge log crate to tracing: {}", e);
-    }
+    // Tauri may have already initialized the logger before .setup() runs —
+    // in that case LogTracer::init() fails silently, which is fine since
+    // Tauri's own bridge handles log → tracing already.
+    let _ = tracing_log::LogTracer::init();
 
     // Log session header: version, build mode, platform, log file
     let build_mode = if cfg!(debug_assertions) { "DEV" } else { "RELEASE" };
