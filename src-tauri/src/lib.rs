@@ -382,6 +382,12 @@ fn get_terminal_buffer(
 async fn open_terminal_window(app: tauri::AppHandle) -> Result<(), String> {
     terminal::commands::open_terminal_window(app).await
 }
+#[tauri::command]
+fn kill_all_terminals(
+    state_terminal: State<'_, TerminalManager>,
+) {
+    terminal::commands::kill_all_terminals(state_terminal)
+}
 
 // App Update — native Tauri updater (signature verification enabled)
 use tauri::Emitter;
@@ -416,6 +422,11 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
 
 #[tauri::command]
 async fn install_app_update(app: tauri::AppHandle) -> Result<(), String> {
+    // SAFETY NET: always kill all terminal sessions before updating
+    // (frontend should have already asked for confirmation, but this guarantees cleanup)
+    let terminal = app.state::<TerminalManager>();
+    terminal.kill_all();
+
     let updater = app.updater()
         .map_err(|e| format!("Failed to initialize updater: {}", e))?;
 
@@ -614,6 +625,7 @@ pub fn run_tauri_app() {
             get_terminal_by_config,
             get_terminal_buffer,
             open_terminal_window,
+            kill_all_terminals,
             // Theme
             persist_theme_change,
             // App Update
