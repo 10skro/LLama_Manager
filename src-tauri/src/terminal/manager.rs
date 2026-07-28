@@ -420,11 +420,15 @@ impl TerminalManager {
     /// Kill all terminal sessions and their child processes (cleanup on app exit).
     /// Runs taskkill synchronously since this is only called during app shutdown
     /// where blocking the main thread is acceptable.
-    pub fn kill_all(&self) {
+    /// Returns the number of sessions that were killed.
+    pub fn kill_all(&self) -> usize {
         let sessions: Vec<_> = match self.sessions.lock() {
             Ok(mut s) => s.drain().map(|(_id, s)| s).collect(),
-            Err(_) => return,
+            Err(_) => return 0,
         };
+
+        let count = sessions.len();
+        log::info!("[TERMINAL] kill_all: killing {} session(s)", count);
 
         for session in sessions {
             let pid = session.pid;
@@ -438,6 +442,8 @@ impl TerminalManager {
                 log::warn!("[TERMINAL] kill_all: failed to execute taskkill for PID {}: {}", pid, e);
             }
         }
+
+        count
     }
 
     /// Get the count of active sessions.

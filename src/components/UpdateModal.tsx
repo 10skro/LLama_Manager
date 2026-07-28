@@ -34,17 +34,25 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   };
 
   const handleInstall = async () => {
+    let serversRunning = false;
+
     try {
       // Check if any terminal sessions are currently running
       const activeSessions = await invoke<Array<{ sessionId: string }>>('list_active_terminals');
 
       if (activeSessions.length > 0) {
-        // Show warning dialog asking for confirmation
-        setShowWarning(true);
-        return;
+        serversRunning = true;
       }
-    } catch {
-      // If check fails, proceed without warning (fail-safe)
+    } catch (err) {
+      // If check fails, assume servers might be running (safe-by-default)
+      console.error('Failed to check active terminals before update:', err);
+      serversRunning = true;
+    }
+
+    if (serversRunning) {
+      // Show warning dialog asking for confirmation
+      setShowWarning(true);
+      return;
     }
 
     // Persist changelog so it can be shown on next startup after the update

@@ -421,6 +421,8 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
 
 #[tauri::command]
 async fn install_app_update(app: tauri::AppHandle) -> Result<(), String> {
+    log::info!("[UPDATE] install_app_update: starting update installation");
+
     // Kill all terminal sessions before updating (safety net)
     let terminal = app.state::<TerminalManager>();
     terminal.kill_all();
