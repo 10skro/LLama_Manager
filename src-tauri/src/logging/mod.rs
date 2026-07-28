@@ -39,8 +39,9 @@ pub fn init(app_dir: &std::path::Path) -> Result<(), AppError> {
             }
         });
 
-    // File logging layer
+    // File logging layer (no ANSI colors in file — plain text only)
     let file_layer = tracing_subscriber::fmt::layer()
+        .with_ansi(false)
         .with_writer(log_file)
         .with_filter(env_filter);
 
