@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod cards;
 mod config;
 mod custom_command;
