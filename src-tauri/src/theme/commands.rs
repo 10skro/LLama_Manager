@@ -22,7 +22,7 @@ pub async fn persist_theme_change(
     let conn = db.lock_conn().map_err(|e| e.to_string())?;
     repo::set_setting(&conn, "theme", &theme_id)
         .map_err(|e| e.to_string())?;
-    log::info!("Theme changed to: {}", theme_id);
+    log::debug!("Theme changed to: {}", theme_id);
 
     // Emit to ALL webviews (main window + terminal widget + any future windows)
     let _ = app.emit("theme-changed", ThemeChangedEvent { theme_id });

@@ -214,7 +214,6 @@ impl TerminalManager {
             std::thread::spawn(move || {
                 let log_msg = format!("[TERMINAL] stdout reader started for {}", sid);
                 log::info!("{}", log_msg);
-                let _ = app_handle.emit("terminal-debug", log_msg);
 
                 let reader = BufReader::new(stdout);
                 let mut read_count: u64 = 0;
@@ -224,10 +223,6 @@ impl TerminalManager {
                         Ok(text) => {
                             read_count += 1;
                             let with_newline = format!("{}\r\n", text);
-                            let preview = with_newline.chars().take(120).collect::<String>();
-                            let log_msg = format!("[TERMINAL] stdout read #{}: {} bytes: {:?}", read_count, with_newline.len(), preview);
-                            log::info!("{}", log_msg);
-                            let _ = app_handle.emit("terminal-debug", log_msg.clone());
 
                             // Store in circular buffer for late-joining viewers
                             {
@@ -244,22 +239,16 @@ impl TerminalManager {
                                 session_id: sid.clone(),
                                 text: with_newline.clone(),
                             }) {
-                                Ok(()) => {
-                                    let log_msg = format!("[TERMINAL] emit OK for {}", sid);
-                                    log::info!("{}", log_msg);
-                                    let _ = app_handle.emit("terminal-debug", log_msg);
-                                }
+                                Ok(()) => {}
                                 Err(e) => {
                                     let log_msg = format!("[TERMINAL] emit FAILED for {}: {}", sid, e);
                                     log::error!("{}", log_msg);
-                                    let _ = app_handle.emit("terminal-debug", log_msg);
                                 }
                             }
                         }
                         Err(e) => {
                             let log_msg = format!("[TERMINAL] stdout read error after {} reads: {}", read_count, e);
                             log::warn!("{}", log_msg);
-                            let _ = app_handle.emit("terminal-debug", log_msg);
                             break;
                         }
                     }
@@ -267,7 +256,6 @@ impl TerminalManager {
 
                 let log_msg = format!("[TERMINAL] stdout reader exiting for {} after {} reads", sid, read_count);
                 log::info!("{}", log_msg);
-                let _ = app_handle.emit("terminal-debug", log_msg);
             });
         }
 
@@ -285,7 +273,6 @@ impl TerminalManager {
             std::thread::spawn(move || {
                 let log_msg = format!("[TERMINAL] stderr reader started for {}", sid);
                 log::info!("{}", log_msg);
-                let _ = app_handle.emit("terminal-debug", log_msg);
 
                 let reader = BufReader::new(stderr);
                 let mut read_count: u64 = 0;
@@ -295,10 +282,6 @@ impl TerminalManager {
                         Ok(text) => {
                             read_count += 1;
                             let with_newline = format!("\x1b[31m{}\x1b[0m\r\n", text);
-                            let preview = with_newline.chars().take(120).collect::<String>();
-                            let log_msg = format!("[TERMINAL] stderr read #{}: {} bytes: {:?}", read_count, with_newline.len(), preview);
-                            log::info!("{}", log_msg);
-                            let _ = app_handle.emit("terminal-debug", log_msg.clone());
 
                             // Store in circular buffer for late-joining viewers
                             {
@@ -315,22 +298,16 @@ impl TerminalManager {
                                 session_id: sid.clone(),
                                 text: with_newline.clone(),
                             }) {
-                                Ok(()) => {
-                                    let log_msg = format!("[TERMINAL] emit OK for {}", sid);
-                                    log::info!("{}", log_msg);
-                                    let _ = app_handle.emit("terminal-debug", log_msg);
-                                }
+                                Ok(()) => {}
                                 Err(e) => {
                                     let log_msg = format!("[TERMINAL] emit FAILED for {}: {}", sid, e);
                                     log::error!("{}", log_msg);
-                                    let _ = app_handle.emit("terminal-debug", log_msg);
                                 }
                             }
                         }
                         Err(e) => {
                             let log_msg = format!("[TERMINAL] stderr read error after {} reads: {}", read_count, e);
                             log::warn!("{}", log_msg);
-                            let _ = app_handle.emit("terminal-debug", log_msg);
                             break;
                         }
                     }
@@ -338,7 +315,6 @@ impl TerminalManager {
 
                 let log_msg = format!("[TERMINAL] stderr reader exiting for {} after {} reads", sid, read_count);
                 log::info!("{}", log_msg);
-                let _ = app_handle.emit("terminal-debug", log_msg);
             });
         }
 
@@ -360,7 +336,6 @@ impl TerminalManager {
                 if !alive {
                     let log_msg = format!("[TERMINAL] process exited for {}", sid);
                     log::info!("{}", log_msg);
-                    let _ = app_handle.emit("terminal-debug", log_msg);
                     let _ = app_handle.emit("terminal-exit", sid.clone());
                     break;
                 }
