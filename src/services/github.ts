@@ -6,11 +6,28 @@ export interface FetchBuildsOptions {
   forceRefresh?: boolean;
 }
 
+// Dedup guard: prevent concurrent fetch_builds calls
+let pendingFetch: Promise<Build[]> | null = null;
+
 export async function fetchBuilds(options?: FetchBuildsOptions): Promise<Build[]> {
-  return invoke<Build[]>('fetch_builds', {
+  // If a non-force fetch is already in progress, reuse it
+  // Force refresh always goes through
+  if (!options?.forceRefresh && pendingFetch) {
+    return pendingFetch;
+  }
+
+  const promise = invoke<Build[]>('fetch_builds', {
     limit: options?.limit,
     forceRefresh: options?.forceRefresh,
   }) as Promise<Build[]>;
+
+  if (!options?.forceRefresh) {
+    pendingFetch = promise.finally(() => {
+      if (pendingFetch === promise) pendingFetch = null;
+    });
+  }
+
+  return promise;
 }
 
 export async function checkNewBuilds(): Promise<Build[]> {

@@ -9,6 +9,9 @@ interface AppUpdateInfo {
   body: string | null;
 }
 
+// Module-level lock to prevent duplicate concurrent check_app_update calls
+let pendingCheck: Promise<void> | null = null;
+
 export function useAppUpdate() {
   const [isChecking, setIsChecking] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
@@ -29,18 +32,29 @@ export function useAppUpdate() {
   };
 
   const checkUpdate = useCallback(async () => {
-    try {
-      setError(null);
-      setIsChecking(true);
-      const result = await invoke<AppUpdateInfo>('check_app_update');
-      setAppUpdate(result);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      console.error('Failed to check for app updates:', err);
-    } finally {
-      setIsChecking(false);
+    // Deduplicate: if a check is already in progress, reuse it
+    if (pendingCheck) {
+      return pendingCheck;
     }
+
+    const promise = (async () => {
+      try {
+        setError(null);
+        setIsChecking(true);
+        const result = await invoke<AppUpdateInfo>('check_app_update');
+        setAppUpdate(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+        console.error('Failed to check for app updates:', err);
+      } finally {
+        setIsChecking(false);
+        pendingCheck = null;
+      }
+    })();
+
+    pendingCheck = promise;
+    return promise;
   }, [setAppUpdate]);
 
   const installUpdate = useCallback(async () => {
