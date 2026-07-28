@@ -420,8 +420,31 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
 }
 
 #[tauri::command]
-async fn install_app_update(app: tauri::AppHandle) -> Result<(), String> {
+async fn install_app_update(
+    app: tauri::AppHandle,
+    changelog_version: Option<String>,
+    changelog_body: Option<String>,
+) -> Result<(), String> {
     log::info!("[UPDATE] install_app_update: starting update installation");
+
+    // Persist changelog to database BEFORE download/restart (eliminates race condition)
+    if let (Some(ref version), Some(ref body)) = (&changelog_version, &changelog_body) {
+        let db = app.state::<DbManager>();
+        {
+            let conn = db.lock_conn()
+                .map_err(|e| format!("Failed to lock database: {}", e))?;
+            repo::set_setting(&conn, "pending_changelog_version", version)
+                .map_err(|e| format!("Failed to save changelog version: {}", e))?;
+            repo::set_setting(&conn, "pending_changelog_body", body)
+                .map_err(|e| format!("Failed to save changelog body: {}", e))?;
+        }
+        log::info!("[UPDATE] persisting changelog for version {}", version);
+
+        // Force WAL checkpoint to guarantee data is flushed to disk before restart
+        if let Err(e) = db.checkpoint() {
+            log::warn!("[UPDATE] checkpoint failed: {} (data may not be persisted)", e);
+        }
+    }
 
     // Kill all terminal sessions before updating (safety net)
     let terminal = app.state::<TerminalManager>();

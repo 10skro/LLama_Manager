@@ -55,15 +55,8 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
       return;
     }
 
-    // Persist changelog so it can be shown on next startup after the update
-    if (settings && updateInfo.version && updateInfo.body != null) {
-      await saveSettings({
-        ...settings,
-        pending_changelog_version: updateInfo.version,
-        pending_changelog_body: updateInfo.body,
-      });
-    }
-    await installUpdate();
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
   };
 
   const handleConfirmWithServers = async () => {
@@ -81,15 +74,8 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     setStoppingServers(false);
 
-    // Persist changelog so it can be shown on next startup after the update
-    if (settings && updateInfo.version && updateInfo.body != null) {
-      await saveSettings({
-        ...settings,
-        pending_changelog_version: updateInfo.version,
-        pending_changelog_body: updateInfo.body,
-      });
-    }
-    await installUpdate();
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
   };
 
   // Parse changelog body: support basic markdown-like formatting

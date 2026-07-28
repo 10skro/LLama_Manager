@@ -154,4 +154,20 @@ impl DbManager {
     pub fn lock_conn(&self) -> Result<std::sync::MutexGuard<'_, Connection>, AppError> {
         self.inner.conn.lock().map_err(|e| AppError::Generic(format!("Mutex poisoned: {}", e)))
     }
+
+    /// Force a WAL checkpoint to ensure all pending writes are flushed to the main database file.
+    /// Use TRUNCATE mode: checkpoint and then truncate the WAL file to zero bytes.
+    /// This is critical before app restart (e.g., during update installation) to guarantee
+    /// that settings like pending_changelog are persisted to disk.
+    pub fn checkpoint(&self) -> Result<(), AppError> {
+        let conn = self.inner.conn.lock().map_err(|e| AppError::Generic(format!("Mutex poisoned: {}", e)))?;
+        let result: i32 = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| row.get(0))?;
+        // PRAGMA wal_checkpoint returns 0 (SQLITE_OK), 1 (SQLITE_BUSY), or 2 (SQLITE_LOCKED)
+        if result == 0 {
+            log::info!("[UPDATE] SQLite WAL checkpoint succeeded");
+        } else {
+            log::warn!("[UPDATE] SQLite WAL checkpoint returned {} (database may be busy)", result);
+        }
+        Ok(())
+    }
 }
