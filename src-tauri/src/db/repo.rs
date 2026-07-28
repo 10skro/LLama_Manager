@@ -180,31 +180,6 @@ pub fn get_download(conn: &Connection, id: i64) -> Result<Option<DownloadRecord>
     }
 }
 
-pub fn get_active_downloads(conn: &Connection) -> Result<Vec<DownloadRecord>, AppError> {
-    let mut stmt = conn.prepare(
-        "SELECT id, build_number, download_url, file_path, total_size, downloaded_size, status, error_message, created_at, updated_at
-         FROM downloads WHERE status IN ('pending', 'downloading', 'extracting')
-         ORDER BY id DESC",
-    )?;
-
-    let downloads = stmt.query_map([], |row| {
-        Ok(DownloadRecord {
-            id: row.get(0)?,
-            build_number: row.get(1)?,
-            download_url: row.get(2)?,
-            file_path: row.get(3)?,
-            total_size: row.get(4)?,
-            downloaded_size: row.get(5)?,
-            status: row.get(6)?,
-            error_message: row.get(7)?,
-            created_at: row.get(8)?,
-            updated_at: row.get(9)?,
-        })
-    })?;
-
-    Ok(downloads.collect::<Result<Vec<_>, rusqlite::Error>>()?)
-}
-
 /// Delete old download records that are in terminal states (completed, failed, cancelled)
 /// and were last updated more than `days` ago.
 pub fn cleanup_old_downloads(conn: &Connection, days: i64) -> Result<usize, AppError> {

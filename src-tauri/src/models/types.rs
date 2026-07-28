@@ -98,16 +98,6 @@ pub struct ModelFile {
     pub size: u64,
 }
 
-/// Version info detected from an installed directory
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VersionInfo {
-    pub build_number: String,
-    pub backend: String,
-    pub has_cli: bool,
-    pub has_server: bool,
-    pub has_quantize: bool,
-}
-
 /// Favorite build record
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FavoriteBuild {

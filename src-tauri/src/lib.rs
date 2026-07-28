@@ -87,14 +87,6 @@ fn uninstall_version(
     version::commands::uninstall_version(state, id)
 }
 #[tauri::command]
-fn open_folder(
-    app: tauri::AppHandle,
-    state_db: State<'_, DbManager>,
-    path: String,
-) -> Result<String, String> {
-    version::commands::open_folder(app, state_db, path)
-}
-#[tauri::command]
 async fn get_storage_usage(
     app: tauri::AppHandle,
     state_db: State<'_, DbManager>,
@@ -601,7 +593,6 @@ pub fn run_tauri_app() {
             get_catalog_last_fetched,
             get_installed_versions,
             uninstall_version,
-            open_folder,
             get_storage_usage,
             install_version,
             get_version_config_link,

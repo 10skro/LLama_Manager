@@ -9,10 +9,6 @@ export async function uninstallVersion(id: number): Promise<boolean> {
   return invoke<boolean>('uninstall_version', { id }) as Promise<boolean>;
 }
 
-export async function openFolder(path: string): Promise<void> {
-  return invoke<void>('open_folder', { path }) as Promise<void>;
-}
-
 export async function getCardCustomizations(): Promise<CardCustomization[]> {
   return invoke<CardCustomization[]>('get_card_customizations') as Promise<CardCustomization[]>;
 }
