@@ -28,11 +28,14 @@ pub fn write_terminal_input(
 }
 
 /// Kill a terminal session.
+/// Runs taskkill on a blocking thread (non-blocking for the Tauri IPC thread).
+/// Emits a "terminal-exit" event once the process tree is confirmed dead.
 pub fn kill_terminal(
+    app: AppHandle,
     state_terminal: State<'_, TerminalManager>,
     session_id: String,
 ) -> Result<String, String> {
-    state_terminal.kill(&session_id)
+    state_terminal.kill(app, &session_id)
 }
 
 /// List all active terminal sessions.

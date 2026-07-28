@@ -380,7 +380,12 @@ impl TerminalManager {
     /// On Windows, calling child.kill() on cmd.exe does NOT terminate child processes
     /// like llama-server.exe. They survive as orphan processes.
     /// We use `taskkill /T /F /PID` to forcefully kill the entire process tree.
-    pub fn kill(&self, session_id: &str) -> Result<String, String> {
+    ///
+    /// This method runs taskkill on a blocking thread (via tokio::task::spawn_blocking)
+    /// so it does NOT block the Tauri IPC thread. The method returns immediately after
+    /// scheduling the kill. A "terminal-exit" event is emitted once the process tree
+    /// is confirmed dead, so the frontend can show a "Stopping..." status in the meantime.
+    pub fn kill(&self, app: tauri::AppHandle, session_id: &str) -> Result<String, String> {
         let session = {
             let mut sessions = self
                 .sessions
@@ -397,26 +402,49 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] Killing process tree: session={} | pid={}", session_id, pid);
 
-        // Use taskkill /T /F to kill the entire process tree (cmd.exe + all children like llama-server.exe)
-        // /T = kill child processes tree
-        // /F = force termination
-        let taskkill_result = std::process::Command::new("taskkill")
-            .args(&["/T", "/F", "/PID", &pid.to_string()])
-            .output()
-            .map_err(|e| format!("Failed to execute taskkill for PID {}: {}", pid, e))?;
+        // Clone session_id for the async closure (owned String, 'static lifetime)
+        let sid = session_id.to_string();
 
-        if taskkill_result.status.success() {
-            log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", session_id, pid);
-        } else {
-            let stderr = String::from_utf8_lossy(&taskkill_result.stderr);
-            log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
-                session_id, pid, stderr);
-        }
+        // Run taskkill on a blocking thread so the Tauri IPC thread is NOT blocked.
+        // The method returns immediately after spawning the task.
+        tokio::task::spawn_blocking(move || {
+            log::info!("[TERMINAL] spawn_blocking: executing taskkill for session={} | pid={}", sid, pid);
+
+            // Use taskkill /T /F to kill the entire process tree (cmd.exe + all children like llama-server.exe)
+            // /T = kill child processes tree
+            // /F = force termination
+            let taskkill_result = std::process::Command::new("taskkill")
+                .args(&["/T", "/F", "/PID", &pid.to_string()])
+                .output();
+
+            match taskkill_result {
+                Ok(output) if output.status.success() => {
+                    log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", sid, pid);
+                }
+                Ok(output) => {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
+                        sid, pid, stderr);
+                }
+                Err(e) => {
+                    // Process may have already exited — not a critical error
+                    log::warn!("[TERMINAL] Failed to execute taskkill for PID {}: {} (process may have already exited)", pid, e);
+                }
+            }
+
+            // Small delay to let the OS finish cleaning up the process tree
+            std::thread::sleep(std::time::Duration::from_millis(200));
+
+            // Emit terminal-exit event so the frontend can clear the "Stopping..." status
+            let _ = app.emit("terminal-exit", sid.clone());
+        });
 
         Ok(config_id)
     }
 
     /// Kill all terminal sessions and their child processes (cleanup on app exit).
+    /// Runs taskkill synchronously since this is only called during app shutdown
+    /// where blocking the main thread is acceptable.
     pub fn kill_all(&self) {
         let sessions: Vec<_> = match self.sessions.lock() {
             Ok(mut s) => s.drain().map(|(_id, s)| s).collect(),

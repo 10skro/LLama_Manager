@@ -352,11 +352,12 @@ fn write_terminal_input(
     terminal::commands::write_terminal_input(state_terminal, session_id, input)
 }
 #[tauri::command]
-fn kill_terminal(
+async fn kill_terminal(
+    app: tauri::AppHandle,
     state_terminal: State<'_, TerminalManager>,
     session_id: String,
 ) -> Result<String, String> {
-    terminal::commands::kill_terminal(state_terminal, session_id)
+    terminal::commands::kill_terminal(app, state_terminal, session_id)
 }
 #[tauri::command]
 fn list_active_terminals(

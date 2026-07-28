@@ -75,7 +75,7 @@ export function VersionCard({
   const override = versionOverrides[version.id] ?? null;
   const configLink = getLink(version.id) ?? null;
 
-  const { handleToggle, isRunning, hasConfig } = useTerminalLaunch({
+  const { handleToggle, isRunning, isStopping, hasConfig } = useTerminalLaunch({
     version,
     configLink,
     configs,
@@ -378,6 +378,16 @@ export function VersionCard({
         </div>
       )}
 
+      {/* Stopping Badge */}
+      {isStopping && (
+        <div className="px-3 pb-1.5">
+          <Badge variant="outline" className="border-amber/30 text-amber text-xs gap-1 items-center">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber animate-pulse" />
+            Stopping...
+          </Badge>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col justify-end">
         <CardHeader className="pb-3 pt-6">
           <div className="min-w-0">
@@ -462,11 +472,16 @@ export function VersionCard({
               size="sm"
               className="flex-1 gap-2"
               onClick={handleToggle}
-              disabled={!hasConfig}
-              aria-label={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
-              title={hasConfig ? (isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
+              disabled={!hasConfig || isStopping}
+              aria-label={hasConfig ? (isStopping ? 'Server is stopping' : isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
+              title={hasConfig ? (isStopping ? 'Server is stopping' : isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
             >
-              {isRunning ? (
+              {isStopping ? (
+                <>
+                  <Square className="h-4 w-4" />
+                  Stopping...
+                </>
+              ) : isRunning ? (
                 <>
                   <Square className="h-4 w-4" />
                   Stop
