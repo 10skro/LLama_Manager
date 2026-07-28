@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.56",
-  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix changelog display showing \"No changelog available\" in UpdateModal, notification bell, and post-install modal\n- Fix post-install changelog modal not appearing after app restart\n- Fix crash on startup caused by logger initialization conflict with Tauri\n\n### Maintenance\n\n- Add file-based logging to `%APPDATA%/llama-manager/logs/app.log` for future debugging",
-  "pub_date": "2026-07-28T10:53:53Z",
+  "version": "v0.6.57",
+  "long_description": "## Changes\n\n### Bug Fixes\n\n- Fix changelog display showing \"No changelog available\" in UpdateModal, notification bell, and post-install modal\n- Fix post-install changelog modal not appearing after app restart\n- Fix crash on startup caused by logger initialization conflict with Tauri\n- Deduplicate concurrent check_app_update and fetch_builds calls on startup\n\n### Maintenance\n\n- Add file-based logging to `%APPDATA%/llama-manager/logs/app.log` for future debugging",
+  "pub_date": "2026-07-28T11:00:57Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.56/Llama.Manager_0.6.56_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVThldW1GcHNpZXNGZGQvYTlaYWd5UXpjMU5ibXUvQ09hNG1UVHNRYWZsOElrUW85cm1mbUs3enhneEVIM09NYkRKazF2QUMvQnh3cGZXT3lySFJXZGdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjM2MDIyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTZfeDY0LXNldHVwLmV4ZQpGR3RRS1NQZS9JVGxWcERRYkhveVl0dEo5SGt1MEtDTUM5WHlwcmtnQTBndnpMc0RDVFQwSERRVGZnYks0dC9LVnlOMU9IRUFaMnFyeFBwdCtiUHlDQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.57/Llama.Manager_0.6.57_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTJ2MGhablJZTXBhbk1oM0lmUHFOQmZ3WXNiMkhzYXFLMXcxU1ByQTBCbi93WHBKRGRodHFseFFmekFobUhPV2hRNG5PSGxaUEFkWGhKQTRUV3kyT1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjM2NDQ3CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNTdfeDY0LXNldHVwLmV4ZQoramRzRmp6bmpMR3Y4NUp0M1Vyb0IyMk5YSWk3YVErbDAyWVJKWitZVmg1NmxvU2loWjhjSndxM0phODhwUTR4dERaeWpiVllKMGFIdnV1N1VNbmxDdz09Cg=="
     }
   }
 }
