@@ -118,16 +118,16 @@ fn load_last_fetched_at(db: &crate::db::connection::DbManager) -> Option<String>
 
 /// Save the ETag to the settings table.
 fn save_etag_to_db(db: &crate::db::connection::DbManager, etag: &str) {
-    if let Ok(mut conn) = db.lock_conn() {
-        let _ = set_setting(&mut conn, SETTING_GITHUB_ETAG, etag);
+    if let Ok(conn) = db.lock_conn() {
+        let _ = set_setting(&conn, SETTING_GITHUB_ETAG, etag);
     }
 }
 
 /// Save the current timestamp to the settings table.
 fn save_last_fetched_at(db: &crate::db::connection::DbManager) {
     let now = Local::now().to_rfc3339();
-    if let Ok(mut conn) = db.lock_conn() {
-        let _ = set_setting(&mut conn, SETTING_CATALOG_LAST_FETCHED, &now);
+    if let Ok(conn) = db.lock_conn() {
+        let _ = set_setting(&conn, SETTING_CATALOG_LAST_FETCHED, &now);
     }
 }
 
@@ -155,7 +155,7 @@ fn is_cache_fresh(db: &crate::db::connection::DbManager) -> bool {
         Ok(dt) => dt,
         Err(_) => return false,
     };
-    let now = chrono::DateTime::<chrono::Local>::from(Local::now());
+    let now = Local::now();
     let fetched_local = chrono::DateTime::<chrono::Local>::from(fetched_datetime);
     now.signed_duration_since(fetched_local).num_minutes() < ttl_minutes as i64
 }
@@ -612,8 +612,7 @@ fn extract_changelog_content(body: &str) -> String {
         end_idx -= 1;
     }
 
-    let result = lines[..end_idx].join("\n");
-    result
+    lines[..end_idx].join("\n")
 }
 
 /// Extract the numeric part from a build_number like "b10146" -> 10146.
@@ -643,7 +642,7 @@ pub fn check_for_new_builds(
     // Only return builds with a higher build_number than the latest installed
     available_builds
         .iter()
-        .filter(|b| extract_build_number(&b.build_number).map_or(false, |n| n > latest_installed))
+        .filter(|b| extract_build_number(&b.build_number).is_some_and(|n| n > latest_installed))
         .cloned()
         .collect()
 }

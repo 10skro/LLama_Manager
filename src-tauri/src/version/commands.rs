@@ -80,6 +80,7 @@ pub async fn get_storage_usage(
 }
 
 /// Start installing a new version (download + post-download tasks).
+#[allow(clippy::too_many_arguments)]
 pub async fn install_version(
     app: AppHandle,
     state_db: State<'_, DbManager>,

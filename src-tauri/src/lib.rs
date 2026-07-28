@@ -102,6 +102,7 @@ async fn get_storage_usage(
     version::commands::get_storage_usage(app, state_db).await
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 async fn install_version(
     app: tauri::AppHandle,
     state_db: State<'_, DbManager>,

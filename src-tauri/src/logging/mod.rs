@@ -1,10 +1,8 @@
-/// Session-based file logging with automatic rotation.
-///
-/// Each app session gets its own log file: `app-<timestamp>.log`.
-/// Keeps a maximum of MAX_SESSION_LOGS files, deleting the oldest first.
-/// In debug builds, also logs warn+ to stdout for developer convenience.
-
-use std::path::PathBuf;
+//! Session-based file logging with automatic rotation.
+//!
+//! Each app session gets its own log file: `app-<timestamp>.log`.
+//! Keeps a maximum of MAX_SESSION_LOGS files, deleting the oldest first.
+//! In debug builds, also logs warn+ to stdout for developer convenience.
 
 use crate::models::types::AppError;
 
@@ -12,7 +10,7 @@ pub const MAX_SESSION_LOGS: usize = 20;
 
 /// Initialize tracing-subscriber with session-based file logging.
 /// Must be called after the log directory has been created.
-pub fn init(app_dir: &PathBuf) -> Result<(), AppError> {
+pub fn init(app_dir: &std::path::Path) -> Result<(), AppError> {
     use tracing_subscriber::prelude::*;
 
     let log_dir = app_dir.join("logs");

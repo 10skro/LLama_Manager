@@ -151,7 +151,7 @@ impl TerminalManager {
         let mut cmd = std::process::Command::new("cmd");
         if let Some(sc) = &clean_command {
             if !sc.is_empty() {
-                cmd.args(&["/K", sc]);
+                cmd.args(["/K", sc]);
             } else {
                 cmd.arg("/K");
             }
@@ -389,7 +389,7 @@ impl TerminalManager {
             // /T = kill child processes tree
             // /F = force termination
             let taskkill_result = std::process::Command::new("taskkill")
-                .args(&["/T", "/F", "/PID", &pid.to_string()])
+                .args(["/T", "/F", "/PID", &pid.to_string()])
                 .output();
 
             match taskkill_result {
@@ -436,7 +436,7 @@ impl TerminalManager {
 
             // Use taskkill /T /F to kill the entire process tree
             if let Err(e) = std::process::Command::new("taskkill")
-                .args(&["/T", "/F", "/PID", &pid.to_string()])
+                .args(["/T", "/F", "/PID", &pid.to_string()])
                 .output()
             {
                 log::warn!("[TERMINAL] kill_all: failed to execute taskkill for PID {}: {}", pid, e);
