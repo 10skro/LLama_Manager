@@ -8,13 +8,12 @@ mod download;
 mod favorites;
 mod file;
 mod github;
+mod logging;
 mod models;
 mod terminal;
 mod theme;
 mod utils;
 mod version;
-
-use std::path::PathBuf;
 
 use tauri::{Listener, Manager, State};
 
@@ -23,7 +22,6 @@ use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::download::manager::DownloadManager;
 use crate::github::api::GithubClient;
-use crate::models::types::AppError;
 use crate::terminal::manager::TerminalManager;
 use crate::theme::colors::theme_to_color;
 use crate::theme::inject::build_initialization_script;
@@ -390,7 +388,7 @@ fn kill_all_terminals(
     terminal::commands::kill_all_terminals(state_terminal)
 }
 
-// App Update — native Tauri updater (signature verification enabled)
+// App Update
 use tauri::Emitter;
 use tauri_plugin_updater::UpdaterExt;
 
@@ -423,8 +421,7 @@ async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
 
 #[tauri::command]
 async fn install_app_update(app: tauri::AppHandle) -> Result<(), String> {
-    // SAFETY NET: always kill all terminal sessions before updating
-    // (frontend should have already asked for confirmation, but this guarantees cleanup)
+    // Kill all terminal sessions before updating (safety net)
     let terminal = app.state::<TerminalManager>();
     terminal.kill_all();
 
@@ -435,7 +432,6 @@ async fn install_app_update(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to check for updates: {}", e))?
         .ok_or("No update available")?;
 
-    // download_and_install verifies signature automatically
     update.download_and_install(
         move |chunk_length: usize, content_length: Option<u64>| {
             app.emit("update:download-progress", serde_json::json!({
@@ -477,10 +473,10 @@ pub fn run_tauri_app() {
                 .expect("Failed to get app data dir");
 
             // Create required directories
-            setup_directories(&app_dir).map_err(|e| e.to_string())?;
+            utils::setup_directories(&app_dir).map_err(|e| e.to_string())?;
 
             // Initialize file-based logging (must be after directories are created)
-            init_logging(&app_dir).map_err(|e| e.to_string())?;
+            logging::init(&app_dir).map_err(|e| e.to_string())?;
 
             // Initialize database
             let db_path = app_dir.join("database").join("llama.db");
@@ -523,7 +519,7 @@ pub fn run_tauri_app() {
             app.manage(GithubClient::new(github_token, persisted_etag));
             app.manage(TerminalManager::new());
 
-            // Cleanup terminal sessions on app close
+            // Listen for app destroy event to kill terminal sessions
             {
                 let app_handle = app.app_handle().clone();
                 app_handle.clone().listen("tauri://destroy", move |_| {
@@ -555,14 +551,13 @@ pub fn run_tauri_app() {
                 .build()
                 .expect("Failed to create main window");
 
-            // Cleanup terminal sessions on app close
+            // Handle main window close: kill terminals + close terminal widget
             let app_handle = app.handle().clone();
             main_window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     log::info!("[APP] CloseRequested: killing all terminal sessions");
                     let terminal = app_handle.state::<TerminalManager>();
                     terminal.kill_all();
-                    // Close the floating terminal widget window
                     if let Some(widget) = app_handle.get_webview_window("terminal") {
                         let _ = widget.close();
                     }
@@ -572,14 +567,12 @@ pub fn run_tauri_app() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // GitHub / builds
             fetch_builds,
             check_new_builds,
             fetch_release_by_tag,
             search_builds,
             fetch_release_changelog,
             get_catalog_last_fetched,
-            // Version management
             get_installed_versions,
             uninstall_version,
             open_folder,
@@ -592,10 +585,8 @@ pub fn run_tauri_app() {
             save_version_override,
             delete_version_override,
             duplicate_version,
-            // Download management
             cancel_download,
             get_download_status,
-            // Settings & config
             get_settings,
             save_settings,
             open_folder_dialog,
@@ -604,24 +595,19 @@ pub fn run_tauri_app() {
             has_github_token,
             delete_github_token,
             get_app_version,
-            // Favorites
             get_favorite_builds,
             toggle_favorite_build,
-            // Card customization
             get_card_customizations,
             save_card_customization,
             delete_card_customization,
             bulk_set_display_order,
             reset_display_order,
-            // Custom commands
             save_custom_command,
             get_custom_commands,
             delete_custom_command,
-            // File scanning
             scan_model_files,
             scan_mmproj_files,
             validate_folder,
-            // Terminal
             spawn_terminal,
             write_terminal_input,
             kill_terminal,
@@ -630,130 +616,10 @@ pub fn run_tauri_app() {
             get_terminal_buffer,
             open_terminal_window,
             kill_all_terminals,
-            // Theme
             persist_theme_change,
-            // App Update
             check_app_update,
             install_app_update,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to run Tauri app");
-}
-
-// ─── Directory Setup ────────────────────────────────────────────────────
-
-fn setup_directories(base: &PathBuf) -> Result<(), AppError> {
-    let dirs = ["versions", "database", "downloads", "logs"];
-    for dir in &dirs {
-        let path = base.join(dir);
-        std::fs::create_dir_all(&path)?;
-    }
-    Ok(())
-}
-
-/// Initialize tracing-subscriber with session-based file logging.
-/// Each app session gets its own log file: `app-<timestamp>.log`.
-/// Keeps a maximum of MAX_SESSION_LOGS files, deleting the oldest first.
-/// In debug builds, also logs warn+ to stdout for developer convenience.
-const MAX_SESSION_LOGS: usize = 20;
-
-fn init_logging(app_dir: &PathBuf) -> Result<(), AppError> {
-    use tracing_subscriber::prelude::*;
-
-    let log_dir = app_dir.join("logs");
-    std::fs::create_dir_all(&log_dir)
-        .map_err(|e| AppError::Generic(format!("Failed to create log directory {:?}: {}", log_dir, e)))?;
-
-    // Create session-specific log file: app-2025-07-28T14-30-22.log
-    let timestamp = chrono::Local::now().format("%Y-%m-%dT%H-%M-%S");
-    let log_file_name = format!("app-{}.log", timestamp);
-    let log_path = log_dir.join(&log_file_name);
-    let log_file = std::fs::File::create(&log_path)
-        .map_err(|e| AppError::Generic(format!("Failed to create log file at {:?}: {}", log_path, e)))?;
-
-    // Rotate: delete oldest session logs if we exceed MAX_SESSION_LOGS
-    rotate_session_logs(&log_dir, MAX_SESSION_LOGS);
-
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            #[cfg(debug_assertions)]
-            {
-                tracing_subscriber::EnvFilter::new("debug")
-            }
-            #[cfg(not(debug_assertions))]
-            {
-                tracing_subscriber::EnvFilter::new("info")
-            }
-        });
-
-    // File logging layer
-    let file_layer = tracing_subscriber::fmt::layer()
-        .with_writer(log_file)
-        .with_filter(env_filter);
-
-    // Build subscriber with registry (supports .with() for layers)
-    let registry = tracing_subscriber::registry().with(file_layer);
-
-    #[cfg(debug_assertions)]
-    {
-        // Console: only show warn+error in debug builds (file still gets everything)
-        let console_filter = tracing_subscriber::EnvFilter::new("warn");
-        let console_layer = tracing_subscriber::fmt::layer()
-            .with_writer(std::io::stdout)
-            .with_filter(console_filter);
-        registry
-            .with(console_layer)
-            .try_init()
-            .map_err(|e| AppError::Generic(format!("Failed to set global tracing subscriber: {}", e)))?;
-    }
-    #[cfg(not(debug_assertions))]
-    {
-        registry
-            .try_init()
-            .map_err(|e| AppError::Generic(format!("Failed to set global tracing subscriber: {}", e)))?;
-    }
-
-    // Bridge `log` crate macros (log::info!, log::warn!, etc.) to the tracing subscriber.
-    // This may fail if Tauri already initialized the logger — that's acceptable,
-    // tracing subscriber still captures tracing:: events.
-    if let Err(e) = tracing_log::LogTracer::init() {
-        eprintln!("Warning: could not bridge log crate to tracing: {}", e);
-    }
-
-    // Log session header: version, build mode, platform, log file
-    let build_mode = if cfg!(debug_assertions) { "DEV" } else { "RELEASE" };
-    log::info!("=== Session started ===");
-    log::info!("Version: {}", env!("CARGO_PKG_VERSION"));
-    log::info!("Build: {}", build_mode);
-    log::info!("Platform: {}-{}", std::env::consts::OS, std::env::consts::ARCH);
-    log::info!("Log file: {:?}", log_path);
-
-    Ok(())
-}
-
-/// Delete the oldest session log files when the count exceeds `max_logs`.
-/// Session files match the pattern `app-*.log`.
-fn rotate_session_logs(log_dir: &std::path::Path, max_logs: usize) {
-    let mut session_files: Vec<_> = match std::fs::read_dir(log_dir) {
-        Ok(entries) => entries
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                let name = e.file_name().to_string_lossy().to_string();
-                name.starts_with("app-") && e.path().extension().map(|ext| ext == "log").unwrap_or(false)
-            })
-            .collect(),
-        Err(_) => return,
-    };
-
-    // Sort by modification time ascending (oldest first)
-    session_files.sort_by_key(|e| e.metadata().and_then(|m| m.modified()).ok());
-
-    // Delete oldest files until we're at max_logs
-    while session_files.len() > max_logs {
-        let oldest = session_files.remove(0);
-        let path = oldest.path();
-        if let Err(e) = std::fs::remove_file(&path) {
-            eprintln!("Warning: could not delete old log {:?}: {}", path, e);
-        }
-    }
 }
