@@ -28,7 +28,7 @@ pub fn get_all_versions(conn: &Connection) -> Result<Vec<InstalledVersion>, AppE
                 v.installed_at, v.status, v.download_id
          FROM installed_versions v
          LEFT JOIN card_customizations c ON v.id = c.version_id
-         ORDER BY COALESCE(c.display_order, -1) ASC, v.id DESC",
+          ORDER BY COALESCE(c.display_order, 999999) ASC, v.id ASC",
     )?;
 
     let versions = stmt.query_map([], |row| {
