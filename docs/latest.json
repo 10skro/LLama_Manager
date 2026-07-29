@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.62",
-  "notes": "## Changes\n\n### Refactoring\n- Remove 9 unused code elements (182 lines) improving codebase cleanliness\n\n### Maintenance\n- Remove `#![allow(dead_code)]` compiler directive — no longer needed",
+  "version": "v0.6.63",
+  "notes": "## Changes\n\n### Bug Fixes\n- Post-install changelog modal now respects \"Show update modal\" setting\n- Server warning dialog now appears on Install & Restart from Header and Settings",
   "pub_date": "2026-07-29T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.62/Llama.Manager_0.6.62_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTFBV1NmdFhkS1RpY1VZTUd6MTJ2UjUwQnR2Y3BzaElrT3Rxdm9aYmJsYVJJcHBaM3NGVkdqUXEySytOOVl4L1duM3d6WS9pY3NadHBTY0ZraUhpUlFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjgxODgxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjJfeDY0LXNldHVwLmV4ZQpabUJySjZ2YlRQbHExbHRyenBpZHNCRkR1YzVpUTFtYXZsUXV3THg4c3B1bHJ4dThabHhHdXg4UWZZVTRkUVNnQWsvRWdOcDJuR3NpUEJsay9PcVFCUT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.63/Llama.Manager_0.6.63_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTVvczVnUEZtNll0YllEdUhreTN3YnZNR0g2VGtSdCtYQmp0Y1pWMCtqT01neHdDNXJMK1phYmxnNVhIRlZzd05TZVRaUmkzM2d1R0RHRnd3SmxWelFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1Mjg0NjQ0CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjNfeDY0LXNldHVwLmV4ZQpFNTBFRUJwZW5PRWFwOGdpN3RMQ3V0T0RDdHdNUW5CbUhwQUZBQkpFbktFZjVMSVRpYXdqdHFXVEJ1NSszRDE0enl4RmE4VlRuY1YzcS9BWGNhWFVDdz09Cg=="
     }
   }
 }

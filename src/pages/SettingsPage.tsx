@@ -15,10 +15,19 @@ import {
   FolderOpen, Save, HardDrive, Palette, Bell,
   Info, Loader2, Eye, EyeOff,
   AlertCircle, X, Check, ChevronDown, Settings2,
-  Brain, RefreshCw, Download, FileText,
+  Brain, RefreshCw, Download, FileText, AlertTriangle,
 } from 'lucide-react';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
+import { useServerCheck } from '@/hooks/useServerCheck';
 import { ChangelogModal } from '@/components/ChangelogModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES, getThemeById } from '@/themes';
 import { AVAILABLE_FONTS } from '@/fonts';
@@ -35,6 +44,20 @@ export function SettingsPage() {
   const { activeTheme, setActiveTheme } = useTheme();
   const { toast } = useToast();
   const { updateInfo, isChecking, isInstalling, checkUpdate, installUpdate, error: updateError } = useAppUpdate();
+  const { showWarning, setShowWarning, stoppingServers, shouldShowWarning, killAllServers } = useServerCheck();
+
+  const handleInstallFromSettings = async () => {
+    const warning = await shouldShowWarning();
+    if (warning) return;
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
+  };
+
+  const handleConfirmWithServers = async () => {
+    await killAllServers();
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
+  };
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Local state for GitHub token (NOT in settings store)
@@ -611,26 +634,18 @@ export function SettingsPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={async () => {
-                      // Persist changelog for post-install display
-                      if (settings && updateInfo.version && updateInfo.body) {
-                        await saveSettings({
-                          ...settings,
-                          pending_changelog_version: updateInfo.version,
-                          pending_changelog_body: updateInfo.body,
-                        });
-                      }
-                      await installUpdate();
-                    }}
-                    disabled={isInstalling}
+                    onClick={handleInstallFromSettings}
+                    disabled={isInstalling || stoppingServers}
                     className="text-peach border-peach/30 hover:bg-peach/10 hover:text-peach"
                   >
-                    {isInstalling ? (
+                    {stoppingServers ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isInstalling ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
-                    {isInstalling ? 'Installing...' : 'Install & Restart'}
+                    {stoppingServers ? 'Stopping servers...' : isInstalling ? 'Installing...' : 'Install & Restart'}
                   </Button>
                 </div>
               </div>
@@ -821,6 +836,30 @@ export function SettingsPage() {
         buildNumber={updateInfo.version ?? 'Update'}
         body={updateInfo.body || undefined}
       />
+
+      {/* Warning dialog when servers are running */}
+      <Dialog open={showWarning} onOpenChange={setShowWarning}>
+        <DialogContent className="max-w-md" onCloseAutoFocus={() => {}}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Serveurs en cours d'exécution
+            </DialogTitle>
+            <DialogDescription>
+              Des serveurs sont actuellement actifs et seront arrêtés avant l'installation de la mise à jour. Voulez-vous continuer ?
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWarning(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleConfirmWithServers}>
+              Continuer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div> {/* end max-w-3xl mx-auto wrapper */}
     </div>
   );
