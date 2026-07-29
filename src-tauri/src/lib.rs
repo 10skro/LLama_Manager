@@ -8,21 +8,19 @@ mod file;
 mod github;
 mod logging;
 mod models;
+mod setup;
 mod terminal;
 mod theme;
+mod update;
 mod utils;
 mod version;
 
-use tauri::{Listener, Manager, State};
+use tauri::State;
 
-use crate::config::settings::SettingsManager;
 use crate::db::connection::DbManager;
-use crate::db::repo;
 use crate::download::manager::DownloadManager;
 use crate::github::api::GithubClient;
 use crate::terminal::manager::TerminalManager;
-use crate::theme::colors::theme_to_color;
-use crate::theme::inject::build_initialization_script;
 // ─── Tauri Command Wrappers ─────────────────────────────────────────────
 // #[tauri::command] must be in this module so generate_handler! can see
 // the generated __cmd__* macros. Each wrapper delegates to the domain module.
@@ -380,87 +378,17 @@ fn kill_all_terminals(
 }
 
 // App Update
-use tauri::Emitter;
-use tauri_plugin_updater::UpdaterExt;
-
 #[tauri::command]
 async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    let updater = app.updater()
-        .map_err(|e| format!("Failed to initialize updater: {}", e))?;
-
-    if let Some(update) = updater.check().await.map_err(|e| format!("Failed to check for updates: {}", e))? {
-        let version = update.version.clone();
-        let body = update.body.clone();
-        let date = update.date.map(|d| d.to_string());
-        log::info!("Update available: {}", version);
-        Ok(serde_json::json!({
-            "available": true,
-            "version": version,
-            "date": date,
-            "body": body,
-        }))
-    } else {
-        log::info!("No update available");
-        Ok(serde_json::json!({
-            "available": false,
-            "version": null,
-            "date": null,
-            "body": null,
-        }))
-    }
+    update::commands::check_app_update(app).await
 }
-
 #[tauri::command]
 async fn install_app_update(
     app: tauri::AppHandle,
     changelog_version: Option<String>,
     changelog_body: Option<String>,
 ) -> Result<(), String> {
-    log::info!("[UPDATE] install_app_update: starting update installation");
-
-    // Persist changelog to database BEFORE download/restart (eliminates race condition)
-    if let (Some(ref version), Some(ref body)) = (&changelog_version, &changelog_body) {
-        let db = app.state::<DbManager>();
-        {
-            let conn = db.lock_conn()
-                .map_err(|e| format!("Failed to lock database: {}", e))?;
-            repo::set_setting(&conn, "pending_changelog_version", version)
-                .map_err(|e| format!("Failed to save changelog version: {}", e))?;
-            repo::set_setting(&conn, "pending_changelog_body", body)
-                .map_err(|e| format!("Failed to save changelog body: {}", e))?;
-        }
-        log::info!("[UPDATE] persisting changelog for version {}", version);
-
-        // Force WAL checkpoint to guarantee data is flushed to disk before restart
-        if let Err(e) = db.checkpoint() {
-            log::warn!("[UPDATE] checkpoint failed: {} (data may not be persisted)", e);
-        }
-    }
-
-    // Kill all terminal sessions before updating (safety net)
-    let terminal = app.state::<TerminalManager>();
-    terminal.kill_all();
-
-    let updater = app.updater()
-        .map_err(|e| format!("Failed to initialize updater: {}", e))?;
-
-    let update = updater.check().await
-        .map_err(|e| format!("Failed to check for updates: {}", e))?
-        .ok_or("No update available")?;
-
-    update.download_and_install(
-        move |chunk_length: usize, content_length: Option<u64>| {
-            app.emit("update:download-progress", serde_json::json!({
-                "chunk": chunk_length,
-                "total": content_length,
-            })).ok();
-        },
-        || {
-            log::info!("Update download finished");
-        },
-    ).await.map_err(|e| format!("Download or install failed: {}", e))?;
-
-    Ok(())
+    update::commands::install_app_update(app, changelog_version, changelog_body).await
 }
 
 // Theme
@@ -482,106 +410,7 @@ pub fn run_tauri_app() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
-            let app_dir = app
-                .path()
-                .app_local_data_dir()
-                .expect("Failed to get app data dir");
-
-            // Create required directories
-            utils::setup_directories(&app_dir).map_err(|e| e.to_string())?;
-
-            // Initialize file-based logging (must be after directories are created)
-            logging::init(&app_dir).map_err(|e| e.to_string())?;
-
-            // Initialize database
-            let db_path = app_dir.join("database").join("llama.db");
-            let db = DbManager::new(&db_path).map_err(|e| e.to_string())?;
-            db.init_tables().map_err(|e| e.to_string())?;
-
-            // Initialize default settings
-            SettingsManager::init_defaults(&db).map_err(|e| e.to_string())?;
-
-            // Load GitHub token from DB settings table
-            let github_token = {
-                let conn = db.lock_conn().ok();
-                conn.and_then(|c| repo::get_setting(&c, "github_token").ok().flatten())
-            };
-
-            // Load persisted ETag from DB for conditional requests on startup
-            let persisted_etag = {
-                let conn = db.lock_conn().map_err(|e| e.to_string())?;
-                repo::get_setting(&conn, "github_etag").map_err(|e| e.to_string())?
-            };
-
-            // Clean up old downloads (30 days retention)
-            {
-                let conn = db.lock_conn().map_err(|e| e.to_string())?;
-                let cleaned = repo::cleanup_old_downloads(&conn, 30).map_err(|e| e.to_string())?;
-                if cleaned > 0 {
-                    log::info!("Cleaned up {} old download records", cleaned);
-                }
-            }
-
-            // Read saved theme from SQLite BEFORE db is moved into Tauri state
-            let initial_theme = {
-                let conn = db.lock_conn().ok();
-                conn.and_then(|c| repo::get_setting(&c, "theme").ok().flatten())
-            }.unwrap_or_else(|| "catppuccin-mocha".to_string());
-
-            // Register state
-            app.manage(db);
-            app.manage(DownloadManager::new());
-            app.manage(GithubClient::new(github_token, persisted_etag));
-            app.manage(TerminalManager::new());
-
-            // Listen for app destroy event to kill terminal sessions
-            {
-                let app_handle = app.app_handle().clone();
-                app_handle.clone().listen("tauri://destroy", move |_| {
-                    let terminal = app_handle.state::<TerminalManager>();
-                    terminal.kill_all();
-                });
-            }
-
-            // Build initialization script for the main window (runs BEFORE HTML is parsed)
-            let init_script = build_initialization_script(&initial_theme);
-
-            // Inject dev mode flag for frontend banner
-            let dev_mode = cfg!(debug_assertions);
-            let dev_script = format!(r#"window.__DEV_MODE__={};"#, dev_mode);
-
-            // Create main window with theme injection via initialization_script
-            let bg_color = theme_to_color(&initial_theme);
-            let main_window = tauri::WebviewWindow::builder(app, "main", tauri::WebviewUrl::App("index.html".into()))
-                .title("Llama Manager")
-                .inner_size(1280.0, 800.0)
-                .min_inner_size(900.0, 600.0)
-                .resizable(true)
-                .fullscreen(false)
-                .decorations(true)
-                .theme(Some(tauri::Theme::Dark))
-                .background_color(bg_color)
-                .initialization_script(&init_script)
-                .initialization_script(&dev_script)
-                .build()
-                .expect("Failed to create main window");
-
-            // Handle main window close: kill terminals + close terminal widget
-            let app_handle = app.handle().clone();
-            main_window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    log::info!("[APP] CloseRequested: killing all terminal sessions");
-                    let terminal = app_handle.state::<TerminalManager>();
-                    terminal.kill_all();
-                    if let Some(widget) = app_handle.get_webview_window("terminal") {
-                        let _ = widget.close();
-                    }
-                }
-            });
-
-            Ok(())
-        })
+        .setup(|app| setup::init(app).map_err(|e| Box::new(e) as Box<dyn std::error::Error>))
         .invoke_handler(tauri::generate_handler![
             fetch_builds,
             check_new_builds,
