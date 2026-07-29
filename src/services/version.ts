@@ -17,7 +17,7 @@ export async function saveCardCustomization(
   versionId: number,
   title: string,
   headerColor: string,
-  textColor: string,
+  textColor: string
 ): Promise<void> {
   return invoke<void>('save_card_customization', {
     versionId,
@@ -43,7 +43,7 @@ export async function duplicateVersion(versionId: number, withSettings: boolean)
 }
 
 export async function bulkSetDisplayOrder(
-  orders: { versionId: number; displayOrder: number }[],
+  orders: { versionId: number; displayOrder: number }[]
 ): Promise<void> {
   return invoke<void>('bulk_set_display_order', {
     orders: orders.map((o) => [o.versionId, o.displayOrder]),

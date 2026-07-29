@@ -63,7 +63,7 @@ export function VersionGroup({
         {/* Col 3: Backend */}
         <TableCell className="text-center">
           <div className="flex flex-wrap items-center justify-center gap-1.5">
-            {Array.from(new Set(variants.map(v => v.backend))).map((backend) => (
+            {Array.from(new Set(variants.map((v) => v.backend))).map((backend) => (
               <Badge
                 key={backend}
                 variant="outline"
@@ -79,41 +79,50 @@ export function VersionGroup({
           {formatDate(firstVariant.published_at)}
         </TableCell>
         {/* Col 5: Size (empty on parent - shown per-variant on children) */}
-        <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
+        <TableCell className="text-center">
+          <span className="text-muted-foreground text-sm">—</span>
+        </TableCell>
         {/* Col 6: Status */}
         <TableCell className="text-center">
           <BuildStatusBadge
-            installed={variants.some(v => installedKeys.has(makeKey(v.build_number, v.backend, v.architecture)))}
-            downloading={variants.some(v => downloadingKeys.has(makeKey(v.build_number, v.backend, v.architecture)))}
+            installed={variants.some((v) =>
+              installedKeys.has(makeKey(v.build_number, v.backend, v.architecture))
+            )}
+            downloading={variants.some((v) =>
+              downloadingKeys.has(makeKey(v.build_number, v.backend, v.architecture))
+            )}
           />
         </TableCell>
         {/* Col 7: Actions (empty on parent - actions moved to child rows) */}
-        <TableCell className="text-center"><span className="text-muted-foreground text-sm">—</span></TableCell>
+        <TableCell className="text-center">
+          <span className="text-muted-foreground text-sm">—</span>
+        </TableCell>
       </TableRow>
 
       {/* Child rows */}
-      {isExpanded && variants.map((build, idx) => {
-        const rowKey = getRowKey(build);
-        const compositeKey = makeKey(build.build_number, build.backend, build.architecture);
-        const isInstalled = installedKeys.has(compositeKey);
-        const isDownloading = downloadingKeys.has(compositeKey);
-        const isFavorited = favoriteKeys.has(rowKey);
-        const isLast = idx === variants.length - 1;
+      {isExpanded &&
+        variants.map((build, idx) => {
+          const rowKey = getRowKey(build);
+          const compositeKey = makeKey(build.build_number, build.backend, build.architecture);
+          const isInstalled = installedKeys.has(compositeKey);
+          const isDownloading = downloadingKeys.has(compositeKey);
+          const isFavorited = favoriteKeys.has(rowKey);
+          const isLast = idx === variants.length - 1;
 
-        return (
-          <BuildRow
-            key={rowKey}
-            build={build}
-            isInstalled={isInstalled}
-            isDownloading={isDownloading}
-            isFavorited={isFavorited}
-            isLast={isLast}
-            onToggleFavorite={() => onToggleFavorite(build)}
-            onShowChangelog={() => onShowChangelog(build)}
-            onDownload={() => onDownload(build)}
-          />
-        );
-      })}
+          return (
+            <BuildRow
+              key={rowKey}
+              build={build}
+              isInstalled={isInstalled}
+              isDownloading={isDownloading}
+              isFavorited={isFavorited}
+              isLast={isLast}
+              onToggleFavorite={() => onToggleFavorite(build)}
+              onShowChangelog={() => onShowChangelog(build)}
+              onDownload={() => onDownload(build)}
+            />
+          );
+        })}
     </Fragment>
   );
 }

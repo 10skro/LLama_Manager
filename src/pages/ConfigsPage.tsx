@@ -3,18 +3,31 @@ import { useConfigs } from '@/hooks/useConfigs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  FileStack, Search, X, Terminal, Loader2, Trash2, Pencil, Plus,
-} from 'lucide-react';
+import { FileStack, Search, X, Terminal, Loader2, Trash2, Pencil, Plus } from 'lucide-react';
 import { CustomCommandModal } from '@/components/CustomCommand/CustomCommandModal';
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { deleteCustomCommand } from '@/services/customCommand';
 import { useToast } from '@/hooks/use-toast';
 import { formatRelativeTime } from '@/utils/format';
@@ -23,7 +36,8 @@ import { useAppStore } from '@/store/useAppStore';
 import type { ConfigEntry } from '@/types';
 
 export function ConfigsPage() {
-  const { entries, isLoading, search, setSearch, filter, setFilter, totalCount, refetch } = useConfigs();
+  const { entries, isLoading, search, setSearch, filter, setFilter, totalCount, refetch } =
+    useConfigs();
   const { activeTheme } = useAppStore();
   const { toast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<ConfigEntry | null>(null);
@@ -35,7 +49,7 @@ export function ConfigsPage() {
 
   function getColorHex(colorKey: string): string {
     if (!colorKey) return '';
-    const match = colorPalette.find(c => c.key === colorKey);
+    const match = colorPalette.find((c) => c.key === colorKey);
     return match?.hex || '';
   }
 
@@ -71,9 +85,7 @@ export function ConfigsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Configs</h1>
-          <p className="text-muted-foreground mt-1">
-            Browse and manage your saved configurations.
-          </p>
+          <p className="text-muted-foreground mt-1">Browse and manage your saved configurations.</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -212,7 +224,7 @@ export function ConfigsPage() {
             </TableBody>
           </Table>
         </Card>
-       )}
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -224,19 +236,15 @@ export function ConfigsPage() {
             </DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{' '}
-              <strong className="break-all">{deleteTarget?.name}</strong>
-              {' '}? This action cannot be undone.
+              <strong className="break-all">{deleteTarget?.name}</strong> ? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />

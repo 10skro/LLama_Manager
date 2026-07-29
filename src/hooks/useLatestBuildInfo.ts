@@ -24,7 +24,9 @@ function parseBuildNumber(build_number: string): number {
 /**
  * Find the entry with the highest numeric build number from a list.
  */
-function findHighestBuild<T extends { build_number: string }>(items: T[] | undefined): BuildInfo | null {
+function findHighestBuild<T extends { build_number: string }>(
+  items: T[] | undefined
+): BuildInfo | null {
   if (!items || items.length === 0) return null;
 
   let best: BuildInfo | null = null;

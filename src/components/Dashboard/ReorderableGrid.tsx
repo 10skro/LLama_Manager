@@ -36,11 +36,7 @@ interface ReorderableGridProps {
   actions: VersionCardActions;
 }
 
-export function ReorderableGrid({
-  versions,
-  onDragEnd,
-  actions,
-}: ReorderableGridProps) {
+export function ReorderableGrid({ versions, onDragEnd, actions }: ReorderableGridProps) {
   const [localVersions, setLocalVersions] = useState(versions);
 
   useEffect(() => {
@@ -49,10 +45,13 @@ export function ReorderableGrid({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = (event: { active: { id: UniqueIdentifier }; over: { id: UniqueIdentifier } | null }) => {
+  const handleDragEnd = (event: {
+    active: { id: UniqueIdentifier };
+    over: { id: UniqueIdentifier } | null;
+  }) => {
     const over = event.over;
     if (!over) return;
 
@@ -66,15 +65,8 @@ export function ReorderableGrid({
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext
-        items={localVersions.map((v) => v.id)}
-        strategy={rectSortingStrategy}
-      >
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={localVersions.map((v) => v.id)} strategy={rectSortingStrategy}>
         <DragStateProvider>
           <div className={GRID_CLASS}>
             {localVersions.map((version) => (

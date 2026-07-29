@@ -18,6 +18,29 @@ pub fn mask_path(path: &str) -> String {
     path.to_string()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mask_path_with_file() {
+        let result = mask_path("/some/long/path/to/file.txt");
+        assert_eq!(result, ".../file.txt");
+    }
+
+    #[test]
+    fn test_mask_path_simple() {
+        let result = mask_path("simple");
+        assert_eq!(result, ".../simple");
+    }
+
+    #[test]
+    fn test_mask_path_directory() {
+        let result = mask_path("/path/to/dir/");
+        assert_eq!(result, ".../dir");
+    }
+}
+
 /// Create required application directories under the app data folder.
 pub fn setup_directories(base: &Path) -> Result<(), AppError> {
     let dirs = ["versions", "database", "downloads", "logs"];

@@ -48,6 +48,7 @@ pub fn spawn_progress_forwarder(
 }
 
 /// Cancel an in-progress download.
+#[tauri::command]
 pub async fn cancel_download(
     state_download: State<'_, DownloadManager>,
     id: i64,
@@ -56,6 +57,7 @@ pub async fn cancel_download(
 }
 
 /// Get the current download status from the database.
+#[tauri::command]
 pub fn get_download_status(
     state: State<'_, DbManager>,
     id: i64,

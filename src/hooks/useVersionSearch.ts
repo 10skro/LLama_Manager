@@ -25,7 +25,9 @@ export function useVersionSearch() {
 
     // Validate input: only allow alphanumeric characters, hyphens, and underscores
     if (!/^[a-zA-Z0-9_-]+$/.test(tag)) {
-      setSearchError('Invalid version format. Use alphanumeric characters only (e.g., b9976, 9976).');
+      setSearchError(
+        'Invalid version format. Use alphanumeric characters only (e.g., b9976, 9976).'
+      );
       setSearchingVersion(false);
       return;
     }
@@ -48,7 +50,7 @@ export function useVersionSearch() {
           setSearchState({ tag, builds: exactResults });
           return;
         }
-      } catch (err: any) {
+      } catch {
         if (controller.signal.aborted) return;
         // Exact tag not found, fall through
       }
@@ -78,9 +80,9 @@ export function useVersionSearch() {
           setSearchState({ tag, builds: [] });
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       if (controller.signal.aborted) return;
-      setSearchError(err.message || `Failed to search for "${tag}".`);
+      setSearchError(err instanceof Error ? err.message : `Failed to search for "${tag}".`);
       setSearchState({ tag, builds: [] });
     } finally {
       if (!controller.signal.aborted) {

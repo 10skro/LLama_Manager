@@ -39,7 +39,7 @@ export const AVAILABLE_THEMES: Theme[] = [catppuccinMocha, rosepineDawn, rosepin
 export const DEFAULT_THEME_ID = 'catppuccin-mocha';
 
 export function getThemeById(id: string): Theme | undefined {
-  return AVAILABLE_THEMES.find(t => t.id === id);
+  return AVAILABLE_THEMES.find((t) => t.id === id);
 }
 
 /**

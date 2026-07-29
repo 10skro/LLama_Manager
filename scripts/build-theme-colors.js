@@ -15,11 +15,7 @@ const root = resolve(__dirname, '..');
 
 // Read all theme files from src/themes/
 const themesDir = join(root, 'src', 'themes');
-const themeFiles = [
-  'catppuccin-mocha.ts',
-  'rosepine-moon.ts',
-  'rosepine-dawn.ts',
-];
+const themeFiles = ['catppuccin-mocha.ts', 'rosepine-moon.ts', 'rosepine-dawn.ts'];
 
 const themeColorsMap = {};
 

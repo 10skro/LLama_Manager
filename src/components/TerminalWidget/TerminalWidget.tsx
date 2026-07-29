@@ -57,7 +57,9 @@ export function TerminalWidget() {
           <button
             onClick={() => setViewMode('list')}
             className={`p-1.5 rounded transition-colors ${
-              viewMode === 'list' ? 'bg-primary/20 text-foreground' : 'text-foreground/40 hover:text-foreground/70'
+              viewMode === 'list'
+                ? 'bg-primary/20 text-foreground'
+                : 'text-foreground/40 hover:text-foreground/70'
             }`}
             title="List view"
           >
@@ -66,7 +68,9 @@ export function TerminalWidget() {
           <button
             onClick={() => setViewMode('grid')}
             className={`p-1.5 rounded transition-colors ${
-              viewMode === 'grid' ? 'bg-primary/20 text-foreground' : 'text-foreground/40 hover:text-foreground/70'
+              viewMode === 'grid'
+                ? 'bg-primary/20 text-foreground'
+                : 'text-foreground/40 hover:text-foreground/70'
             }`}
             title="Grid view"
           >
@@ -109,7 +113,11 @@ export function TerminalWidget() {
         {/* Grid view: all terminals side by side */}
         {viewMode === 'grid' && (
           <div className="flex-1 overflow-hidden">
-            <TerminalSessionGrid sessions={sessions} cardTitleMap={cardTitleMap} onClose={handleClose} />
+            <TerminalSessionGrid
+              sessions={sessions}
+              cardTitleMap={cardTitleMap}
+              onClose={handleClose}
+            />
           </div>
         )}
       </div>

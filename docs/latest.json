@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.63",
-  "notes": "## Changes\n\n### Bug Fixes\n- Post-install changelog modal now respects \"Show update modal\" setting\n- Server warning dialog now appears on Install & Restart from Header and Settings",
-  "pub_date": "2026-07-29T12:00:00Z",
+  "version": "v0.6.80",
+  "notes": "## Changes\n\n### Refactoring\n- Extract Tauri commands from lib.rs into domain modules for improved code organization\n- Decompose setup() and extract update commands into dedicated modules\n\n### Maintenance\n- Add ESLint and Prettier linting infrastructure with type safety rules\n- Fix all lint warnings and improve TypeScript type safety",
+  "pub_date": "2026-07-29T13:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.63/Llama.Manager_0.6.63_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTVvczVnUEZtNll0YllEdUhreTN3YnZNR0g2VGtSdCtYQmp0Y1pWMCtqT01neHdDNXJMK1phYmxnNVhIRlZzd05TZVRaUmkzM2d1R0RHRnd3SmxWelFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1Mjg0NjQ0CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuNjNfeDY0LXNldHVwLmV4ZQpFNTBFRUJwZW5PRWFwOGdpN3RMQ3V0T0RDdHdNUW5CbUhwQUZBQkpFbktFZjVMSVRpYXdqdHFXVEJ1NSszRDE0enl4RmE4VlRuY1YzcS9BWGNhWFVDdz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.80/Llama.Manager_0.6.80_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTRObm1BM0ptZ3hidTRpZ2tTZEpuSklVQ2VUK2Q2bUFmelVadGJLV25xZVB3WnFaQkczL0tvNjZKVmx5TENJL3ZDa3ZIVkQ4MHhaazVqa3l5ays5TGdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MzIxNDY2CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuODBfeDY0LXNldHVwLmV4ZQpiV0JvWk1PNFBYdG5jRDlLTFhjeU0wSG1pMVo4L2lrWjgwWE4zMXJDRWRSbmVnNldObXdvODF1a3d3VytVN3FMU2EwTmpzVkErbDl0akpkS1AxeUxEdz09Cg=="
     }
   }
 }

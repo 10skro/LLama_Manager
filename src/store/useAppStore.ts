@@ -10,7 +10,7 @@ import { makeKey } from '@/utils/buildKey';
  * Falls back to DEFAULT_THEME_ID if not available.
  */
 function getInitialTheme(): string {
-  const injected = (window as any).__INITIAL_THEME__;
+  const injected = window.__INITIAL_THEME__;
   if (injected && injected.name) {
     // Validate the theme ID exists in our theme registry
     const theme = getThemeById(injected.name);
@@ -24,7 +24,8 @@ function getInitialTheme(): string {
 interface ActiveDownloadInfo {
   id: number;
   progress: number;
-  status: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
+  status:
+    'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
 }
 
 interface AppState {
@@ -39,7 +40,15 @@ interface AppState {
   // Downloads
   activeDownloads: Map<string, ActiveDownloadInfo>; // composite key "build_number|backend|architecture" -> {id, progress, status}
   downloadingKeys: Set<string>; // only keys with status 'downloading' or 'extracting' (stable reference during progress ticks)
-  updateDownloadProgress: (buildNumber: string, backend: string, architecture: string, progress: number, downloadId?: number, status?: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled') => void;
+  updateDownloadProgress: (
+    buildNumber: string,
+    backend: string,
+    architecture: string,
+    progress: number,
+    downloadId?: number,
+    status?:
+      'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled'
+  ) => void;
   clearDownload: (buildNumber: string, backend: string, architecture: string) => void;
   getDownloadId: (buildNumber: string, backend: string, architecture: string) => number | undefined;
 
@@ -53,7 +62,12 @@ interface AppState {
   appUpdateDate: string | null;
   appUpdateBody: string | null;
   appUpdateLastChecked: string | null;
-  setAppUpdate: (info: { available: boolean; version: string | null; date: string | null; body: string | null }) => void;
+  setAppUpdate: (info: {
+    available: boolean;
+    version: string | null;
+    date: string | null;
+    body: string | null;
+  }) => void;
 
   // Notifications
   newBuilds: string[];
@@ -117,8 +131,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Filters
   filters: defaultFilters,
-  setFilters: (partial) =>
-    set((state) => ({ filters: { ...state.filters, ...partial } })),
+  setFilters: (partial) => set((state) => ({ filters: { ...state.filters, ...partial } })),
 
   // App Update
   appUpdateAvailable: false,
@@ -126,13 +139,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   appUpdateDate: null,
   appUpdateBody: null,
   appUpdateLastChecked: null,
-  setAppUpdate: (info) => set({
-    appUpdateAvailable: info.available,
-    appUpdateVersion: info.version,
-    appUpdateDate: info.date,
-    appUpdateBody: info.body,
-    appUpdateLastChecked: new Date().toISOString(),
-  }),
+  setAppUpdate: (info) =>
+    set({
+      appUpdateAvailable: info.available,
+      appUpdateVersion: info.version,
+      appUpdateDate: info.date,
+      appUpdateBody: info.body,
+      appUpdateLastChecked: new Date().toISOString(),
+    }),
 
   // Downloads
   activeDownloads: new Map(),
@@ -148,7 +162,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         return {};
       }
 
-      const wasDownloading = existing?.status === 'downloading' || existing?.status === 'extracting';
+      const wasDownloading =
+        existing?.status === 'downloading' || existing?.status === 'extracting';
       const isNowDownloading = newStatus === 'downloading' || newStatus === 'extracting';
 
       // Only update downloadingKeys if the downloading state changed
@@ -209,8 +224,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // UI
   sidebarCollapsed: false,
-  toggleSidebar: () =>
-    set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
   // Custom Commands
   customCommands: [],
@@ -223,9 +237,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   updateCustomCommand: (command) =>
     set((state) => ({
-      customCommands: state.customCommands.map((c) =>
-        c.id === command.id ? command : c
-      ),
+      customCommands: state.customCommands.map((c) => (c.id === command.id ? command : c)),
     })),
 
   // Running terminals tracking (version_id -> session_id)

@@ -23,8 +23,9 @@ export function SortableCardItem({
   versionId: number;
   children: React.ReactNode;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging, transform, transition } =
-    useSortable({ id: versionId });
+  const { attributes, listeners, setNodeRef, isDragging, transform, transition } = useSortable({
+    id: versionId,
+  });
   const { overId } = React.useContext(DragStateContext);
 
   const isDropTarget = overId === versionId && !isDragging;
@@ -39,11 +40,7 @@ export function SortableCardItem({
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging
-      ? undefined
-      : justReleased
-        ? settleTransition
-        : transition,
+    transition: isDragging ? undefined : justReleased ? settleTransition : transition,
     opacity: isGhost ? 0.3 : 1,
     zIndex: isDragging ? 10 : isDropTarget ? 5 : 1,
   };
@@ -51,14 +48,13 @@ export function SortableCardItem({
   const dragHandleProps: DragHandleProps = { attributes, listeners };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="relative group"
-    >
+    <div ref={setNodeRef} style={style} className="relative group">
       {/* Drop target indicator — pulse frame behind the target card */}
       {isDropTarget && (
-        <div className="absolute -inset-2 rounded-xl bg-secondary/50 ring-2 ring-ring/50 animate-pulse pointer-events-none" style={{ zIndex: -1 }} />
+        <div
+          className="absolute -inset-2 rounded-xl bg-secondary/50 ring-2 ring-ring/50 animate-pulse pointer-events-none"
+          style={{ zIndex: -1 }}
+        />
       )}
 
       {/* Ghost placeholder when this card is being dragged */}

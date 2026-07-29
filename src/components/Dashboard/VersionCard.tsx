@@ -11,13 +11,26 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Trash2, List,
-  Terminal, SlidersHorizontal, Pencil,
-  Play, Square, Settings, Copy, CopyCheck, ClipboardCheck, GripVertical,
+  Trash2,
+  List,
+  Terminal,
+  SlidersHorizontal,
+  Pencil,
+  Play,
+  Square,
+  Settings,
+  Copy,
+  CopyCheck,
+  ClipboardCheck,
+  GripVertical,
 } from 'lucide-react';
 import { VersionConfigDisplay } from './VersionConfigDisplay';
 import OverrideDialog from './OverrideDialog';
@@ -38,11 +51,7 @@ interface VersionCardProps {
   dragHandleProps?: DragHandleProps;
 }
 
-export function VersionCard({
-  version,
-  actions,
-  dragHandleProps,
-}: VersionCardProps) {
+export function VersionCard({ version, actions, dragHandleProps }: VersionCardProps) {
   const { toast } = useToast();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
 
@@ -93,14 +102,14 @@ export function VersionCard({
   const activeCustomization = isEditing
     ? { title: tempTitle, header_color: tempColor, text_color: tempTextColor }
     : customization;
-  const headerColorObj = HEADER_COLORS.find(c => c.name === activeCustomization?.header_color);
+  const headerColorObj = HEADER_COLORS.find((c) => c.name === activeCustomization?.header_color);
   const headerBg = headerColorObj?.variable ?? 'hsl(var(--secondary))';
   const displayTitle = activeCustomization?.title || '\u00A0';
   const displayTextColor = activeCustomization?.text_color || undefined;
 
   // Config lookup: config_id (string) matches ConfigEntry.id (string)
   const linkedConfig = configLink
-    ? configs.find(c => c.type === configLink.config_type && c.id === configLink.config_id)
+    ? configs.find((c) => c.type === configLink.config_type && c.id === configLink.config_id)
     : undefined;
 
   const openCustomizeDropdown = () => {
@@ -176,20 +185,23 @@ export function VersionCard({
     }
   };
 
-  const handleOverrideSave = useCallback((newOverride: VersionOverride | null) => {
-    setOverride(version.id, newOverride);
-    if (newOverride) {
-      toast({
-        title: 'Override saved',
-        description: `Override applied to ${version.build_number}.`,
-      });
-    } else {
-      toast({
-        title: 'Override cleared',
-        description: `Override removed from ${version.build_number}.`,
-      });
-    }
-  }, [version.id, version.build_number, setOverride, toast]);
+  const handleOverrideSave = useCallback(
+    (newOverride: VersionOverride | null) => {
+      setOverride(version.id, newOverride);
+      if (newOverride) {
+        toast({
+          title: 'Override saved',
+          description: `Override applied to ${version.build_number}.`,
+        });
+      } else {
+        toast({
+          title: 'Override cleared',
+          description: `Override removed from ${version.build_number}.`,
+        });
+      }
+    },
+    [version.id, version.build_number, setOverride, toast]
+  );
 
   const hasOverride = override !== null && (override.model_path || override.mmproj_path);
 
@@ -198,16 +210,14 @@ export function VersionCard({
 
   // Extract override file names for separate badges
   const overrideModelName = override?.model_path
-    ? override.model_path.split('\\').pop()?.split('/').pop() ?? 'model.gguf'
+    ? (override.model_path.split('\\').pop()?.split('/').pop() ?? 'model.gguf')
     : null;
   const overrideMmprojName = override?.mmproj_path
-    ? override.mmproj_path.split('\\').pop()?.split('/').pop() ?? 'mmproj.mmproj'
+    ? (override.mmproj_path.split('\\').pop()?.split('/').pop() ?? 'mmproj.mmproj')
     : null;
 
   return (
-    <Card
-      className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden flex flex-col"
-    >
+    <Card className="border-border/50 bg-card/50 hover:border-border/80 transition-colors group overflow-hidden flex flex-col">
       {/* Colored Header Bar */}
       <div
         className="px-3 py-2 flex items-center justify-between rounded-t-xl"
@@ -293,7 +303,7 @@ export function VersionCard({
                     style={{ backgroundColor: 'hsl(var(--secondary))' }}
                     title="Default"
                   />
-                  {HEADER_COLORS.map(color => (
+                  {HEADER_COLORS.map((color) => (
                     <button
                       key={color.name}
                       onClick={() => setTempColor(color.name)}
@@ -311,7 +321,7 @@ export function VersionCard({
               <div className="px-2 py-1">
                 <p className="text-xs text-muted-foreground mb-1.5">Text Color</p>
                 <div className="flex gap-2">
-                  {TEXT_COLORS.map(color => (
+                  {TEXT_COLORS.map((color) => (
                     <button
                       key={color.name}
                       onClick={() => setTempTextColor(color.name)}
@@ -339,18 +349,12 @@ export function VersionCard({
       </div>
 
       {/* Config Display */}
-      <VersionConfigDisplay
-        link={configLink ?? null}
-        configName={linkedConfig?.name}
-      />
+      <VersionConfigDisplay link={configLink ?? null} configName={linkedConfig?.name} />
 
       {/* Override Badge */}
       {hasOverride && (
         <div className="px-3 pt-1.5 pb-1.5">
-          <Badge
-            variant="outline"
-            className="border-iris/30 text-iris text-xs gap-1 max-w-full"
-          >
+          <Badge variant="outline" className="border-iris/30 text-iris text-xs gap-1 max-w-full">
             <SlidersHorizontal className="h-3 w-3 shrink-0" />
             <div className="flex flex-wrap items-center gap-1 min-w-0 line-clamp-2">
               {overrideModelName && (
@@ -371,7 +375,10 @@ export function VersionCard({
       {/* Running Badge */}
       {isRunning && (
         <div className="px-3 pb-1.5">
-          <Badge variant="outline" className="border-green/30 text-green text-xs gap-1 items-center">
+          <Badge
+            variant="outline"
+            className="border-green/30 text-green text-xs gap-1 items-center"
+          >
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
             Running
           </Badge>
@@ -381,7 +388,10 @@ export function VersionCard({
       {/* Stopping Badge */}
       {isStopping && (
         <div className="px-3 pb-1.5">
-          <Badge variant="outline" className="border-amber/30 text-amber text-xs gap-1 items-center">
+          <Badge
+            variant="outline"
+            className="border-amber/30 text-amber text-xs gap-1 items-center"
+          >
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber animate-pulse" />
             Stopping...
           </Badge>
@@ -392,14 +402,9 @@ export function VersionCard({
         <CardHeader className="pb-3 pt-6">
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground font-medium">Version</p>
-            <p className="font-mono font-semibold text-lg truncate">
-              {version.build_number}
-            </p>
+            <p className="font-mono font-semibold text-lg truncate">{version.build_number}</p>
             <div className="flex items-center gap-1.5 mt-1">
-              <Badge
-                variant="outline"
-                className={`border ${getBackendColor(version.backend)}`}
-              >
+              <Badge variant="outline" className={`border ${getBackendColor(version.backend)}`}>
                 {version.backend}
               </Badge>
               <Badge variant="outline" className="border text-muted-foreground text-xs">
@@ -436,9 +441,10 @@ export function VersionCard({
                     >
                       <Terminal className="h-4 w-4" />
                       <span className="truncate">{config.name}</span>
-                      {configLink?.config_type === config.type && configLink?.config_id === config.id && (
-                        <span className="ml-auto text-xs text-green">Active</span>
-                      )}
+                      {configLink?.config_type === config.type &&
+                        configLink?.config_id === config.id && (
+                          <span className="ml-auto text-xs text-green">Active</span>
+                        )}
                     </DropdownMenuItem>
                   ))
                 )}
@@ -468,13 +474,29 @@ export function VersionCard({
 
           <div className="flex items-center gap-2 mt-auto">
             <Button
-              variant={isRunning ? "destructive" : "outline"}
+              variant={isRunning ? 'destructive' : 'outline'}
               size="sm"
               className="flex-1 gap-2"
               onClick={handleToggle}
               disabled={!hasConfig || isStopping}
-              aria-label={hasConfig ? (isStopping ? 'Server is stopping' : isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
-              title={hasConfig ? (isStopping ? 'Server is stopping' : isRunning ? 'Stop server' : 'Run configuration in terminal') : 'Link a configuration first to enable Play'}
+              aria-label={
+                hasConfig
+                  ? isStopping
+                    ? 'Server is stopping'
+                    : isRunning
+                      ? 'Stop server'
+                      : 'Run configuration in terminal'
+                  : 'Link a configuration first to enable Play'
+              }
+              title={
+                hasConfig
+                  ? isStopping
+                    ? 'Server is stopping'
+                    : isRunning
+                      ? 'Stop server'
+                      : 'Run configuration in terminal'
+                  : 'Link a configuration first to enable Play'
+              }
             >
               {isStopping ? (
                 <>

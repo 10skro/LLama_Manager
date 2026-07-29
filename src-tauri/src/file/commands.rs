@@ -55,6 +55,7 @@ pub fn scan_files(folder_path: &str, extensions: &[&str]) -> Result<Vec<ModelFil
 
 /// Scan for model files (.gguf, .safetensors, etc.)
 /// extensions: comma-separated list, e.g. "gguf,safetensors" or "" for all
+#[tauri::command]
 pub fn scan_model_files(folder_path: String, extensions: String) -> Result<Vec<ModelFile>, String> {
     let exts: Vec<&str> = if extensions.is_empty() {
         Vec::new()
@@ -66,6 +67,7 @@ pub fn scan_model_files(folder_path: String, extensions: String) -> Result<Vec<M
 
 /// Scan for mmproj files (.gguf, .safetensors, .mmproj, etc.)
 /// extensions: comma-separated list, e.g. "gguf,safetensors" or "" for all
+#[tauri::command]
 pub fn scan_mmproj_files(folder_path: String, extensions: String) -> Result<Vec<ModelFile>, String> {
     let exts: Vec<&str> = if extensions.is_empty() {
         Vec::new()
@@ -76,6 +78,7 @@ pub fn scan_mmproj_files(folder_path: String, extensions: String) -> Result<Vec<
 }
 
 /// Validate that a folder path exists and is accessible as a directory.
+#[tauri::command]
 pub fn validate_folder(path: String) -> Result<bool, String> {
     let p = std::path::Path::new(&path);
     if !p.exists() {

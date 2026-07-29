@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getVersionConfigLink, saveVersionConfigLink, deleteVersionConfigLink } from '@/services/versionConfig';
+import {
+  getVersionConfigLink,
+  saveVersionConfigLink,
+  deleteVersionConfigLink,
+} from '@/services/versionConfig';
 import type { VersionConfigLink } from '@/types';
 
 export function useVersionConfigLinks() {
@@ -34,17 +38,22 @@ export function useVersionConfigLinks() {
   }, []);
 
   useEffect(() => {
-    return () => { cancelledRef.current = true; };
+    return () => {
+      cancelledRef.current = true;
+    };
   }, []);
 
-  const getLink = useCallback((versionId: number) => {
-    return links[versionId] ?? null;
-  }, [links]);
+  const getLink = useCallback(
+    (versionId: number) => {
+      return links[versionId] ?? null;
+    },
+    [links]
+  );
 
   const setLink = useCallback(async (versionId: number, configType: 'custom', configId: string) => {
     try {
       await saveVersionConfigLink(versionId, configType, configId);
-      setLinks(prev => ({
+      setLinks((prev) => ({
         ...prev,
         [versionId]: { version_id: versionId, config_type: configType, config_id: configId },
       }));
@@ -56,7 +65,7 @@ export function useVersionConfigLinks() {
   const removeLink = useCallback(async (versionId: number) => {
     try {
       await deleteVersionConfigLink(versionId);
-      setLinks(prev => {
+      setLinks((prev) => {
         const next = { ...prev };
         delete next[versionId];
         return next;

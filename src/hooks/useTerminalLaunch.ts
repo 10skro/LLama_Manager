@@ -21,8 +21,8 @@ import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride 
  */
 function applyOverrideFlag(
   cmd: string,
-  flag: string,       // e.g. '-m' or '--mmproj'
-  newValue: string,    // the override path (no quotes added)
+  flag: string, // e.g. '-m' or '--mmproj'
+  newValue: string // the override path (no quotes added)
 ): string {
   // Tokenise: split on whitespace but respect quoted strings
   const tokens: string[] = [];
@@ -107,7 +107,11 @@ export function useTerminalLaunch({
       if (currentStoppingId === event.payload) {
         removeStoppingTerminal(version.id);
       }
-    }).then((u) => { unlisten = u; }).catch(() => {});
+    })
+      .then((u) => {
+        unlisten = u;
+      })
+      .catch(() => {});
 
     return () => {
       if (unlisten) unlisten();
@@ -121,12 +125,23 @@ export function useTerminalLaunch({
     const installPath = version.install_path;
 
     // Validate config exists BEFORE setting injectingRef
-    const config = configs.find((c) => c.type === configLink.config_type && c.id === configLink.config_id);
+    const config = configs.find(
+      (c) => c.type === configLink.config_type && c.id === configLink.config_id
+    );
 
     if (!config) {
       console.error('[LAUNCH] ERROR: Linked configuration not found!');
-      console.error('[LAUNCH] Looking for type="' + configLink.config_type + '" id="' + configLink.config_id + '"');
-      console.error('[LAUNCH] Available config IDs:', configs.map(c => c.id));
+      console.error(
+        '[LAUNCH] Looking for type="' +
+          configLink.config_type +
+          '" id="' +
+          configLink.config_id +
+          '"'
+      );
+      console.error(
+        '[LAUNCH] Available config IDs:',
+        configs.map((c) => c.id)
+      );
       onError?.('Linked configuration not found. It may have been deleted.');
       return;
     }
@@ -134,10 +149,12 @@ export function useTerminalLaunch({
     const startupCommand = config.command;
 
     // Auto-prepend llama-server.exe if command doesn't already start with an executable
-    const needsPrefix = startupCommand && !startupCommand.trim().startsWith('llama-server') && !startupCommand.trim().startsWith('.\\') && !startupCommand.trim().startsWith('..\\');
-    const fullCommand = needsPrefix
-      ? `llama-server.exe ${startupCommand}`
-      : startupCommand;
+    const needsPrefix =
+      startupCommand &&
+      !startupCommand.trim().startsWith('llama-server') &&
+      !startupCommand.trim().startsWith('.\\') &&
+      !startupCommand.trim().startsWith('..\\');
+    const fullCommand = needsPrefix ? `llama-server.exe ${startupCommand}` : startupCommand;
 
     // Only set injectingRef after validation passes
     injectingRef.current = true;
@@ -146,11 +163,11 @@ export function useTerminalLaunch({
       // Join all lines into one: remove ^ and newlines, replace with spaces
       let singleLine = (fullCommand || '')
         .split(/\r?\n/)
-        .map(line => line.replace(/\s*\^\s*$/, '').trim())
-        .filter(line => line.length > 0)
+        .map((line) => line.replace(/\s*\^\s*$/, '').trim())
+        .filter((line) => line.length > 0)
         .join(' ');
 
-       // Inject override model_path and mmproj_path if present
+      // Inject override model_path and mmproj_path if present
       // Uses robust token-based replacement that handles quoted/unquoted paths
       if (override) {
         if (override.model_path) {
@@ -208,7 +225,14 @@ export function useTerminalLaunch({
     } finally {
       injectingRef.current = false;
     }
-  }, [configLink, onError, version.id, removeRunningTerminal, setStoppingTerminal, removeStoppingTerminal]);
+  }, [
+    configLink,
+    onError,
+    version.id,
+    removeRunningTerminal,
+    setStoppingTerminal,
+    removeStoppingTerminal,
+  ]);
 
   // Toggle: if running → stop, else → start
   // Read current state at call time to avoid stale closure issues
@@ -223,7 +247,7 @@ export function useTerminalLaunch({
       // Not running → play (reuse handlePlay)
       await handlePlay();
     }
-  }, [configLink, handlePlay, handleStop]);
+  }, [configLink, handlePlay, handleStop, version.id]);
 
   const hasConfig = configLink !== null;
 

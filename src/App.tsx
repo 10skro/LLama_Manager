@@ -35,7 +35,9 @@ function App() {
   // Post-installation changelog modal
   const [showPostInstallChangelog, setShowPostInstallChangelog] = useState(false);
   const [postInstallChangelogBody, setPostInstallChangelogBody] = useState<string | null>(null);
-  const [postInstallChangelogVersion, setPostInstallChangelogVersion] = useState<string | null>(null);
+  const [postInstallChangelogVersion, setPostInstallChangelogVersion] = useState<string | null>(
+    null
+  );
 
   // Show update modal on startup if update available and setting is enabled
   // Wait for both the real update check (isChecking) and settings to finish loading
@@ -47,12 +49,20 @@ function App() {
       setUpdateCheckCompleted(true);
       const showModalSetting = settings?.show_update_modal ?? true;
       const shouldShow = updateInfo.available && showModalSetting;
-      console.log(`[UPDATE] Startup modal decision: available=${updateInfo.available}, show_update_modal=${showModalSetting}, shouldShow=${shouldShow}`);
+      console.log(
+        `[UPDATE] Startup modal decision: available=${updateInfo.available}, show_update_modal=${showModalSetting}, shouldShow=${shouldShow}`
+      );
       if (shouldShow) {
         setShowModal(true);
       }
     }
-  }, [isChecking, updateCheckCompleted, updateInfo.available, settings?.show_update_modal, settingsLoaded]);
+  }, [
+    isChecking,
+    updateCheckCompleted,
+    updateInfo.available,
+    settings?.show_update_modal,
+    settingsLoaded,
+  ]);
 
   // Load settings and restore saved theme on app startup
   // Theme is already applied by inline script in index.html from __INITIAL_THEME__ (injected by Rust)
@@ -78,19 +88,27 @@ function App() {
         // Show post-installation changelog modal if pending changelog exists
         // AND the user hasn't disabled update modals on startup
         const showUpdateModal = settings.show_update_modal ?? true;
-        console.log(`[UPDATE] Startup: show_update_modal=${showUpdateModal}, pending_changelog_version=${settings.pending_changelog_version ?? '(none)'}`);
+        console.log(
+          `[UPDATE] Startup: show_update_modal=${showUpdateModal}, pending_changelog_version=${settings.pending_changelog_version ?? '(none)'}`
+        );
 
         if (settings.pending_changelog_version && settings.pending_changelog_body) {
           if (showUpdateModal) {
-            console.log(`[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal WILL show`);
+            console.log(
+              `[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal WILL show`
+            );
             setPostInstallChangelogVersion(settings.pending_changelog_version);
             setPostInstallChangelogBody(settings.pending_changelog_body);
             setShowPostInstallChangelog(true);
           } else {
-            console.log(`[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal SUPPRESSED (show_update_modal=false)`);
+            console.log(
+              `[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal SUPPRESSED (show_update_modal=false)`
+            );
           }
         } else if (settings.pending_changelog_version) {
-          console.warn(`[UPDATE] pending_changelog_version=${settings.pending_changelog_version} but body is missing — changelog modal will NOT show`);
+          console.warn(
+            `[UPDATE] pending_changelog_version=${settings.pending_changelog_version} but body is missing — changelog modal will NOT show`
+          );
         }
 
         // Only update theme if it actually differs from the current store value
@@ -139,7 +157,9 @@ function App() {
         // Check for new builds and populate the notification bell
         const newBuilds = await checkNewBuilds();
         if (newBuilds.length > 0) {
-          const buildLabels = newBuilds.map((b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+          const buildLabels = newBuilds.map(
+            (b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`
+          );
           useAppStore.getState().setNewBuilds(buildLabels);
         }
       } catch (err) {
@@ -166,7 +186,9 @@ function App() {
           useRefreshStore.setState({ lastFetched: ts });
 
           // Populate notification bell
-          const buildLabels = newBuilds.map((b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+          const buildLabels = newBuilds.map(
+            (b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`
+          );
           useAppStore.getState().setNewBuilds(buildLabels);
 
           toast({

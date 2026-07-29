@@ -1,8 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table, TableBody, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Loader2, AlertCircle } from 'lucide-react';
 import { VersionGroup } from './VersionGroup';
 import type { Build } from '@/types';
@@ -56,7 +54,9 @@ export function BuildsTable({
           /* Search Loading Empty State */
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground font-medium">Searching for "{searchState.tag}"...</p>
+            <p className="text-muted-foreground font-medium">
+              Searching for "{searchState.tag}"...
+            </p>
             <p className="text-muted-foreground/60 text-sm mt-1">
               This may take a moment for older builds.
             </p>
@@ -84,9 +84,7 @@ export function BuildsTable({
               <>
                 <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground font-medium">No builds match your filters</p>
-                <p className="text-muted-foreground/60 text-sm mt-1">
-                  Try adjusting your filters.
-                </p>
+                <p className="text-muted-foreground/60 text-sm mt-1">Try adjusting your filters.</p>
               </>
             )}
           </div>

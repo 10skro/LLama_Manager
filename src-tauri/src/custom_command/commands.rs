@@ -4,6 +4,7 @@ use crate::custom_command::logic;
 use crate::db::connection::DbManager;
 
 /// Save a custom command configuration.
+#[tauri::command]
 pub fn save_custom_command(
     state_db: State<'_, DbManager>,
     config: serde_json::Value,
@@ -12,6 +13,7 @@ pub fn save_custom_command(
 }
 
 /// Get all custom command configurations.
+#[tauri::command]
 pub fn get_custom_commands(
     state_db: State<'_, DbManager>,
 ) -> Result<Vec<serde_json::Value>, String> {
@@ -19,6 +21,7 @@ pub fn get_custom_commands(
 }
 
 /// Delete a custom command by its ID.
+#[tauri::command]
 pub fn delete_custom_command(
     state_db: State<'_, DbManager>,
     id: String,

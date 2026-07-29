@@ -9,6 +9,7 @@ const DEFAULT_RELEASE_LIMIT: usize = 50;
 const SEARCH_MAX_RELEASES: usize = 100;
 
 /// Fetch builds from GitHub API, using cache when possible.
+#[tauri::command]
 pub async fn fetch_builds(
     state_github: State<'_, GithubClient>,
     state_db: State<'_, DbManager>,
@@ -27,6 +28,7 @@ pub async fn fetch_builds(
 }
 
 /// Check for new builds not yet installed.
+#[tauri::command]
 pub async fn check_new_builds(
     state_github: State<'_, GithubClient>,
     state_db: State<'_, DbManager>,
@@ -40,6 +42,7 @@ pub async fn check_new_builds(
 }
 
 /// Fetch a specific release by its tag name.
+#[tauri::command]
 pub async fn fetch_release_by_tag(
     state_github: State<'_, GithubClient>,
     tag: String,
@@ -50,6 +53,7 @@ pub async fn fetch_release_by_tag(
 }
 
 /// Search builds by query string.
+#[tauri::command]
 pub async fn search_builds(
     state_github: State<'_, GithubClient>,
     query: String,
@@ -60,6 +64,7 @@ pub async fn search_builds(
 }
 
 /// Fetch the changelog for a release tag.
+#[tauri::command]
 pub async fn fetch_release_changelog(
     state_github: State<'_, GithubClient>,
     tag: String,
@@ -70,6 +75,7 @@ pub async fn fetch_release_changelog(
 }
 
 /// Get the timestamp of the last successful catalog fetch.
+#[tauri::command]
 pub fn get_catalog_last_fetched(
     state_db: State<'_, DbManager>,
 ) -> Result<Option<String>, String> {

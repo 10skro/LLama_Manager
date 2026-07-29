@@ -61,3 +61,6 @@ backups/
 # Analysis files (local only)
 suppressions-warnings.md
 clippy-warnings.md
+
+# DevMan analysis workspace (local only)
+.devman/

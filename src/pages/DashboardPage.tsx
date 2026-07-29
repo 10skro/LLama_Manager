@@ -8,7 +8,7 @@ import { useStorageUsage } from '@/hooks/useStorageUsage';
 import { useLatestBuildInfo } from '@/hooks/useLatestBuildInfo';
 import { useVersionConfigLinks } from '@/hooks/useVersionConfigLinks';
 import { useConfigs } from '@/hooks/useConfigs';
-import { useToast } from '@/hooks/use-toast';
+import { useToast, type ToastOptions } from '@/hooks/use-toast';
 import {
   uninstallVersion,
   getCardCustomizations,
@@ -23,12 +23,24 @@ import { useAppStore } from '@/store/useAppStore';
 import { formatSize } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, Trash2, Loader2, HardDrive, Cpu } from 'lucide-react';
 import { ToastAction } from '@/components/ui/toast';
 
-import { ReorderableGrid, StatCard, DashboardProvider, useDashboardContext } from '@/components/Dashboard';
+import {
+  ReorderableGrid,
+  StatCard,
+  DashboardProvider,
+  useDashboardContext,
+} from '@/components/Dashboard';
 import type { VersionCardActions } from '@/components/Dashboard/ReorderableGrid';
 
 /* ─── Helpers ─── */
@@ -64,7 +76,7 @@ export function DashboardPage() {
   // Load config links for all installed versions
   useEffect(() => {
     if (versions && versions.length > 0) {
-      loadAll(versions.map(v => v.id));
+      loadAll(versions.map((v) => v.id));
     }
   }, [versions, loadAll]);
 
@@ -72,7 +84,7 @@ export function DashboardPage() {
 
   const handleDelete = async () => {
     if (deleteTarget === null) return;
-    const versionToDelete = versions?.find(v => v.id === deleteTarget);
+    const versionToDelete = versions?.find((v) => v.id === deleteTarget);
     setIsDeleting(true);
     try {
       await uninstallVersion(deleteTarget);
@@ -192,7 +204,7 @@ function DashboardContent({
   onDragEnd: (newVersions: InstalledVersion[]) => void;
   onDelete: () => void;
   onDuplicate: (versionId: number, withSettings: boolean) => void;
-  toast: (options: any) => void;
+  toast: (options: ToastOptions) => void;
 }) {
   const {
     cardCustomizations,
@@ -212,12 +224,16 @@ function DashboardContent({
   // Load customizations from backend on mount
   useEffect(() => {
     let cancelled = false;
-    loadCardCustomizationsRecord().then(record => {
-      if (!cancelled) {
-        Object.values(record).forEach(c => setCustomization(c.version_id, c));
-      }
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    loadCardCustomizationsRecord()
+      .then((record) => {
+        if (!cancelled) {
+          Object.values(record).forEach((c) => setCustomization(c.version_id, c));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [setCustomization]);
 
   // Load overrides for all installed versions
@@ -236,43 +252,48 @@ function DashboardContent({
         }
       })
     ).catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [versions, setOverride]);
 
   // --- Copy handler (needs context data) ---
-  const handleCopy = useCallback((versionId: number) => {
-    const custom = cardCustomizations[versionId];
-    const link = getLink(versionId);
-    const override = versionOverrides[versionId];
+  const handleCopy = useCallback(
+    (versionId: number) => {
+      const custom = cardCustomizations[versionId];
+      const link = getLink(versionId);
+      const override = versionOverrides[versionId];
 
-    const data: CardClipboardData = { sourceVersionId: versionId };
+      const data: CardClipboardData = { sourceVersionId: versionId };
 
-    if (custom && (custom.title || custom.header_color || custom.text_color)) {
-      data.customization = {
-        title: custom.title,
-        header_color: custom.header_color,
-        text_color: custom.text_color,
-      };
-    }
-    if (link) {
-      data.configLink = { config_type: link.config_type, config_id: link.config_id };
-    }
-    if (override) {
-      data.override = { model_path: override.model_path, mmproj_path: override.mmproj_path };
-    }
+      if (custom && (custom.title || custom.header_color || custom.text_color)) {
+        data.customization = {
+          title: custom.title,
+          header_color: custom.header_color,
+          text_color: custom.text_color,
+        };
+      }
+      if (link) {
+        data.configLink = { config_type: link.config_type, config_id: link.config_id };
+      }
+      if (override) {
+        data.override = { model_path: override.model_path, mmproj_path: override.mmproj_path };
+      }
 
-    setClipboardData(data);
-    toast({
-      title: 'Settings copied',
-      description: 'Card settings are ready to paste on another card.',
-      duration: 0,
-      action: (
-        <ToastAction altText="Cancel copy" onClick={() => setClipboardData(null)}>
-          Cancel
-        </ToastAction>
-      ),
-    });
-  }, [cardCustomizations, getLink, versionOverrides, setClipboardData, toast]);
+      setClipboardData(data);
+      toast({
+        title: 'Settings copied',
+        description: 'Card settings are ready to paste on another card.',
+        duration: 0,
+        action: (
+          <ToastAction altText="Cancel copy" onClick={() => setClipboardData(null)}>
+            Cancel
+          </ToastAction>
+        ),
+      });
+    },
+    [cardCustomizations, getLink, versionOverrides, setClipboardData, toast]
+  );
 
   // --- Paste handler (needs context data) ---
   const handlePasteConfirm = useCallback(async () => {
@@ -294,7 +315,11 @@ function DashboardContent({
       }
 
       if (clipboardData.configLink) {
-        await saveVersionConfigLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
+        await saveVersionConfigLink(
+          targetId,
+          clipboardData.configLink.config_type,
+          clipboardData.configLink.config_id
+        );
         setLink(targetId, clipboardData.configLink.config_type, clipboardData.configLink.config_id);
       }
 
@@ -327,34 +352,47 @@ function DashboardContent({
     } finally {
       setIsPasting(false);
     }
-  }, [clipboardData, pasteTarget, setCustomization, setLink, setOverride, setClipboardData, setPasteTarget, toast]);
+  }, [
+    clipboardData,
+    pasteTarget,
+    setCustomization,
+    setLink,
+    setOverride,
+    setClipboardData,
+    setPasteTarget,
+    toast,
+  ]);
 
   // --- Duplicate handler: reload customizations when cloning with settings ---
-  const handleDuplicateWithContext = useCallback(async (versionId: number, withSettings: boolean) => {
-    await onDuplicate(versionId, withSettings);
-    if (withSettings) {
-      const record = await loadCardCustomizationsRecord();
-      Object.values(record).forEach(c => setCustomization(c.version_id, c));
-    }
-  }, [onDuplicate, setCustomization]);
+  const handleDuplicateWithContext = useCallback(
+    async (versionId: number, withSettings: boolean) => {
+      await onDuplicate(versionId, withSettings);
+      if (withSettings) {
+        const record = await loadCardCustomizationsRecord();
+        Object.values(record).forEach((c) => setCustomization(c.version_id, c));
+      }
+    },
+    [onDuplicate, setCustomization]
+  );
 
   // --- Unified actions object for VersionCard ---
-  const actions: VersionCardActions = useMemo(() => ({
-    onDeleteClick: (versionId: number) => setDeleteTarget(versionId),
-    onDuplicateClick: handleDuplicateWithContext,
-    onCopyClick: handleCopy,
-    onPasteRequest: setPasteTarget,
-  }), [handleDuplicateWithContext, handleCopy]);
+  const actions: VersionCardActions = useMemo(
+    () => ({
+      onDeleteClick: (versionId: number) => setDeleteTarget(versionId),
+      onDuplicateClick: handleDuplicateWithContext,
+      onCopyClick: handleCopy,
+      onPasteRequest: setPasteTarget,
+    }),
+    [handleDuplicateWithContext, handleCopy, setDeleteTarget, setPasteTarget]
+  );
 
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
       {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Overview of your installed llama.cpp builds.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">Overview of your installed llama.cpp builds.</p>
+      </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
@@ -379,8 +417,10 @@ function DashboardContent({
           value={
             storageLoading ? (
               <Skeleton className="h-7 w-24" />
+            ) : storageUsage != null ? (
+              formatSize(storageUsage)
             ) : (
-              storageUsage != null ? formatSize(storageUsage) : '\u2014'
+              '\u2014'
             )
           }
           label="Storage Used"
@@ -395,11 +435,7 @@ function DashboardContent({
           ))}
         </div>
       ) : versions && versions.length > 0 ? (
-        <ReorderableGrid
-          versions={versions}
-          onDragEnd={onDragEnd}
-          actions={actions}
-        />
+        <ReorderableGrid versions={versions} onDragEnd={onDragEnd} actions={actions} />
       ) : (
         <Card className="border-border/50 bg-card/50">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -408,7 +444,8 @@ function DashboardContent({
             </div>
             <h3 className="text-lg font-semibold">No versions installed</h3>
             <p className="text-muted-foreground mt-2 max-w-sm">
-              Get started by browsing available builds in the Catalog and downloading your first llama.cpp version.
+              Get started by browsing available builds in the Catalog and downloading your first
+              llama.cpp version.
             </p>
           </CardContent>
         </Card>
@@ -423,7 +460,8 @@ function DashboardContent({
               Paste Settings
             </DialogTitle>
             <DialogDescription>
-              This will replace the current settings of this card with the copied settings (title, color, config, override). This action cannot be undone.
+              This will replace the current settings of this card with the copied settings (title,
+              color, config, override). This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -453,7 +491,8 @@ function DashboardContent({
               Delete Version
             </DialogTitle>
             <DialogDescription>
-              This will permanently remove the installed version and all associated files. This action cannot be undone.
+              This will permanently remove the installed version and all associated files. This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

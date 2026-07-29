@@ -41,7 +41,9 @@ export function useConfigs() {
 
   useEffect(() => {
     load();
-    return () => { cancelledRef.current = true; };
+    return () => {
+      cancelledRef.current = true;
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -56,9 +58,7 @@ export function useConfigs() {
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       result = result.filter(
-        (e) =>
-          e.name.toLowerCase().includes(q) ||
-          (e.description ?? '').toLowerCase().includes(q)
+        (e) => e.name.toLowerCase().includes(q) || (e.description ?? '').toLowerCase().includes(q)
       );
     }
 

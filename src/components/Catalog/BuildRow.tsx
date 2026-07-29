@@ -34,17 +34,15 @@ export function BuildRow({
   return (
     <TableRow
       className={cn(
-        "border-b border-border transition-colors hover:bg-muted/50",
-        "border-border/30 hover:bg-secondary/30"
+        'border-b border-border transition-colors hover:bg-muted/50',
+        'border-border/30 hover:bg-secondary/30'
       )}
     >
       {/* Col 1: Build with tree connector */}
       <TableCell className="text-center">
         <div className="flex items-center justify-center gap-1">
           <span className="font-mono text-sm text-muted-foreground">{connector}</span>
-          <span className="font-mono text-sm font-medium">
-            {build.build_number}
-          </span>
+          <span className="font-mono text-sm font-medium">{build.build_number}</span>
         </div>
       </TableCell>
       {/* Col 2: Arch */}
@@ -54,10 +52,7 @@ export function BuildRow({
       {/* Col 3: Backend */}
       <TableCell className="text-center">
         <div className="flex items-center justify-center">
-          <Badge
-            variant="outline"
-            className={`border ${getBackendColor(build.backend)}`}
-          >
+          <Badge variant="outline" className={`border ${getBackendColor(build.backend)}`}>
             {build.backend}
           </Badge>
         </div>
@@ -86,7 +81,13 @@ export function BuildRow({
               onToggleFavorite();
             }}
             className={`hover:opacity-80 transition-opacity p-1 rounded hover:bg-secondary ${!build.download_url ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={!build.download_url ? 'Cannot favorite: no download URL' : (isFavorited ? 'Remove from favorites' : 'Add to favorites')}
+            title={
+              !build.download_url
+                ? 'Cannot favorite: no download URL'
+                : isFavorited
+                  ? 'Remove from favorites'
+                  : 'Add to favorites'
+            }
           >
             <Star
               className={`h-4 w-4 ${isFavorited ? 'fill-[hsl(var(--yellow))] text-[hsl(var(--yellow))]' : 'fill-none text-muted-foreground'}`}

@@ -35,7 +35,8 @@ if (isTerminalWindow) {
   // Theme is already applied by inline script in index.html from __INITIAL_THEME__
   const root = document.getElementById('root')!;
   (async () => {
-    const { default: TerminalWidgetApp } = await import('./components/TerminalWidget/TerminalWidgetApp');
+    const { default: TerminalWidgetApp } =
+      await import('./components/TerminalWidget/TerminalWidgetApp');
     ReactDOM.createRoot(root).render(<TerminalWidgetApp />);
   })();
 } else {
@@ -47,6 +48,6 @@ if (isTerminalWindow) {
           <App />
         </BrowserRouter>
       </QueryClientProvider>
-    </React.StrictMode>,
+    </React.StrictMode>
   );
 }

@@ -39,10 +39,10 @@ export function CatalogHeader({
           onClick={onRefresh}
           disabled={isRefreshing}
           className="gap-2"
-          title={canRefresh ? "Refresh build list" : `Refresh available in ${secondsLeft}s`}
+          title={canRefresh ? 'Refresh build list' : `Refresh available in ${secondsLeft}s`}
         >
           <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Refreshing...' : (!canRefresh ? `${secondsLeft}s` : 'Update')}
+          {isRefreshing ? 'Refreshing...' : !canRefresh ? `${secondsLeft}s` : 'Update'}
         </Button>
       </div>
     </div>

@@ -14,13 +14,16 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const syncRunningTerminals = useAppStore((state) => state.syncRunningTerminals);
-  const removeRunningTerminalBySessionId = useAppStore((state) => state.removeRunningTerminalBySessionId);
+  const removeRunningTerminalBySessionId = useAppStore(
+    (state) => state.removeRunningTerminalBySessionId
+  );
 
   // On mount: sync running terminals from backend
   useEffect(() => {
     async function sync() {
       try {
-        const sessions: { sessionId: string; versionId: number }[] = await invoke('list_active_terminals');
+        const sessions: { sessionId: string; versionId: number }[] =
+          await invoke('list_active_terminals');
         syncRunningTerminals(sessions);
       } catch (err) {
         console.error('Failed to sync running terminals:', err);
@@ -50,9 +53,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
           <div className="flex flex-1 overflow-hidden">
-            <main className="flex-1 overflow-auto">
-              {children}
-            </main>
+            <main className="flex-1 overflow-auto">{children}</main>
           </div>
         </div>
         <DownloadPanel />

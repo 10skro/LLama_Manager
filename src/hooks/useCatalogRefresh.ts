@@ -22,7 +22,10 @@ export function useCatalogRefresh({ onError }: UseCatalogRefreshOptions) {
   const handleRefreshClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!canRefresh) {
-      toast({ title: 'Cooldown active', description: `Please wait ${secondsLeft}s before refreshing.` });
+      toast({
+        title: 'Cooldown active',
+        description: `Please wait ${secondsLeft}s before refreshing.`,
+      });
       return;
     }
     try {
@@ -44,19 +47,24 @@ export function useCatalogRefresh({ onError }: UseCatalogRefreshOptions) {
         startCountdown();
 
         // Populate notification bell
-        const buildLabels = newBuilds.map((b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+        const buildLabels = newBuilds.map(
+          (b: Build) => `${b.build_number} / ${b.backend} / ${b.architecture}`
+        );
         useAppStore.getState().setNewBuilds(buildLabels);
 
-        toast({ title: 'Update found', description: `${newBuilds.length} build(s) not yet installed.` });
+        toast({
+          title: 'Update found',
+          description: `${newBuilds.length} build(s) not yet installed.`,
+        });
       } else {
         // No new builds - clear bell and show toast
         useAppStore.getState().setNewBuilds([]);
         end(false);
         toast({ title: 'No updates', description: 'Catalog is already up to date.' });
       }
-    } catch (err: any) {
+    } catch (err) {
       end(false); // No cooldown on error
-      const message = err.message || 'Failed to update';
+      const message = err instanceof Error ? err.message : 'Failed to update';
       onError(message);
       toast({ title: 'Update failed', description: message });
     }

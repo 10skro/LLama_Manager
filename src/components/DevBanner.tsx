@@ -4,7 +4,7 @@
  */
 
 export function DevBanner() {
-  const isDev = (window as any).__DEV_MODE__ === true;
+  const isDev = window.__DEV_MODE__ === true;
 
   if (!isDev) {
     return null;

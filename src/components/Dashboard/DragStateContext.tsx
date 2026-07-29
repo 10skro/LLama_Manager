@@ -18,9 +18,5 @@ export function DragStateProvider({ children }: { children: React.ReactNode }) {
     isDragging: !!active,
   };
 
-  return (
-    <DragStateContext.Provider value={state}>
-      {children}
-    </DragStateContext.Provider>
-  );
+  return <DragStateContext.Provider value={state}>{children}</DragStateContext.Provider>;
 }

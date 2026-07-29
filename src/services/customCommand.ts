@@ -1,7 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { CustomCommand } from '@/types';
 
-export async function saveCustomCommand(config: { id?: string; name: string; command: string; description?: string; color?: string; createdAt?: string }): Promise<CustomCommand> {
+export interface CustomCommandInput {
+  id?: string;
+  name: string;
+  command: string;
+  description?: string;
+  color?: string;
+  createdAt?: string;
+}
+
+export async function saveCustomCommand(config: CustomCommandInput): Promise<CustomCommand> {
   const now = new Date().toISOString();
 
   const payload: Record<string, string> = {
