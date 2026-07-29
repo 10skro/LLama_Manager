@@ -9,10 +9,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, Terminal, Download, Loader2, FileText } from 'lucide-react';
+import { Bell, Terminal, Download, Loader2, FileText, AlertTriangle } from 'lucide-react';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
+import { useServerCheck } from '@/hooks/useServerCheck';
 import { ChangelogModal } from '@/components/ChangelogModal';
-import { saveSettings } from '@/services/settings';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useState } from 'react';
 
 const pageTitles: Record<string, string> = {
@@ -24,9 +32,23 @@ const pageTitles: Record<string, string> = {
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { newBuilds, settings } = useAppStore();
+  const { newBuilds } = useAppStore();
   const { updateInfo, isInstalling, installUpdate } = useAppUpdate();
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const { showWarning, setShowWarning, stoppingServers, shouldShowWarning, killAllServers } = useServerCheck();
+
+  const handleInstallFromHeader = async () => {
+    const warning = await shouldShowWarning();
+    if (warning) return;
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
+  };
+
+  const handleConfirmWithServers = async () => {
+    await killAllServers();
+    // Changelog is persisted by the backend in install_app_update (eliminates race condition)
+    await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
+  };
 
   const title = pageTitles[location.pathname] || 'Llama Manager';
 
@@ -88,27 +110,19 @@ export function Header() {
                     Changelog
                   </Button>
                   <Button
-                    onClick={async () => {
-                      // Persist changelog for post-install display
-                      if (settings && updateInfo.version && updateInfo.body != null) {
-                        await saveSettings({
-                          ...settings,
-                          pending_changelog_version: updateInfo.version,
-                          pending_changelog_body: updateInfo.body,
-                        });
-                      }
-                      await installUpdate();
-                    }}
-                    disabled={isInstalling}
+                    onClick={handleInstallFromHeader}
+                    disabled={isInstalling || stoppingServers}
                     size="sm"
                     className="flex-1 gap-2"
                   >
-                    {isInstalling ? (
+                    {stoppingServers ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isInstalling ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
-                    {isInstalling ? 'Installing...' : 'Install & Restart'}
+                    {stoppingServers ? 'Stopping servers...' : isInstalling ? 'Installing...' : 'Install & Restart'}
                   </Button>
                 </div>
               </>
@@ -152,6 +166,30 @@ export function Header() {
       buildNumber={updateInfo.version ?? 'Update'}
       body={updateInfo.body ?? undefined}
     />
+
+    {/* Warning dialog when servers are running */}
+    <Dialog open={showWarning} onOpenChange={setShowWarning}>
+      <DialogContent className="max-w-md" onCloseAutoFocus={() => {}}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            Serveurs en cours d'exécution
+          </DialogTitle>
+          <DialogDescription>
+            Des serveurs sont actuellement actifs et seront arrêtés avant l'installation de la mise à jour. Voulez-vous continuer ?
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowWarning(false)}>
+            Annuler
+          </Button>
+          <Button onClick={handleConfirmWithServers}>
+            Continuer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

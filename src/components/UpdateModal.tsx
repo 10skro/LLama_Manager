@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2, AlertTriangle } from 'lucide-react';
 import { ChangelogRenderer } from '@/components/ChangelogRenderer';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
+import { useServerCheck } from '@/hooks/useServerCheck';
 import { useAppStore } from '@/store/useAppStore';
 import { saveSettings } from '@/services/settings';
 
@@ -24,8 +24,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   const { updateInfo, isInstalling, installUpdate } = useAppUpdate();
   const { settings } = useAppStore();
   const [dontShowAgain, setDontShowAgain] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
-  const [stoppingServers, setStoppingServers] = useState(false);
+  const { showWarning, setShowWarning, stoppingServers, shouldShowWarning, killAllServers } = useServerCheck();
 
   const handleClose = async () => {
     onOpenChange(false);
@@ -35,46 +34,15 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   };
 
   const handleInstall = async () => {
-    let serversRunning = false;
-
-    try {
-      // Check if any terminal sessions are currently running
-      const activeSessions = await invoke<Array<{ sessionId: string }>>('list_active_terminals');
-
-      if (activeSessions.length > 0) {
-        serversRunning = true;
-      }
-    } catch (err) {
-      // If check fails, assume servers might be running (safe-by-default)
-      console.error('Failed to check active terminals before update:', err);
-      serversRunning = true;
-    }
-
-    if (serversRunning) {
-      // Show warning dialog asking for confirmation
-      setShowWarning(true);
-      return;
-    }
+    const warning = await shouldShowWarning();
+    if (warning) return;
 
     // Changelog is persisted by the backend in install_app_update (eliminates race condition)
     await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
   };
 
   const handleConfirmWithServers = async () => {
-    setShowWarning(false);
-    setStoppingServers(true);
-
-    try {
-      // Stop all running servers first
-      await invoke('kill_all_terminals');
-    } catch {
-      // Even if kill fails, proceed with update (backend has safety net)
-    }
-
-    // Small delay to ensure processes are terminated
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setStoppingServers(false);
-
+    await killAllServers();
     // Changelog is persisted by the backend in install_app_update (eliminates race condition)
     await installUpdate(updateInfo.version ?? undefined, updateInfo.body ?? undefined);
   };

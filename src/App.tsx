@@ -45,7 +45,9 @@ function App() {
     if (!isChecking && settingsLoaded) {
       // The update check has completed and settings are loaded
       setUpdateCheckCompleted(true);
-      const shouldShow = updateInfo.available && (settings?.show_update_modal ?? true);
+      const showModalSetting = settings?.show_update_modal ?? true;
+      const shouldShow = updateInfo.available && showModalSetting;
+      console.log(`[UPDATE] Startup modal decision: available=${updateInfo.available}, show_update_modal=${showModalSetting}, shouldShow=${shouldShow}`);
       if (shouldShow) {
         setShowModal(true);
       }
@@ -74,11 +76,19 @@ function App() {
         setSettingsLoaded(true);
 
         // Show post-installation changelog modal if pending changelog exists
+        // AND the user hasn't disabled update modals on startup
+        const showUpdateModal = settings.show_update_modal ?? true;
+        console.log(`[UPDATE] Startup: show_update_modal=${showUpdateModal}, pending_changelog_version=${settings.pending_changelog_version ?? '(none)'}`);
+
         if (settings.pending_changelog_version && settings.pending_changelog_body) {
-          console.log(`[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version}`);
-          setPostInstallChangelogVersion(settings.pending_changelog_version);
-          setPostInstallChangelogBody(settings.pending_changelog_body);
-          setShowPostInstallChangelog(true);
+          if (showUpdateModal) {
+            console.log(`[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal WILL show`);
+            setPostInstallChangelogVersion(settings.pending_changelog_version);
+            setPostInstallChangelogBody(settings.pending_changelog_body);
+            setShowPostInstallChangelog(true);
+          } else {
+            console.log(`[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal SUPPRESSED (show_update_modal=false)`);
+          }
         } else if (settings.pending_changelog_version) {
           console.warn(`[UPDATE] pending_changelog_version=${settings.pending_changelog_version} but body is missing — changelog modal will NOT show`);
         }
