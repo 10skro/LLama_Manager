@@ -89,7 +89,9 @@ export function DashboardProvider({
   modelFolder,
   mmprojFolder,
 }: DashboardProviderProps) {
-  const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>({});
+  const [cardCustomizations, setCardCustomizations] = useState<Record<number, CardCustomization>>(
+    {}
+  );
   const [versionOverrides, setVersionOverrides] = useState<Record<number, VersionOverride>>({});
   const [clipboardData, setClipboardData] = useState<CardClipboardData | null>(null);
 
@@ -102,7 +104,7 @@ export function DashboardProvider({
   });
 
   const setCustomization = useCallback((versionId: number, customization?: CardCustomization) => {
-    setCardCustomizations(prev => {
+    setCardCustomizations((prev) => {
       const next = { ...prev };
       if (customization) {
         next[versionId] = customization;
@@ -114,7 +116,7 @@ export function DashboardProvider({
   }, []);
 
   const setOverride = useCallback((versionId: number, override: VersionOverride | null) => {
-    setVersionOverrides(prev => {
+    setVersionOverrides((prev) => {
       const next = { ...prev };
       if (override) {
         next[versionId] = override;
@@ -139,15 +141,15 @@ export function DashboardProvider({
   }, []);
 
   const setTempTitle = useCallback((title: string) => {
-    setTempEdit(prev => ({ ...prev, title }));
+    setTempEdit((prev) => ({ ...prev, title }));
   }, []);
 
   const setTempColor = useCallback((color: string) => {
-    setTempEdit(prev => ({ ...prev, color }));
+    setTempEdit((prev) => ({ ...prev, color }));
   }, []);
 
   const setTempTextColor = useCallback((textColor: string) => {
-    setTempEdit(prev => ({ ...prev, textColor }));
+    setTempEdit((prev) => ({ ...prev, textColor }));
   }, []);
 
   const value = useMemo<DashboardContextValue>(
@@ -194,7 +196,7 @@ export function DashboardProvider({
       setTempTextColor,
       modelFolder,
       mmprojFolder,
-    ],
+    ]
   );
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;

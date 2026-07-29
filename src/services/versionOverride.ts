@@ -10,7 +10,7 @@ export async function getVersionOverride(versionId: number): Promise<VersionOver
 export async function saveVersionOverride(
   versionId: number,
   modelPath: string | null,
-  mmprojPath: string | null,
+  mmprojPath: string | null
 ): Promise<void> {
   await invoke('save_version_override', {
     versionId,
@@ -25,7 +25,7 @@ export async function deleteVersionOverride(versionId: number): Promise<boolean>
 
 export async function scanMmprojFiles(
   folderPath: string,
-  extensions: FileExtensionFilter = 'all',
+  extensions: FileExtensionFilter = 'all'
 ): Promise<ModelFile[]> {
   const extString = extensions === 'all' ? '' : extensions;
   return invoke<ModelFile[]>('scan_mmproj_files', { folderPath, extensions: extString });

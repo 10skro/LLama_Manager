@@ -90,6 +90,8 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
   }, [activeTheme]);
 
   // Terminal initialization (runs once on mount)
+  // activeTheme is intentionally excluded from deps — theme updates are handled by the
+  // separate useEffect above (line 82) which re-applies colors without full re-init.
   useEffect(() => {
     if (!terminalRef.current) return;
 
@@ -135,11 +137,14 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
       })
       .catch(() => {});
 
-    const unlistenOutput = listen<{ sessionId: string; text: string }>('terminal-output', (event) => {
-      if (event.payload.sessionId === sessionId && xtermRef.current) {
-        xtermRef.current.write(event.payload.text);
+    const unlistenOutput = listen<{ sessionId: string; text: string }>(
+      'terminal-output',
+      (event) => {
+        if (event.payload.sessionId === sessionId && xtermRef.current) {
+          xtermRef.current.write(event.payload.text);
+        }
       }
-    });
+    );
 
     const unlistenExit = listen<string>('terminal-exit', (event) => {
       if (event.payload === sessionId && xtermRef.current) {
@@ -155,7 +160,8 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
       xtermRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [sessionId]);
+    // activeTheme excluded: theme updates handled by separate useEffect (line 82)
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClose = useCallback(() => {
     invoke('kill_terminal', { sessionId }).catch((err) => {
@@ -167,7 +173,9 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/30">
-        <span className="text-xs text-foreground/60 font-mono truncate">{sessionId.slice(0, 8)}</span>
+        <span className="text-xs text-foreground/60 font-mono truncate">
+          {sessionId.slice(0, 8)}
+        </span>
         {cardTitle && (
           <span className="text-xs text-foreground/40 truncate ml-2">— {cardTitle}</span>
         )}

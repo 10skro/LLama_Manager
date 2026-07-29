@@ -1,13 +1,13 @@
 // GitHub build from llama.cpp
 export interface Build {
-  build_number: string;    // "b10075"
+  build_number: string; // "b10075"
   tag_name: string;
   published_at: string;
-  platform: string;        // "windows"
-  architecture: string;    // "x64", "arm64"
-  backend: string;         // "CPU", "CUDA_12_X", "Vulkan", etc.
+  platform: string; // "windows"
+  architecture: string; // "x64", "arm64"
+  backend: string; // "CPU", "CUDA_12_X", "Vulkan", etc.
   download_url: string;
-  file_size: number;       // bytes
+  file_size: number; // bytes
   checksum?: string;
 }
 
@@ -30,7 +30,8 @@ export interface Download {
   file_path?: string;
   total_size: number;
   downloaded_size: number;
-  status: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
+  status:
+    'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
   error_message?: string;
   created_at: string;
   updated_at: string;
@@ -42,10 +43,11 @@ export interface DownloadProgress {
   build_number: string;
   downloaded: number;
   total: number;
-  speed: number;           // bytes/sec
+  speed: number; // bytes/sec
   percentage: number;
   eta_seconds: number;
-  status: 'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
+  status:
+    'pending' | 'downloading' | 'downloaded' | 'extracting' | 'completed' | 'failed' | 'cancelled';
 }
 
 // App settings

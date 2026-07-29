@@ -24,7 +24,8 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   const { updateInfo, isInstalling, installUpdate } = useAppUpdate();
   const { settings } = useAppStore();
   const [dontShowAgain, setDontShowAgain] = useState(false);
-  const { showWarning, setShowWarning, stoppingServers, shouldShowWarning, killAllServers } = useServerCheck();
+  const { showWarning, setShowWarning, stoppingServers, shouldShowWarning, killAllServers } =
+    useServerCheck();
 
   const handleClose = async () => {
     onOpenChange(false);
@@ -72,10 +73,13 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
               type="checkbox"
               id="dontShowAgain"
               checked={dontShowAgain}
-              onChange={e => setDontShowAgain(e.target.checked)}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
               className="rounded border-border"
             />
-            <label htmlFor="dontShowAgain" className="text-xs text-muted-foreground cursor-pointer select-none">
+            <label
+              htmlFor="dontShowAgain"
+              className="text-xs text-muted-foreground cursor-pointer select-none"
+            >
               Ne plus afficher au démarrage
             </label>
           </div>
@@ -115,7 +119,8 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
               Serveurs en cours d'exécution
             </DialogTitle>
             <DialogDescription>
-              Des serveurs sont actuellement actifs et seront arrêtés avant l'installation de la mise à jour. Voulez-vous continuer ?
+              Des serveurs sont actuellement actifs et seront arrêtés avant l'installation de la
+              mise à jour. Voulez-vous continuer ?
             </DialogDescription>
           </DialogHeader>
 
@@ -123,9 +128,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
             <Button variant="outline" onClick={() => setShowWarning(false)}>
               Annuler
             </Button>
-            <Button onClick={handleConfirmWithServers}>
-              Continuer
-            </Button>
+            <Button onClick={handleConfirmWithServers}>Continuer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

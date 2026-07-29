@@ -14,7 +14,7 @@ export function useTheme() {
     }
     // Persist to SQLite and emit "theme-changed" to ALL webviews via Rust backend.
     // The Rust command handles cross-window emission (main + terminal widget).
-    persistThemeChange(activeTheme).catch(err => {
+    persistThemeChange(activeTheme).catch((err) => {
       console.error('Failed to persist theme change:', err);
     });
   }, [activeTheme]);

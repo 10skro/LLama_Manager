@@ -27,28 +27,36 @@ export function CatalogPage() {
   const toggleFavorite = useToggleFavorite();
   const favoriteKeys = useMemo(() => {
     const keys = new Set<string>();
-    favorites?.forEach(f => keys.add(f.download_url));
+    favorites?.forEach((f) => keys.add(f.download_url));
     return keys;
   }, [favorites]);
 
   // Changelog modal state
-  const [changelogModal, setChangelogModal] = useState<{ open: boolean; tag: string; build: string }>({
-    open: false, tag: '', build: '',
+  const [changelogModal, setChangelogModal] = useState<{
+    open: boolean;
+    tag: string;
+    build: string;
+  }>({
+    open: false,
+    tag: '',
+    build: '',
   });
 
   // Version search hook
-  const { searchingVersion, searchError, searchState, handleVersionSearch, handleClearSearch } = useVersionSearch();
+  const { searchingVersion, searchError, searchState, handleVersionSearch, handleClearSearch } =
+    useVersionSearch();
 
   // Catalog refresh hook
-  const { handleRefreshClick, isRefreshing, canRefresh, secondsLeft, storeLastFetched } = useCatalogRefresh({
-    onError: (message) => setError(message),
-  });
+  const { handleRefreshClick, isRefreshing, canRefresh, secondsLeft, storeLastFetched } =
+    useCatalogRefresh({
+      onError: (message) => setError(message),
+    });
 
   // Expanded/collapsed state for grouped builds
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
 
   const toggleVersion = useCallback((buildNumber: string) => {
-    setExpandedVersions(prev => {
+    setExpandedVersions((prev) => {
       const next = new Set(prev);
       if (next.has(buildNumber)) {
         next.delete(buildNumber);
@@ -64,9 +72,13 @@ export function CatalogPage() {
     if (queryError) {
       const msg = queryError.message || '';
       if (msg.includes('429') || msg.includes('rate limit')) {
-        setError('GitHub API rate limit exceeded. Add a GitHub token in Settings to increase your limit.');
+        setError(
+          'GitHub API rate limit exceeded. Add a GitHub token in Settings to increase your limit.'
+        );
       } else if (msg.includes('network') || msg.includes('connect') || msg.includes('timeout')) {
-        setError('Network error: Could not reach GitHub API. Check your connection or try again later.');
+        setError(
+          'Network error: Could not reach GitHub API. Check your connection or try again later.'
+        );
       } else {
         setError(msg || 'Failed to fetch builds from GitHub API.');
       }
@@ -76,23 +88,25 @@ export function CatalogPage() {
   // Installed build keys for status check
   const installedKeys = useMemo(() => {
     const keys = new Set<string>();
-    installed?.forEach(v => keys.add(makeKey(v.build_number, v.backend, v.architecture)));
+    installed?.forEach((v) => keys.add(makeKey(v.build_number, v.backend, v.architecture)));
     return keys;
   }, [installed]);
 
   // Extracted catalog actions (filtering, sorting, grouping, download, backend filter)
-  const {
-    filteredBuilds,
-    groupedBuilds,
-    handleDownload,
-    toggleBackendFilter,
-  } = useCatalogActions(builds, installed, downloadingKeys, favoriteKeys, installedKeys, searchState);
+  const { filteredBuilds, groupedBuilds, handleDownload, toggleBackendFilter } = useCatalogActions(
+    builds,
+    installed,
+    downloadingKeys,
+    favoriteKeys,
+    installedKeys,
+    searchState
+  );
 
   // Count unique versions for display
   const versionCounts = useMemo(() => {
-    const shown = new Set(filteredBuilds.map(b => b.build_number)).size;
+    const shown = new Set(filteredBuilds.map((b) => b.build_number)).size;
     const source = searchState.tag ? searchState.builds : builds;
-    const total = new Set((source || []).map(b => b.build_number)).size;
+    const total = new Set((source || []).map((b) => b.build_number)).size;
     return { shown, total };
   }, [filteredBuilds, builds, searchState.tag, searchState.builds]);
 
@@ -103,8 +117,8 @@ export function CatalogPage() {
     } else {
       // Preserve previously expanded versions when groupedBuilds reference changes
       // but version keys remain the same (e.g., after download completion or favorite toggle)
-      setExpandedVersions(prev => {
-        return new Set([...prev].filter(key => groupedBuilds.has(key)));
+      setExpandedVersions((prev) => {
+        return new Set([...prev].filter((key) => groupedBuilds.has(key)));
       });
     }
   }, [filters.backend, groupedBuilds]);
@@ -112,8 +126,8 @@ export function CatalogPage() {
   // Available backend types from builds
   const availableBackends = useMemo(() => {
     const backends = new Set<string>();
-    const source = searchState.tag ? (searchState.builds || []) : (builds || []);
-    source.forEach(b => backends.add(b.backend));
+    const source = searchState.tag ? searchState.builds || [] : builds || [];
+    source.forEach((b) => backends.add(b.backend));
     return Array.from(backends);
   }, [builds, searchState.tag, searchState.builds]);
 
@@ -148,9 +162,7 @@ export function CatalogPage() {
             <p className="text-sm text-blue-300">
               Showing builds for <span className="font-mono font-medium">{searchState.tag}</span>
             </p>
-            {searchError && (
-              <p className="text-xs text-red-300 mt-1">{searchError}</p>
-            )}
+            {searchError && <p className="text-xs text-red-300 mt-1">{searchError}</p>}
           </div>
           <Button variant="ghost" size="sm" onClick={handleClearSearch}>
             <X className="h-4 w-4" />
@@ -184,13 +196,17 @@ export function CatalogPage() {
         installedKeys={installedKeys}
         downloadingKeys={downloadingKeys}
         favoriteKeys={favoriteKeys}
-        onToggleFavorite={(build) => toggleFavorite.mutate({
-          downloadUrl: build.download_url,
-          buildNumber: build.build_number,
-          backend: build.backend,
-          architecture: build.architecture,
-        })}
-        onShowChangelog={(build) => setChangelogModal({ open: true, tag: build.tag_name, build: build.build_number })}
+        onToggleFavorite={(build) =>
+          toggleFavorite.mutate({
+            downloadUrl: build.download_url,
+            buildNumber: build.build_number,
+            backend: build.backend,
+            architecture: build.architecture,
+          })
+        }
+        onShowChangelog={(build) =>
+          setChangelogModal({ open: true, tag: build.tag_name, build: build.build_number })
+        }
         onDownload={handleDownload}
       />
 
@@ -199,15 +215,14 @@ export function CatalogPage() {
         <p className="text-xs text-muted-foreground text-right">
           {searchState.tag
             ? `${versionCounts.shown} version(s) for "${searchState.tag}"`
-            : `${versionCounts.shown} version(s) shown of ${versionCounts.total} total`
-          }
+            : `${versionCounts.shown} version(s) shown of ${versionCounts.total} total`}
         </p>
       )}
 
       {/* Changelog Modal */}
       <ChangelogModal
         open={changelogModal.open}
-        onOpenChange={(open) => setChangelogModal(prev => ({ ...prev, open }))}
+        onOpenChange={(open) => setChangelogModal((prev) => ({ ...prev, open }))}
         tagName={changelogModal.tag}
         buildNumber={changelogModal.build}
       />

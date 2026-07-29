@@ -29,9 +29,11 @@ export default function TerminalWidgetApp() {
         // Update Zustand store so TerminalSessionItem reacts and re-themes xterm.js
         setActiveTheme(event.payload.themeId);
       }
-    }).then((unlisten) => {
-      unlistenRef.current = unlisten;
-    }).catch(() => {});
+    })
+      .then((unlisten) => {
+        unlistenRef.current = unlisten;
+      })
+      .catch(() => {});
 
     return () => {
       if (unlistenRef.current) {

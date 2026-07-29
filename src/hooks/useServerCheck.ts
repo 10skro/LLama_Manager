@@ -32,7 +32,10 @@ export function useServerCheck() {
         console.log(`[SERVER_CHECK] Active terminals: ${count} session(s)`);
         return { serversRunning: count > 0, activeCount: count };
       } catch (err) {
-        console.error('[SERVER_CHECK] Failed to check active terminals (safe-by-default: assuming servers running):', err);
+        console.error(
+          '[SERVER_CHECK] Failed to check active terminals (safe-by-default: assuming servers running):',
+          err
+        );
         return { serversRunning: true, activeCount: -1 }; // -1 = unknown (check failed)
       }
     })();
@@ -45,7 +48,9 @@ export function useServerCheck() {
   const shouldShowWarning = useCallback(async (): Promise<boolean> => {
     const result = await checkActiveServers();
     if (result.serversRunning) {
-      console.log(`[SERVER_CHECK] Servers running (${result.activeCount} active) — warning dialog SHOULD show`);
+      console.log(
+        `[SERVER_CHECK] Servers running (${result.activeCount} active) — warning dialog SHOULD show`
+      );
       setShowWarning(true);
       return true;
     }
@@ -65,7 +70,9 @@ export function useServerCheck() {
     try {
       await invoke('kill_all_terminals');
     } catch {
-      console.warn('[SERVER_CHECK] kill_all_terminals failed — proceeding anyway (backend has safety net)');
+      console.warn(
+        '[SERVER_CHECK] kill_all_terminals failed — proceeding anyway (backend has safety net)'
+      );
     }
 
     // Small delay to ensure processes are terminated

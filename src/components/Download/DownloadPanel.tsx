@@ -8,9 +8,7 @@ import { parseKey } from '@/utils/buildKey';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Download, X, Loader2,
-} from 'lucide-react';
+import { Download, X, Loader2 } from 'lucide-react';
 import type { DownloadProgress as DownloadProgressType } from '@/types';
 
 export function DownloadPanel() {
@@ -56,7 +54,14 @@ export function DownloadPanel() {
                 matchedArchitecture = parsed.architecture;
                 matchedKey = key;
                 // Update the download_id and progress in a single call
-                store.updateDownloadProgress(matchedBuildNumber, matchedBackend, matchedArchitecture, p.percentage, p.download_id, p.status);
+                store.updateDownloadProgress(
+                  matchedBuildNumber,
+                  matchedBackend,
+                  matchedArchitecture,
+                  p.percentage,
+                  p.download_id,
+                  p.status
+                );
                 break;
               }
             }
@@ -67,9 +72,23 @@ export function DownloadPanel() {
             if (p.status === 'extracting' && matchedKey) {
               const existingProgress = store.activeDownloads.get(matchedKey)?.progress ?? 0;
               const safePercentage = Math.max(p.percentage, existingProgress);
-              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, matchedArchitecture, safePercentage, p.download_id, p.status);
+              store.updateDownloadProgress(
+                matchedBuildNumber,
+                matchedBackend,
+                matchedArchitecture,
+                safePercentage,
+                p.download_id,
+                p.status
+              );
             } else {
-              store.updateDownloadProgress(matchedBuildNumber, matchedBackend, matchedArchitecture, p.percentage, p.download_id, p.status);
+              store.updateDownloadProgress(
+                matchedBuildNumber,
+                matchedBackend,
+                matchedArchitecture,
+                p.percentage,
+                p.download_id,
+                p.status
+              );
             }
           }
 
@@ -105,10 +124,12 @@ export function DownloadPanel() {
               (async () => {
                 try {
                   // Brief pause to ensure DB commit is fully propagated
-                  await new Promise(resolve => setTimeout(resolve, 300));
+                  await new Promise((resolve) => setTimeout(resolve, 300));
                   const newBuilds = await checkNewBuilds();
                   if (newBuilds.length > 0) {
-                    const buildLabels = newBuilds.map((b: any) => `${b.build_number} / ${b.backend} / ${b.architecture}`);
+                    const buildLabels = newBuilds.map(
+                      (b) => `${b.build_number} / ${b.backend} / ${b.architecture}`
+                    );
                     useAppStore.getState().setNewBuilds(buildLabels);
                   } else {
                     useAppStore.getState().setNewBuilds([]);
@@ -132,7 +153,12 @@ export function DownloadPanel() {
     };
   }, [queryClient]);
 
-  const handleCancel = async (buildNumber: string, backend: string, architecture: string, downloadId: number) => {
+  const handleCancel = async (
+    buildNumber: string,
+    backend: string,
+    architecture: string,
+    downloadId: number
+  ) => {
     try {
       await cancelDownload(downloadId);
     } catch (err) {
@@ -147,14 +173,22 @@ export function DownloadPanel() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'downloaded': return 'Download complete...';
-      case 'extracting': return 'Extracting...';
-      case 'downloading': return 'Downloading...';
-      case 'pending': return 'Waiting...';
-      case 'cancelled': return 'Cancelled';
-      case 'failed': return 'Failed';
-      case 'completed': return 'Completed';
-      default: return status;
+      case 'downloaded':
+        return 'Download complete...';
+      case 'extracting':
+        return 'Extracting...';
+      case 'downloading':
+        return 'Downloading...';
+      case 'pending':
+        return 'Waiting...';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'failed':
+        return 'Failed';
+      case 'completed':
+        return 'Completed';
+      default:
+        return status;
     }
   };
 
@@ -179,10 +213,14 @@ export function DownloadPanel() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium">{buildNumber}</span>
-                    <span className="text-xs text-muted-foreground">({backend} {architecture})</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({backend} {architecture})
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{Math.round(info.progress)}%</span>
+                    <span className="text-xs text-muted-foreground">
+                      {Math.round(info.progress)}%
+                    </span>
                     {info.status === 'downloading' && (
                       <Button
                         variant="ghost"

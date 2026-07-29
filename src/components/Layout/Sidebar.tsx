@@ -5,8 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  LayoutDashboard, FileStack, Package, Settings as SettingsIcon,
-  ChevronLeft, ChevronRight,
+  LayoutDashboard,
+  FileStack,
+  Package,
+  Settings as SettingsIcon,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 const navItems = [

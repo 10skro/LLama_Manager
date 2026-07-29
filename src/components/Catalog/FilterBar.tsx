@@ -37,8 +37,8 @@ export function FilterBar({
             <Input
               placeholder="Search builds (type to filter, press Enter for version search)..."
               value={filters.search}
-              onChange={e => setFilters({ search: e.target.value })}
-              onKeyDown={e => {
+              onChange={(e) => setFilters({ search: e.target.value })}
+              onKeyDown={(e) => {
                 if (e.key === 'Enter' && !searchState.tag) onVersionSearch();
               }}
               disabled={searchingVersion}
@@ -91,7 +91,7 @@ export function FilterBar({
 
           {/* Backend Filters */}
           <div className="flex flex-wrap gap-2 max-w-[300px] overflow-y-auto max-h-[40px] scrollbar-thin">
-            {availableBackends.map(backend => (
+            {availableBackends.map((backend) => (
               <Badge
                 key={backend}
                 variant="outline"

@@ -28,7 +28,10 @@ export function TerminalSessionGrid({ sessions, cardTitleMap, onClose }: Termina
       }}
     >
       {sessions.map((session) => (
-        <div key={session.sessionId} className="flex flex-col min-h-0 rounded overflow-hidden border border-border/10">
+        <div
+          key={session.sessionId}
+          className="flex flex-col min-h-0 rounded overflow-hidden border border-border/10"
+        >
           <TerminalSessionItem
             sessionId={session.sessionId}
             versionId={session.versionId}

@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/use-toast';
-import { saveCustomCommand as saveCustomCommandApi } from '@/services/customCommand';
+import {
+  saveCustomCommand as saveCustomCommandApi,
+  type CustomCommandInput,
+} from '@/services/customCommand';
 import { getColorPalette } from '@/themes';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +36,11 @@ interface CustomCommandModalProps {
   editingCommand?: EditingCommand | null;
 }
 
-export function CustomCommandModal({ open, onOpenChange, editingCommand }: CustomCommandModalProps) {
+export function CustomCommandModal({
+  open,
+  onOpenChange,
+  editingCommand,
+}: CustomCommandModalProps) {
   const { addCustomCommand, updateCustomCommand, activeTheme } = useAppStore();
   const { toast } = useToast();
 
@@ -59,16 +71,24 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast({ title: 'Name required', description: 'Please enter a command name.', variant: 'destructive' });
+      toast({
+        title: 'Name required',
+        description: 'Please enter a command name.',
+        variant: 'destructive',
+      });
       return;
     }
     if (!command.trim()) {
-      toast({ title: 'Command required', description: 'Please enter a command.', variant: 'destructive' });
+      toast({
+        title: 'Command required',
+        description: 'Please enter a command.',
+        variant: 'destructive',
+      });
       return;
     }
     setIsSaving(true);
     try {
-      const input: any = {
+      const input: CustomCommandInput = {
         name: name.trim(),
         command: command.trim(),
         description: description.trim() || undefined,
@@ -127,9 +147,10 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
               onClick={() => setColor(c.key)}
               className={`
                 relative h-5 w-5 rounded-full transition-all
-                ${color === c.key
-                  ? 'ring-2 ring-offset-1 ring-offset-card scale-110'
-                  : 'hover:scale-110'
+                ${
+                  color === c.key
+                    ? 'ring-2 ring-offset-1 ring-offset-card scale-110'
+                    : 'hover:scale-110'
                 }
               `}
               style={{
@@ -165,13 +186,17 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="h-px flex-1 bg-border/50" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Details
+              </span>
               <div className="h-px flex-1 bg-border/50" />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="cc-name" className="text-sm font-medium">Name</Label>
+                <Label htmlFor="cc-name" className="text-sm font-medium">
+                  Name
+                </Label>
                 <span className="text-[10px] font-semibold text-destructive">REQUIRED</span>
               </div>
               <Input
@@ -185,8 +210,12 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="cc-description" className="text-sm font-medium">Description</Label>
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">optional</span>
+                <Label htmlFor="cc-description" className="text-sm font-medium">
+                  Description
+                </Label>
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                  optional
+                </span>
               </div>
               <Input
                 id="cc-description"
@@ -202,13 +231,17 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="h-px flex-1 bg-border/50" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Command</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Command
+              </span>
               <div className="h-px flex-1 bg-border/50" />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="cc-command" className="text-sm font-medium">Startup command</Label>
+                <Label htmlFor="cc-command" className="text-sm font-medium">
+                  Startup command
+                </Label>
                 <span className="text-[10px] font-semibold text-destructive">REQUIRED</span>
               </div>
               <div className="relative">
@@ -218,7 +251,9 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
                 <Textarea
                   id="cc-command"
                   value={command}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCommand(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setCommand(e.target.value)
+                  }
                   placeholder="llama-server.exe -m path\to\model.gguf&#10;  -c 2048 --threads 8 --ctx-size 4096"
                   className="font-mono text-sm min-h-[200px] pl-9 bg-muted/30 border-border/80 focus-visible:border-primary/50 rounded-lg resize-none"
                 />
@@ -227,19 +262,31 @@ export function CustomCommandModal({ open, onOpenChange, editingCommand }: Custo
               {/* Tips */}
               <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  ℹ️ You don't need to write <code className="font-mono bg-muted/50 px-1 py-0.5 rounded">llama-server.exe</code> — the app handles the executable and full launch path automatically when the config is run from a card.
+                  ℹ️ You don't need to write{' '}
+                  <code className="font-mono bg-muted/50 px-1 py-0.5 rounded">
+                    llama-server.exe
+                  </code>{' '}
+                  — the app handles the executable and full launch path automatically when the
+                  config is run from a card.
                 </p>
                 <div className="space-y-1.5">
                   <div className="flex items-start gap-2">
-                    <span className="inline-flex items-center rounded-md bg-muted/50 px-1.5 py-0.5 text-[11px] font-mono mt-0.5">-m</span>
+                    <span className="inline-flex items-center rounded-md bg-muted/50 px-1.5 py-0.5 text-[11px] font-mono mt-0.5">
+                      -m
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      Model path — <span className="text-foreground font-medium">optional</span>, can be overridden per card
+                      Model path — <span className="text-foreground font-medium">optional</span>,
+                      can be overridden per card
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="inline-flex items-center rounded-md bg-muted/50 px-1.5 py-0.5 text-[11px] font-mono mt-0.5">--mmproj</span>
+                    <span className="inline-flex items-center rounded-md bg-muted/50 px-1.5 py-0.5 text-[11px] font-mono mt-0.5">
+                      --mmproj
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      Multimodal projector — <span className="text-foreground font-medium">optional</span>, can be overridden per card
+                      Multimodal projector —{' '}
+                      <span className="text-foreground font-medium">optional</span>, can be
+                      overridden per card
                     </span>
                   </div>
                 </div>

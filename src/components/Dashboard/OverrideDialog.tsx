@@ -9,7 +9,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Settings2, Filter } from 'lucide-react';
 import {
@@ -58,27 +64,29 @@ export default function OverrideDialog({
   const [scanning, setScanning] = useState(false);
 
   // Scan files when dialog opens or filter changes
-  const scanFiles = useCallback(async (
-    folder: string | undefined,
-    filter: FileExtensionFilter,
-    setter: React.Dispatch<React.SetStateAction<ModelFile[]>>,
-    label: string,
-  ) => {
-    if (!folder) {
-      setter([]);
-      return;
-    }
-    try {
-      const files = await (label === 'model'
-        ? scanModelFiles(folder, filter)
-        : scanMmprojFiles(folder, filter)
-      );
-      setter(files);
-    } catch (e) {
-      console.error(`[OverrideDialog] ${label} scan error:`, e);
-      setter([]);
-    }
-  }, []);
+  const scanFiles = useCallback(
+    async (
+      folder: string | undefined,
+      filter: FileExtensionFilter,
+      setter: React.Dispatch<React.SetStateAction<ModelFile[]>>,
+      label: string
+    ) => {
+      if (!folder) {
+        setter([]);
+        return;
+      }
+      try {
+        const files = await (label === 'model'
+          ? scanModelFiles(folder, filter)
+          : scanMmprojFiles(folder, filter));
+        setter(files);
+      } catch (e) {
+        console.error(`[OverrideDialog] ${label} scan error:`, e);
+        setter([]);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -92,7 +100,9 @@ export default function OverrideDialog({
       if (mounted) setScanning(false);
     });
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [open, modelFolder, mmprojFolder, modelFilter, mmprojFilter, scanFiles]);
 
   // Sync current override to local state when dialog opens
@@ -124,7 +134,9 @@ export default function OverrideDialog({
   }, [versionId, selectedModel, selectedMmproj, onSave, onOpenChange]);
 
   const handleReset = useCallback(async () => {
-    if (!window.confirm('Are you sure you want to clear this override? This action cannot be undone.')) {
+    if (
+      !window.confirm('Are you sure you want to clear this override? This action cannot be undone.')
+    ) {
       return;
     }
     setLoading(true);
@@ -141,18 +153,22 @@ export default function OverrideDialog({
     }
   }, [versionId, onSave, onOpenChange]);
 
-  const hasOverride = currentOverride && (currentOverride.model_path || currentOverride.mmproj_path);
+  const hasOverride =
+    currentOverride && (currentOverride.model_path || currentOverride.mmproj_path);
 
   // Wrap onOpenChange to clean up Select state before dialog closes
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (!nextOpen) {
-      setSelectedModel('');
-      setSelectedMmproj('');
-      setModelFiles([]);
-      setMmprojFiles([]);
-    }
-    onOpenChange(nextOpen);
-  }, [onOpenChange]);
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        setSelectedModel('');
+        setSelectedMmproj('');
+        setModelFiles([]);
+        setMmprojFiles([]);
+      }
+      onOpenChange(nextOpen);
+    },
+    [onOpenChange]
+  );
 
   // Extract file extension for badge display
   const getFileExt = useCallback((name: string) => {
@@ -160,13 +176,19 @@ export default function OverrideDialog({
     return match ? match[0].replace('.', '').toLowerCase() : '';
   }, []);
 
-  const extBadgeColor = useMemo(() => (ext: string) => {
-    switch (ext) {
-      case 'gguf': return 'bg-violet-500/20 text-violet-300 border-violet-500/30';
-      case 'safetensors': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-      default: return 'bg-secondary text-muted-foreground border-border';
-    }
-  }, []);
+  const extBadgeColor = useMemo(
+    () => (ext: string) => {
+      switch (ext) {
+        case 'gguf':
+          return 'bg-violet-500/20 text-violet-300 border-violet-500/30';
+        case 'safetensors':
+          return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+        default:
+          return 'bg-secondary text-muted-foreground border-border';
+      }
+    },
+    []
+  );
 
   // File selector with filter
   const FileSelector = ({
@@ -210,38 +232,47 @@ export default function OverrideDialog({
           </div>
         )}
       </div>
-      <Select
-        value={value}
-        onValueChange={onChange}
-        disabled={!folder || scanning}
-      >
+      <Select value={value} onValueChange={onChange} disabled={!folder || scanning}>
         <SelectTrigger className="w-full min-w-0 max-w-full overflow-hidden [&>span]:block [&>span]:overflow-hidden [&>span]:whitespace-nowrap [&>span]:truncate">
           <SelectValue placeholder={folder ? placeholder : noFolderMessage} />
         </SelectTrigger>
         <SelectContent className="max-w-[calc(var(--radix-select-trigger-width)-1px)] min-w-[8rem] [&_[data-highlighted]]:bg-item-highlight/15 [&_[data-highlighted]]:text-foreground [&_[data-state=checked]]:bg-item-highlight/15">
-          {scanning
-            ? <SelectItem value="__loading" disabled className="hover:bg-item-highlight/15 focus:bg-item-highlight/15">Loading...</SelectItem>
-            : files.length === 0
-              ? <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                  No files found{filter !== 'all' ? ` (${filter})` : ''}
+          {scanning ? (
+            <SelectItem
+              value="__loading"
+              disabled
+              className="hover:bg-item-highlight/15 focus:bg-item-highlight/15"
+            >
+              Loading...
+            </SelectItem>
+          ) : files.length === 0 ? (
+            <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+              No files found{filter !== 'all' ? ` (${filter})` : ''}
+            </div>
+          ) : (
+            files.map((file) => (
+              <SelectItem
+                key={file.path}
+                value={file.path}
+                className="hover:bg-item-highlight/15 focus:bg-item-highlight/15 text-foreground"
+              >
+                <div className="flex items-center gap-2 max-w-full">
+                  <span className="truncate flex-1" title={file.path}>
+                    {file.name}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] h-5 px-1.5 shrink-0 ${extBadgeColor(getFileExt(file.name))}`}
+                  >
+                    {getFileExt(file.name)}
+                  </Badge>
                 </div>
-              : files.map((file) => (
-                  <SelectItem key={file.path} value={file.path} className="hover:bg-item-highlight/15 focus:bg-item-highlight/15 text-foreground">
-                    <div className="flex items-center gap-2 max-w-full">
-                      <span className="truncate flex-1" title={file.path}>{file.name}</span>
-                      <Badge variant="outline" className={`text-[10px] h-5 px-1.5 shrink-0 ${extBadgeColor(getFileExt(file.name))}`}>
-                        {getFileExt(file.name)}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
+              </SelectItem>
+            ))
+          )}
         </SelectContent>
       </Select>
-      {!folder && (
-        <p className="text-xs text-muted-foreground">
-          {noFolderMessage}
-        </p>
-      )}
+      {!folder && <p className="text-xs text-muted-foreground">{noFolderMessage}</p>}
     </div>
   );
 

@@ -2,13 +2,15 @@ import { invoke } from '@tauri-apps/api/core';
 import type { VersionConfigLink } from '@/types';
 
 export async function getVersionConfigLink(versionId: number): Promise<VersionConfigLink | null> {
-  return invoke<VersionConfigLink | null>('get_version_config_link', { versionId }) as Promise<VersionConfigLink | null>;
+  return invoke<VersionConfigLink | null>('get_version_config_link', {
+    versionId,
+  }) as Promise<VersionConfigLink | null>;
 }
 
 export async function saveVersionConfigLink(
   versionId: number,
   configType: 'custom',
-  configId: string,
+  configId: string
 ): Promise<number> {
   return invoke<number>('save_version_config_link', {
     versionId,

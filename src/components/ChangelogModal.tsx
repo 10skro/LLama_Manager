@@ -14,7 +14,13 @@ interface ChangelogModalProps {
   body?: string | null;
 }
 
-export function ChangelogModal({ open, onOpenChange, tagName, buildNumber, body }: ChangelogModalProps) {
+export function ChangelogModal({
+  open,
+  onOpenChange,
+  tagName,
+  buildNumber,
+  body,
+}: ChangelogModalProps) {
   const [changelog, setChangelog] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,9 +74,7 @@ export function ChangelogModal({ open, onOpenChange, tagName, buildNumber, body 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>
-            Changelog - {buildNumber}
-          </DialogTitle>
+          <DialogTitle>Changelog - {buildNumber}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
           {loading ? (
@@ -83,7 +87,9 @@ export function ChangelogModal({ open, onOpenChange, tagName, buildNumber, body 
           ) : changelog != null ? (
             <ChangelogRenderer body={changelog} />
           ) : (
-            <p className="text-sm text-muted-foreground">No changelog available for this release.</p>
+            <p className="text-sm text-muted-foreground">
+              No changelog available for this release.
+            </p>
           )}
         </ScrollArea>
       </DialogContent>
