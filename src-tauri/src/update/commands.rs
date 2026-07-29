@@ -7,6 +7,7 @@ use crate::terminal::manager::TerminalManager;
 
 /// Check if a new application update is available.
 /// Returns a JSON object with `available`, `version`, `date`, and `body` fields.
+#[tauri::command]
 pub async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let updater = app
         .updater()
@@ -41,6 +42,7 @@ pub async fn check_app_update(app: tauri::AppHandle) -> Result<serde_json::Value
 /// Download and install the application update.
 /// Persists changelog data to the database before restart to eliminate race conditions.
 /// Kills all terminal sessions as a safety net before updating.
+#[tauri::command]
 pub async fn install_app_update(
     app: tauri::AppHandle,
     changelog_version: Option<String>,

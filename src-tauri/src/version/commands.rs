@@ -11,11 +11,13 @@ use crate::models::types::{AppError, Build, InstalledVersion, VersionConfigLink,
 use crate::version::manager::VersionManager;
 
 /// List all installed versions from the database.
+#[tauri::command]
 pub fn get_installed_versions(state: State<'_, DbManager>) -> Result<Vec<InstalledVersion>, String> {
     VersionManager::list_installed(&state).map_err(|e| e.to_string())
 }
 
 /// Uninstall a version by its database ID.
+#[tauri::command]
 pub fn uninstall_version(
     state: State<'_, DbManager>,
     id: i64,
@@ -24,6 +26,7 @@ pub fn uninstall_version(
 }
 
 /// Calculate total storage usage of installed versions.
+#[tauri::command]
 pub async fn get_storage_usage(
     app: AppHandle,
     state_db: State<'_, DbManager>,
@@ -44,6 +47,7 @@ pub async fn get_storage_usage(
 }
 
 /// Start installing a new version (download + post-download tasks).
+#[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn install_version(
     app: AppHandle,
@@ -109,6 +113,7 @@ pub async fn install_version(
 // ─── Version Config Link Commands ──────────────────────────────────────
 
 /// Get the config link for a version.
+#[tauri::command]
 pub fn get_version_config_link(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -118,6 +123,7 @@ pub fn get_version_config_link(
 }
 
 /// Save (upsert) a config link for a version.
+#[tauri::command]
 pub fn save_version_config_link(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -129,6 +135,7 @@ pub fn save_version_config_link(
 }
 
 /// Delete the config link for a version.
+#[tauri::command]
 pub fn delete_version_config_link(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -140,6 +147,7 @@ pub fn delete_version_config_link(
 // ─── Version Override Commands ─────────────────────────────────────────
 
 /// Get the override for a version.
+#[tauri::command]
 pub fn get_version_override(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -149,6 +157,7 @@ pub fn get_version_override(
 }
 
 /// Save (upsert) an override for a version.
+#[tauri::command]
 pub fn save_version_override(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -160,6 +169,7 @@ pub fn save_version_override(
 }
 
 /// Delete the override for a version.
+#[tauri::command]
 pub fn delete_version_override(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -171,6 +181,7 @@ pub fn delete_version_override(
 /// Duplicate a version: creates an independent card sharing the same binary files.
 /// If `with_settings` is true, also copies customization, config link, and override.
 /// Returns the new version's ID.
+#[tauri::command]
 pub fn duplicate_version(
     state_db: State<'_, DbManager>,
     version_id: i64,

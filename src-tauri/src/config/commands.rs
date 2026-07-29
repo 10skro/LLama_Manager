@@ -8,12 +8,14 @@ use crate::github::api::GithubClient;
 use tauri_plugin_dialog::DialogExt;
 
 /// Get current application settings from the database.
+#[tauri::command]
 pub fn get_settings(state: State<'_, DbManager>) -> Result<serde_json::Value, String> {
     let settings = SettingsManager::get_settings(&state).map_err(|e| e.to_string())?;
     serde_json::to_value(settings).map_err(|e| e.to_string())
 }
 
 /// Save application settings to the database.
+#[tauri::command]
 pub fn save_settings(
     state: State<'_, DbManager>,
     settings: serde_json::Value,
@@ -23,6 +25,7 @@ pub fn save_settings(
 }
 
 /// Open a native folder picker dialog.
+#[tauri::command]
 pub fn open_folder_dialog(app: AppHandle) -> Result<Option<String>, String> {
     // .file() is the correct builder for folder dialogs in Tauri's dialog API.
     // The .blocking_pick_folder() method turns the file dialog builder into a
@@ -36,6 +39,7 @@ pub fn open_folder_dialog(app: AppHandle) -> Result<Option<String>, String> {
 }
 
 /// Change the storage path: validate, migrate files, update DB, clean up old path.
+#[tauri::command]
 pub fn change_storage_path(
     state_db: State<'_, DbManager>,
     old_path: String,
@@ -63,6 +67,7 @@ pub fn change_storage_path(
 }
 
 /// Save (or clear) the GitHub API token.
+#[tauri::command]
 pub fn save_github_token(
     state_db: State<'_, DbManager>,
     state_github: State<'_, GithubClient>,
@@ -81,6 +86,7 @@ pub fn save_github_token(
 }
 
 /// Check whether a GitHub token is configured.
+#[tauri::command]
 pub fn has_github_token(
     state_db: State<'_, DbManager>,
 ) -> Result<bool, String> {
@@ -89,6 +95,7 @@ pub fn has_github_token(
 }
 
 /// Delete the GitHub token from the database and clear it from the client.
+#[tauri::command]
 pub fn delete_github_token(
     state_db: State<'_, DbManager>,
     state_github: State<'_, GithubClient>,
@@ -100,6 +107,7 @@ pub fn delete_github_token(
 }
 
 /// Get the application version from package info.
+#[tauri::command]
 pub fn get_app_version(app: AppHandle) -> String {
     app.package_info().version.to_string()
 }

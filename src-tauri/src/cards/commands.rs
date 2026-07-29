@@ -4,6 +4,7 @@ use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::models::types::CardCustomization;
 
+#[tauri::command]
 pub fn get_card_customizations(
     state_db: State<'_, DbManager>,
 ) -> Result<Vec<CardCustomization>, String> {
@@ -11,6 +12,7 @@ pub fn get_card_customizations(
     repo::get_all_card_customizations(&conn).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
 pub fn save_card_customization(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -29,6 +31,7 @@ pub fn save_card_customization(
     repo::upsert_card_customization(&conn, &customization).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
 pub fn delete_card_customization(
     state_db: State<'_, DbManager>,
     version_id: i64,
@@ -39,6 +42,7 @@ pub fn delete_card_customization(
 
 /// Bulk-update the display order of dashboard cards.
 /// `orders` is a JSON array of `[version_id, display_order]` pairs.
+#[tauri::command]
 pub fn bulk_set_display_order(
     state_db: State<'_, DbManager>,
     orders: Vec<(i64, i64)>,
@@ -48,6 +52,7 @@ pub fn bulk_set_display_order(
 }
 
 /// Reset all card display orders, returning to default id DESC ordering.
+#[tauri::command]
 pub fn reset_display_order(state_db: State<'_, DbManager>) -> Result<(), String> {
     let conn = state_db.lock_conn().map_err(|e| e.to_string())?;
     repo::reset_display_order(&conn).map_err(|e| e.to_string())

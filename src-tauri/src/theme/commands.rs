@@ -14,6 +14,7 @@ struct ThemeChangedEvent {
 /// Called only when the user actively switches themes (not on startup).
 /// Also emits "theme-changed" to ALL webviews (main + terminal widget)
 /// so that open secondary windows react immediately to the theme switch.
+#[tauri::command]
 pub async fn persist_theme_change(
     app: AppHandle,
     db: State<'_, DbManager>,

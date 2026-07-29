@@ -7,6 +7,7 @@ use crate::theme::colors::theme_to_color;
 use crate::theme::inject::build_initialization_script;
 
 /// Spawn a new terminal session for a given config/version.
+#[tauri::command]
 pub fn spawn_terminal(
     app: AppHandle,
     state_terminal: State<'_, TerminalManager>,
@@ -19,6 +20,7 @@ pub fn spawn_terminal(
 }
 
 /// Write input to a terminal session.
+#[tauri::command]
 pub fn write_terminal_input(
     state_terminal: State<'_, TerminalManager>,
     session_id: String,
@@ -30,6 +32,7 @@ pub fn write_terminal_input(
 /// Kill a terminal session.
 /// Runs taskkill on a blocking thread (non-blocking for the Tauri IPC thread).
 /// Emits a "terminal-exit" event once the process tree is confirmed dead.
+#[tauri::command]
 pub fn kill_terminal(
     app: AppHandle,
     state_terminal: State<'_, TerminalManager>,
@@ -40,6 +43,7 @@ pub fn kill_terminal(
 
 /// List all active terminal sessions.
 /// Returns Vec<ActiveTerminalInfo> with session_id and config_id.
+#[tauri::command]
 pub fn list_active_terminals(
     state_terminal: State<'_, TerminalManager>,
 ) -> Vec<ActiveTerminalInfo> {
@@ -50,6 +54,7 @@ pub fn list_active_terminals(
 
 /// Get the active terminal session for a given config_id.
 /// Returns the session_id if one exists, or null if not.
+#[tauri::command]
 pub fn get_terminal_by_config(
     state_terminal: State<'_, TerminalManager>,
     config_id: String,
@@ -58,6 +63,7 @@ pub fn get_terminal_by_config(
 }
 
 /// Kill all terminal sessions and their child processes.
+#[tauri::command]
 pub fn kill_all_terminals(
     state_terminal: State<'_, TerminalManager>,
 ) {
@@ -67,6 +73,7 @@ pub fn kill_all_terminals(
 
 /// Get the buffered output for a terminal session.
 /// Returns the last ~4KB of output for late-joining viewers.
+#[tauri::command]
 pub fn get_terminal_buffer(
     state_terminal: State<'_, TerminalManager>,
     session_id: String,
@@ -76,6 +83,7 @@ pub fn get_terminal_buffer(
 
 /// Open (or focus) the floating terminal window.
 /// Creates the window if it doesn't exist, or focuses it if already open.
+#[tauri::command]
 pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
     let window_label = "terminal";
 
