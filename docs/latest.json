@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.80",
-  "notes": "## Changes\n\n### Refactoring\n- Extract Tauri commands from lib.rs into domain modules for improved code organization\n- Decompose setup() and extract update commands into dedicated modules\n\n### Maintenance\n- Add ESLint and Prettier linting infrastructure with type safety rules\n- Fix all lint warnings and improve TypeScript type safety",
-  "pub_date": "2026-07-29T13:00:00Z",
+  "version": "v0.6.81",
+  "notes": "## Changes\n\n### Bug Fixes\n- Fix application panic when closing server during shutdown\n- Remove duplicate changelog modal appearing on startup\n\n### Performance\n- Compile terminal path regex once at first use instead of per spawn",
+  "pub_date": "2026-07-30T09:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.80/Llama.Manager_0.6.80_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTRObm1BM0ptZ3hidTRpZ2tTZEpuSklVQ2VUK2Q2bUFmelVadGJLV25xZVB3WnFaQkczL0tvNjZKVmx5TENJL3ZDa3ZIVkQ4MHhaazVqa3l5ays5TGdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MzIxNDY2CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuODBfeDY0LXNldHVwLmV4ZQpiV0JvWk1PNFBYdG5jRDlLTFhjeU0wSG1pMVo4L2lrWjgwWE4zMXJDRWRSbmVnNldObXdvODF1a3d3VytVN3FMU2EwTmpzVkErbDl0akpkS1AxeUxEdz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.81/Llama.Manager_0.6.81_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTYvNVpKZC9ybFRRM1kxNXkydm12MjFsZHpXbHRKc29vL0JQcU9KWm1lVDgyWlo2Y2F2dm5pTWt5NGRQUmNsY1RETjFKQ0pqVjhueHNIbFY0RWtJRXdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1Mzk2NTU3CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuODFfeDY0LXNldHVwLmV4ZQpWL1h5Zm5MMXNpa0FvSzZBenEzaVlhN3FXKzFOcVFtdjZOSUd5b05nUzdpZEdYbnpPMHE2ZzFnSmdrd3VGYTloZmk5ZjNUaWs4L3YwMGl0THRrL3JDQT09Cg=="
     }
   }
 }
