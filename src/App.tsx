@@ -9,7 +9,7 @@ import { CatalogPage } from './pages/CatalogPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ConfigsPage } from './pages/ConfigsPage';
 import { fetchBuilds, checkNewBuilds, getCatalogLastFetched } from './services/github';
-import { getSettings, saveSettings } from './services/settings';
+import { getSettings } from './services/settings';
 
 import { getCustomCommands } from './services/customCommand';
 import { getThemeById, DEFAULT_THEME_ID } from './themes';
@@ -20,7 +20,6 @@ import { useTheme } from './hooks/useTheme';
 import { useAppUpdate } from './hooks/useAppUpdate';
 import { useToast } from './hooks/use-toast';
 import { UpdateModal } from './components/UpdateModal';
-import { ChangelogModal } from './components/ChangelogModal';
 import type { AppSettings, Build } from './types';
 
 function App() {
@@ -31,13 +30,6 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [updateCheckCompleted, setUpdateCheckCompleted] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-
-  // Post-installation changelog modal
-  const [showPostInstallChangelog, setShowPostInstallChangelog] = useState(false);
-  const [postInstallChangelogBody, setPostInstallChangelogBody] = useState<string | null>(null);
-  const [postInstallChangelogVersion, setPostInstallChangelogVersion] = useState<string | null>(
-    null
-  );
 
   // Show update modal on startup if update available and setting is enabled
   // Wait for both the real update check (isChecking) and settings to finish loading
@@ -84,32 +76,6 @@ function App() {
         };
         useAppStore.getState().setSettings(merged);
         setSettingsLoaded(true);
-
-        // Show post-installation changelog modal if pending changelog exists
-        // AND the user hasn't disabled update modals on startup
-        const showUpdateModal = settings.show_update_modal ?? true;
-        console.log(
-          `[UPDATE] Startup: show_update_modal=${showUpdateModal}, pending_changelog_version=${settings.pending_changelog_version ?? '(none)'}`
-        );
-
-        if (settings.pending_changelog_version && settings.pending_changelog_body) {
-          if (showUpdateModal) {
-            console.log(
-              `[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal WILL show`
-            );
-            setPostInstallChangelogVersion(settings.pending_changelog_version);
-            setPostInstallChangelogBody(settings.pending_changelog_body);
-            setShowPostInstallChangelog(true);
-          } else {
-            console.log(
-              `[UPDATE] Post-install changelog detected: version=${settings.pending_changelog_version} — modal SUPPRESSED (show_update_modal=false)`
-            );
-          }
-        } else if (settings.pending_changelog_version) {
-          console.warn(
-            `[UPDATE] pending_changelog_version=${settings.pending_changelog_version} but body is missing — changelog modal will NOT show`
-          );
-        }
 
         // Only update theme if it actually differs from the current store value
         // (store already initialized from __INITIAL_THEME__ injected by Rust)
@@ -221,32 +187,6 @@ function App() {
         </Routes>
       </AppShell>
       <UpdateModal open={showModal} onOpenChange={setShowModal} />
-      <ChangelogModal
-        open={showPostInstallChangelog}
-        onOpenChange={async (open) => {
-          setShowPostInstallChangelog(open);
-          if (!open) {
-            // Clear pending changelog after the user has seen it
-            try {
-              const current = useAppStore.getState().settings;
-              await saveSettings({
-                ...current,
-                pending_changelog_version: undefined,
-                pending_changelog_body: undefined,
-              });
-              useAppStore.getState().setSettings({
-                ...current,
-                pending_changelog_version: undefined,
-                pending_changelog_body: undefined,
-              });
-            } catch (err) {
-              console.error('Failed to clear pending changelog:', err);
-            }
-          }
-        }}
-        buildNumber={postInstallChangelogVersion ?? 'Update'}
-        body={postInstallChangelogBody}
-      />
       <Toaster />
     </ErrorBoundary>
   );

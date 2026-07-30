@@ -1,10 +1,15 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::{Emitter, Manager};
+
+/// Regex pattern compiled once at first use (lazy, thread-safe).
+/// Strips outer quotes from file path arguments to prevent "Invalid argument"
+/// errors when `cmd /K` passes quoted paths as literal characters.
+pub(crate) static PATH_QUOTE_RE: OnceLock<regex::Regex> = OnceLock::new();
 
 /// Strip outer quotes from file path arguments in a command string.
 ///
@@ -15,9 +20,11 @@ use tauri::{Emitter, Manager};
 ///
 /// Only strips quotes from tokens that look like file paths (contain `\` or `/`
 /// or end with a known file extension like `.gguf`, `.safetensors`, `.exe`, etc.).
-fn strip_path_quotes(cmd: &str) -> String {
-    let re = regex::Regex::new(r#""([^"]*[\./\\][^"]*\.(gguf|safetensors|exe|dll|so|dylib|mmproj|bin|model|ckpt|pt|bin2|pth))""#)
-        .expect("valid regex");
+pub(crate) fn strip_path_quotes(cmd: &str) -> String {
+    let re = PATH_QUOTE_RE.get_or_init(|| {
+        regex::Regex::new(r#""([^"]*[\./\\][^"]*\.(gguf|safetensors|exe|dll|so|dylib|mmproj|bin|model|ckpt|pt|bin2|pth))""#)
+            .expect("valid regex")
+    });
 
     re.replace_all(cmd, |caps: &regex::Captures| {
         // Return the path without surrounding quotes (as owned String to avoid lifetime issues)
@@ -58,8 +65,66 @@ impl OutputBuffer {
     }
 }
 
-unsafe impl Send for OutputBuffer {}
-unsafe impl Sync for OutputBuffer {}
+/// Spawn a thread that reads lines from a stream (stdout or stderr),
+/// stores them in the circular buffer, and emits Tauri events.
+///
+/// Both `ChildStdout` and `ChildStderr` implement `Read + Send`, so this
+/// generic function handles both streams without code duplication.
+fn spawn_reader_thread<R: std::io::Read + Send + 'static>(
+    stream: R,
+    stream_name: String,
+    session_id: String,
+    app_handle: tauri::AppHandle,
+    buffer_arc: Arc<Mutex<VecDeque<char>>>,
+    is_stderr: bool,
+) {
+    std::thread::spawn(move || {
+        log::info!("[TERMINAL] {} reader started for {}", stream_name, session_id);
+
+        let reader = BufReader::new(stream);
+        let mut read_count: u64 = 0;
+
+        for line in reader.lines() {
+            match line {
+                Ok(text) => {
+                    read_count += 1;
+                    let with_newline = if is_stderr {
+                        format!("\x1b[31m{}\x1b[0m\r\n", text)
+                    } else {
+                        format!("{}\r\n", text)
+                    };
+
+                    // Store in circular buffer for late-joining viewers
+                    {
+                        let mut b = buffer_arc.lock().unwrap();
+                        for c in with_newline.chars() {
+                            b.push_back(c);
+                            if b.len() > 4096 {
+                                b.pop_front();
+                            }
+                        }
+                    }
+
+                    match app_handle.emit("terminal-output", TerminalOutputEvent {
+                        session_id: session_id.clone(),
+                        text: with_newline.clone(),
+                    }) {
+                        Ok(()) => {}
+                        Err(e) => {
+                            log::error!("[TERMINAL] emit FAILED for {}: {}", session_id, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!("[TERMINAL] {} read error after {} reads: {}", stream_name, read_count, e);
+                    break;
+                }
+            }
+        }
+
+        log::info!("[TERMINAL] {} reader exiting for {} after {} reads", stream_name, session_id, read_count);
+    });
+}
 
 /// Represents an active terminal session using pipe-based I/O.
 pub struct TerminalSession {
@@ -110,12 +175,8 @@ impl TerminalManager {
     ) -> Result<String, String> {
         let session_id = uuid::Uuid::new_v4().to_string();
 
-        // Strip quotes from file path arguments to prevent "Invalid argument" errors.
-        // When cmd /K receives a command with quoted paths, the quotes become literal
-        // characters in the arguments passed to the target process.
         let clean_command = startup_command.as_ref().map(|sc| strip_path_quotes(sc));
 
-        // Build the command to run
         let cmd_str = if let Some(sc) = &clean_command {
             // Escape cmd.exe metacharacters to prevent command injection / truncation
             let escaped = sc.replace('^', "^^")
@@ -133,9 +194,6 @@ impl TerminalManager {
         log::info!("[TERMINAL] Spawning process: version_id={} | config_id={} | cmd={} | dir={} | sessions_before={}",
             version_id, config_id, cmd_str, working_dir, self.session_count());
 
-        // Spawn process with stdout/stderr redirected to pipes.
-        // Use /C with "exit" to ensure cmd.exe exits after the command finishes.
-        // Actually use /K to keep cmd alive, but pass command as separate arg.
         let mut cmd = std::process::Command::new("cmd");
         if let Some(sc) = &clean_command {
             if !sc.is_empty() {
@@ -167,7 +225,6 @@ impl TerminalManager {
         log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}",
             session_id, pid, version_id, config_id);
 
-        // Store session with output buffer (4 KB circular buffer)
         let output_buffer = OutputBuffer::new();
         let buffer_arc = output_buffer.clone_arc();
 
@@ -186,124 +243,21 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] sessions_after={}", self.session_count());
 
-        // Spawn stdout reader task
-        let app_handle = app.clone();
-        let sid = session_id.clone();
-        let stdout = {
+        let (stdout, stderr) = {
             let sess = self.sessions.lock().unwrap();
-            let x = sess.get(&sid).unwrap().child.lock().unwrap().stdout.take(); x
+            let s = sess.get(&session_id).unwrap();
+            let mut child = s.child.lock().unwrap();
+            (child.stdout.take(), child.stderr.take())
         };
 
+        // Spawn stdout reader thread
         if let Some(stdout) = stdout {
-            let app_handle = app_handle.clone();
-            let sid = sid.clone();
-            let buffer_arc = buffer_arc.clone();
-
-            std::thread::spawn(move || {
-                let log_msg = format!("[TERMINAL] stdout reader started for {}", sid);
-                log::info!("{}", log_msg);
-
-                let reader = BufReader::new(stdout);
-                let mut read_count: u64 = 0;
-
-                for line in reader.lines() {
-                    match line {
-                        Ok(text) => {
-                            read_count += 1;
-                            let with_newline = format!("{}\r\n", text);
-
-                            // Store in circular buffer for late-joining viewers
-                            {
-                                let mut b = buffer_arc.lock().unwrap();
-                                for c in with_newline.chars() {
-                                    b.push_back(c);
-                                    if b.len() > 4096 {
-                                        b.pop_front();
-                                    }
-                                }
-                            }
-
-                            match app_handle.emit("terminal-output", TerminalOutputEvent {
-                                session_id: sid.clone(),
-                                text: with_newline.clone(),
-                            }) {
-                                Ok(()) => {}
-                                Err(e) => {
-                                    let log_msg = format!("[TERMINAL] emit FAILED for {}: {}", sid, e);
-                                    log::error!("{}", log_msg);
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            let log_msg = format!("[TERMINAL] stdout read error after {} reads: {}", read_count, e);
-                            log::warn!("{}", log_msg);
-                            break;
-                        }
-                    }
-                }
-
-                let log_msg = format!("[TERMINAL] stdout reader exiting for {} after {} reads", sid, read_count);
-                log::info!("{}", log_msg);
-            });
+            spawn_reader_thread(stdout, "stdout".to_string(), session_id.clone(), app.clone(), buffer_arc.clone(), false);
         }
 
-        // Spawn stderr reader task
-        let stderr = {
-            let sess = self.sessions.lock().unwrap();
-            let x = sess.get(&session_id).unwrap().child.lock().unwrap().stderr.take(); x
-        };
-
+        // Spawn stderr reader thread
         if let Some(stderr) = stderr {
-            let app_handle = app.clone();
-            let sid = session_id.clone();
-            let buffer_arc = buffer_arc.clone();
-
-            std::thread::spawn(move || {
-                let log_msg = format!("[TERMINAL] stderr reader started for {}", sid);
-                log::info!("{}", log_msg);
-
-                let reader = BufReader::new(stderr);
-                let mut read_count: u64 = 0;
-
-                for line in reader.lines() {
-                    match line {
-                        Ok(text) => {
-                            read_count += 1;
-                            let with_newline = format!("\x1b[31m{}\x1b[0m\r\n", text);
-
-                            // Store in circular buffer for late-joining viewers
-                            {
-                                let mut b = buffer_arc.lock().unwrap();
-                                for c in with_newline.chars() {
-                                    b.push_back(c);
-                                    if b.len() > 4096 {
-                                        b.pop_front();
-                                    }
-                                }
-                            }
-
-                            match app_handle.emit("terminal-output", TerminalOutputEvent {
-                                session_id: sid.clone(),
-                                text: with_newline.clone(),
-                            }) {
-                                Ok(()) => {}
-                                Err(e) => {
-                                    let log_msg = format!("[TERMINAL] emit FAILED for {}: {}", sid, e);
-                                    log::error!("{}", log_msg);
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            let log_msg = format!("[TERMINAL] stderr read error after {} reads: {}", read_count, e);
-                            log::warn!("{}", log_msg);
-                            break;
-                        }
-                    }
-                }
-
-                let log_msg = format!("[TERMINAL] stderr reader exiting for {} after {} reads", sid, read_count);
-                log::info!("{}", log_msg);
-            });
+            spawn_reader_thread(stderr, "stderr".to_string(), session_id.clone(), app.clone(), buffer_arc.clone(), true);
         }
 
         // Spawn process monitor: detect when process exits
@@ -333,21 +287,15 @@ impl TerminalManager {
         Ok(session_id)
     }
 
-    /// Write input to a terminal session (not supported with pipe-based I/O).
-    pub fn write_input(&self, _session_id: &str, _input: String) -> Result<(), String> {
-        Err("Input writing is not supported with pipe-based terminal".to_string())
-    }
-
     /// Kill a terminal session and ALL its child processes (including llama-server.exe).
     ///
     /// On Windows, calling child.kill() on cmd.exe does NOT terminate child processes
     /// like llama-server.exe. They survive as orphan processes.
     /// We use `taskkill /T /F /PID` to forcefully kill the entire process tree.
     ///
-    /// This method runs taskkill on a blocking thread (via tokio::task::spawn_blocking)
-    /// so it does NOT block the Tauri IPC thread. The method returns immediately after
-    /// scheduling the kill. A "terminal-exit" event is emitted once the process tree
-    /// is confirmed dead, so the frontend can show a "Stopping..." status in the meantime.
+    /// Runs taskkill synchronously. Tauri IPC commands already execute on a separate
+    /// thread, so blocking briefly for taskkill does not freeze the UI. This avoids
+    /// panics when the Tokio runtime has been dropped (e.g. during app shutdown).
     pub fn kill(&self, app: tauri::AppHandle, session_id: &str) -> Result<String, String> {
         let session = {
             let mut sessions = self
@@ -365,42 +313,29 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] Killing process tree: session={} | pid={}", session_id, pid);
 
-        // Clone session_id for the async closure (owned String, 'static lifetime)
-        let sid = session_id.to_string();
-
-        // Run taskkill on a blocking thread so the Tauri IPC thread is NOT blocked.
-        // The method returns immediately after spawning the task.
-        tokio::task::spawn_blocking(move || {
-            log::info!("[TERMINAL] spawn_blocking: executing taskkill for session={} | pid={}", sid, pid);
-
-            // Use taskkill /T /F to kill the entire process tree (cmd.exe + all children like llama-server.exe)
-            // /T = kill child processes tree
-            // /F = force termination
-            let taskkill_result = std::process::Command::new("taskkill")
-                .args(["/T", "/F", "/PID", &pid.to_string()])
-                .output();
-
-            match taskkill_result {
-                Ok(output) if output.status.success() => {
-                    log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", sid, pid);
-                }
-                Ok(output) => {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
-                        sid, pid, stderr);
-                }
-                Err(e) => {
-                    // Process may have already exited — not a critical error
-                    log::warn!("[TERMINAL] Failed to execute taskkill for PID {}: {} (process may have already exited)", pid, e);
-                }
+        match std::process::Command::new("taskkill")
+            .args(["/T", "/F", "/PID", &pid.to_string()])
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", session_id, pid);
             }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
+                    session_id, pid, stderr);
+            }
+            Err(e) => {
+                // Process may have already exited — not a critical error
+                log::warn!("[TERMINAL] Failed to execute taskkill for PID {}: {} (process may have already exited)", pid, e);
+            }
+        }
 
-            // Small delay to let the OS finish cleaning up the process tree
-            std::thread::sleep(std::time::Duration::from_millis(200));
+        // Small delay to let the OS finish cleaning up the process tree
+        std::thread::sleep(std::time::Duration::from_millis(200));
 
-            // Emit terminal-exit event so the frontend can clear the "Stopping..." status
-            let _ = app.emit("terminal-exit", sid.clone());
-        });
+        // Emit terminal-exit event so the frontend can clear the "Stopping..." status
+        let _ = app.emit("terminal-exit", session_id.to_string());
 
         Ok(config_id)
     }
@@ -422,7 +357,6 @@ impl TerminalManager {
             let pid = session.pid;
             log::info!("[TERMINAL] kill_all: killing process tree pid={}", pid);
 
-            // Use taskkill /T /F to kill the entire process tree
             if let Err(e) = std::process::Command::new("taskkill")
                 .args(["/T", "/F", "/PID", &pid.to_string()])
                 .output()

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +11,6 @@ import { Download, Loader2, AlertTriangle } from 'lucide-react';
 import { ChangelogRenderer } from '@/components/ChangelogRenderer';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useServerCheck } from '@/hooks/useServerCheck';
-import { useAppStore } from '@/store/useAppStore';
-import { saveSettings } from '@/services/settings';
 
 interface UpdateModalProps {
   open: boolean;
@@ -22,17 +19,8 @@ interface UpdateModalProps {
 
 export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   const { updateInfo, isInstalling, installUpdate } = useAppUpdate();
-  const { settings } = useAppStore();
-  const [dontShowAgain, setDontShowAgain] = useState(false);
   const { showWarning, setShowWarning, stoppingServers, shouldShowWarning, killAllServers } =
     useServerCheck();
-
-  const handleClose = async () => {
-    onOpenChange(false);
-    if (dontShowAgain && settings) {
-      await saveSettings({ ...settings, show_update_modal: false });
-    }
-  };
 
   const handleInstall = async () => {
     const warning = await shouldShowWarning();
@@ -51,7 +39,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
   return (
     <>
       {/* Main update dialog */}
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md" onCloseAutoFocus={() => {}}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -68,24 +56,8 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
             <ChangelogRenderer body={updateInfo.body} />
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="dontShowAgain"
-              checked={dontShowAgain}
-              onChange={(e) => setDontShowAgain(e.target.checked)}
-              className="rounded border-border"
-            />
-            <label
-              htmlFor="dontShowAgain"
-              className="text-xs text-muted-foreground cursor-pointer select-none"
-            >
-              Ne plus afficher au démarrage
-            </label>
-          </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleClose()}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Plus tard
             </Button>
             <Button onClick={handleInstall} disabled={isInstalling || stoppingServers}>
