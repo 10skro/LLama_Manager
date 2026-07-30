@@ -44,9 +44,9 @@
      Since inline styles override stylesheet :root declarations, the theme
      is correctly applied from the first paint with zero flash.
      These fallbacks only activate if the initialization_script fails,
-     providing a neutral dark appearance that minimizes visual disruption. */
+     providing a readable dark appearance (not pure black) during loading. */
   :root {
-    --background: 220 15% 8%;
+    --background: 225 15% 12%;
     --foreground: 220 10% 75%;
     --card: 220 15% 10%;
     --card-foreground: 220 10% 75%;

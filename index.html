@@ -7,15 +7,21 @@
     <!-- CSP must match src-tauri/tauri.conf.json security.csp -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://ipc.localhost https://api.github.com; frame-src 'none'; object-src 'none';" />
     <!-- Anti-flash: neutral baseline BEFORE CSS load.
-         The Tauri initialization_script overrides these with the user's actual
-         theme colors BEFORE any paint occurs, so there is zero flash.
-         These neutral dark values only show if the script fails to execute. -->
-    <style>html,body,#root{background-color:#111;margin:0}</style>
-    <!-- Anti-flash style is injected via Tauri initialization_script (before DOM) -->
+         The Tauri initialization_script sets --background (HSL) inline on <html>
+         BEFORE this HTML is parsed. Inline styles override stylesheet :root rules,
+         so var(--background) resolves to the user's actual theme from first paint.
+         The fallback values below only activate if the script fails. -->
+    <style>html,body,#root{background-color:hsl(var(--background,225 15% 12%));margin:0}</style>
+    <!-- Anti-flash: initialization_script sets window.__INITIAL_THEME__ + __INITIAL_BG__.
+         theme-init.js re-applies them after HTML parsing (init script DOM changes are lost). -->
+    <script src="/theme-init.js"></script>
     <title>LlamaCpp Manager</title>
   </head>
-  <body class="bg-background text-foreground antialiased" style="background-color: #111; margin: 0;">
-    <div id="root" style="background-color: #111; min-height: 100vh;"></div>
+  <body class="bg-background text-foreground antialiased" style="margin:0;">
+    <div id="root" style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+      <!-- Loading indicator: uses CSS var from initialization_script, fallback to neutral -->
+      <div style="color:hsl(var(--foreground,220 10% 65%));font-family:system-ui;font-size:14px;opacity:0.7">Loading...</div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

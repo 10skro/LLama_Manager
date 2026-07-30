@@ -97,16 +97,12 @@ pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
     let Color(r, g, b, _) = theme_to_color(&theme);
     let bg_hex = format!("#{:02x}{:02x}{:02x}", r, g, b);
     // Null-guard: document.documentElement may not exist yet in some WebView2 contexts.
-    // CRITICAL: Set --background (HSL) inline on <html> to override the :root CSS
-    // declaration. Inline styles have higher specificity, so Tailwind's bg-background
-    // reads the correct theme color from the first paint — zero flash.
+    // Sets window.__INITIAL_THEME__ and window.__INITIAL_BG__ for the head script
+    // in index.html to re-apply after HTML parsing.
     let anti_flash_script = format!(
-        r##"(function(){{console.log("[THEME-BOOT] ① initialization_script (terminal): theme={theme}, bg={bg}");var el=document.documentElement;if(el){{el.setAttribute("data-theme","{theme}");el.style.backgroundColor="{bg}";var r={r},g={g},b={b};var rn=r/255,gn=g/255,bn=b/255,mx=Math.max(rn,gn,bn),mn=Math.min(rn,gn,bn),l=(mx+mn)/2,h=0,s=0;if(mx!==mn){{var d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);if(mx===rn)h=((gn-bn)/d+(gn<bn?6:0))/6;else if(mx===gn)h=((bn-rn)/d+2)/6;else h=((rn-gn)/d+4)/6;}}el.style.setProperty("--background",Math.round(h*360)+" "+Math.round(s*100)+"% "+Math.round(l*100)+"%");}}window.__INITIAL_THEME__="{theme}";}})();"##,
+        r##"(function(){{console.log("[THEME-BOOT] ① initialization_script (terminal): theme={theme}, bg={bg}");var el=document.documentElement;if(el){{el.setAttribute("data-theme","{theme}");el.style.backgroundColor="{bg}";}}window.__INITIAL_THEME__="{theme}";window.__INITIAL_BG__="{bg}";}})();"##,
         theme = theme,
         bg = bg_hex,
-        r = r,
-        g = g,
-        b = b,
     );
     let bg_color = theme_to_color(&theme);
 

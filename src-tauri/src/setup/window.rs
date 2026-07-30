@@ -23,17 +23,13 @@ pub fn create_main_window(app: &tauri::AppHandle, initial_theme: &str) {
     // WebView creation and CSS load. No need for theme-init.js.
     // Null-guard: document.documentElement may not exist yet in some WebView2 contexts.
     //
-    // CRITICAL: We set --background (HSL) inline on <html>. This overrides the
-    // :root CSS declaration in index.css because inline styles have higher specificity.
-    // Tailwind's bg-background class reads var(--background), so the correct theme
-    // color is applied from the very first paint — zero flash.
+    // Sets window.__INITIAL_THEME__ and window.__INITIAL_BG__ for the head script
+    // in index.html to re-apply after HTML parsing (init script DOM changes are
+    // lost when the HTML document replaces the blank initial document).
     let anti_flash_script = format!(
-        r##"(function(){{console.log("[THEME-BOOT] ① initialization_script: theme={theme}, bg={bg}");var el=document.documentElement;if(el){{el.setAttribute("data-theme","{theme}");el.style.backgroundColor="{bg}";var r={r},g={g},b={b};var rn=r/255,gn=g/255,bn=b/255,mx=Math.max(rn,gn,bn),mn=Math.min(rn,gn,bn),l=(mx+mn)/2,h=0,s=0;if(mx!==mn){{var d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);if(mx===rn)h=((gn-bn)/d+(gn<bn?6:0))/6;else if(mx===gn)h=((bn-rn)/d+2)/6;else h=((rn-gn)/d+4)/6;}}el.style.setProperty("--background",Math.round(h*360)+" "+Math.round(s*100)+"% "+Math.round(l*100)+"%");}}window.__INITIAL_THEME__="{theme}";}})();"##,
+        r##"(function(){{console.log("[THEME-BOOT] ① initialization_script: theme={theme}, bg={bg}");var el=document.documentElement;if(el){{el.setAttribute("data-theme","{theme}");el.style.backgroundColor="{bg}";}}window.__INITIAL_THEME__="{theme}";window.__INITIAL_BG__="{bg}";}})();"##,
         theme = initial_theme,
         bg = bg_hex,
-        r = r,
-        g = g,
-        b = b,
     );
 
     // Create main window with native background_color (prevents flash before HTML paints)
