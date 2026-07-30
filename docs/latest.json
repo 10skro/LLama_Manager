@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.92",
-  "notes": "## Changes\n\n### Features\n- Add theme boot diagnostics for debugging startup sequence\n- Fix terminal window theme loading from saved settings\n- Refactor theme initialization chain for reliability\n\n### Bug Fixes\n- Use external theme-init.js to bypass CSP script-src inline block\n- Eliminate light theme flash by setting --background CSS variable inline before HTML parse\n\n### Refactoring\n- Split version commands into config_link and override_ modules for better organization",
-  "pub_date": "2026-07-30T14:30:00Z",
+  "version": "v0.6.94",
+  "notes": "## Changes\n\n### Features\n- Show config color dot next to selected config name on dashboard cards\n\n### Bug Fixes\n- Resolve config color key to hex value for correct dot display\n- Improve terminal font stack for better cross-platform text rendering\n- Replace ScrollArea with standard div in sidebar to hide unnecessary scrollbar",
+  "pub_date": "2026-07-30T15:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.92/Llama.Manager_0.6.92_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTRZM0JxQjhqMXUvZ3JSTThOd3lPRGI0R3NjalVzVkFCMEhLOG5raW1kQTVnbnp3L2QrOHZ2bUUveHBpRS83NWFDNEI0L0ZIQkJJeXZtN0t2c0QyY0FJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NDE0NDUwCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuOTJfeDY0LXNldHVwLmV4ZQpNVENQWXlrNDRZcFFScVNjS2xCVFFOYmdsM05mMFluSmNnbFN6aU1zbkZQbFlITllvMXkxVitNRENJbHNPYVVDWDZvL1Q5MTE5Z2pzNGU1SStmYW1CZz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.94/Llama.Manager_0.6.94_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTQzS3FFVlpFWndxdkJUL1Y1dEYxNjg4aGhKNkVoVmRGKzR2aHNRUmpzOTNQTVJLVlBHd1dwenZxQ0NWeDk3NWp3M2NMSytuNCtheE1zMlpxbWg4bmdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NDQ0MDg4CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuOTRfeDY0LXNldHVwLmV4ZQp3azdsK2JPK3lJTkszcUZSSWxRZXRiUktNek81a1orRW9Cd3hVbTFtT1lTcUQzQkpQTzY4dThmcWlkYW1OYXFnQmpCTGhCZzhpN0prZzVpcWJiQVlBUT09Cg=="
     }
   }
 }
