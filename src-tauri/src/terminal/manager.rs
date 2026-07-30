@@ -1,14 +1,23 @@
 use std::collections::{HashMap, VecDeque};
-use std::io::{BufRead, BufReader};
+use std::io::Read;
+use std::os::windows::process::CommandExt;
 use std::process::{Child, Stdio};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::{Emitter, Manager};
 
+/// Unsafe wrapper allowing `std::process::Child` to be shared across threads.
+/// Child is !Send/!Sync in some Rust versions conservatively, but on Windows
+/// the underlying process handle is safe to access from multiple threads.
+pub(crate) struct UnsafeChild(Child);
+
+unsafe impl Send for UnsafeChild {}
+unsafe impl Sync for UnsafeChild {}
+
 /// Regex pattern compiled once at first use (lazy, thread-safe).
 /// Strips outer quotes from file path arguments to prevent "Invalid argument"
-/// errors when `cmd /K` passes quoted paths as literal characters.
+/// errors when passing quoted paths as literal characters.
 pub(crate) static PATH_QUOTE_RE: OnceLock<regex::Regex> = OnceLock::new();
 
 /// Strip outer quotes from file path arguments in a command string.
@@ -27,7 +36,6 @@ pub(crate) fn strip_path_quotes(cmd: &str) -> String {
     });
 
     re.replace_all(cmd, |caps: &regex::Captures| {
-        // Return the path without surrounding quotes (as owned String to avoid lifetime issues)
         caps[1].to_string()
     })
     .to_string()
@@ -65,39 +73,50 @@ impl OutputBuffer {
     }
 }
 
-/// Spawn a thread that reads lines from a stream (stdout or stderr),
+/// Spawn a thread that reads raw bytes from a stdio pipe (stdout or stderr),
 /// stores them in the circular buffer, and emits Tauri events.
 ///
-/// Both `ChildStdout` and `ChildStderr` implement `Read + Send`, so this
-/// generic function handles both streams without code duplication.
-fn spawn_reader_thread<R: std::io::Read + Send + 'static>(
-    stream: R,
+/// Uses `read()` instead of `BufRead::lines()` to preserve ANSI escape sequences
+/// and avoid line-buffering truncation of long output lines.
+fn spawn_stdio_reader(
+    mut stream: impl Read + Send + 'static,
     stream_name: String,
     session_id: String,
     app_handle: tauri::AppHandle,
     buffer_arc: Arc<Mutex<VecDeque<char>>>,
-    is_stderr: bool,
 ) {
     std::thread::spawn(move || {
-        log::info!("[TERMINAL] {} reader started for {}", stream_name, session_id);
+        log::trace!("[TERMINAL] {} reader started for {}", stream_name, session_id);
 
-        let reader = BufReader::new(stream);
+        let mut buf = [0u8; 4096];
         let mut read_count: u64 = 0;
 
-        for line in reader.lines() {
-            match line {
-                Ok(text) => {
+        loop {
+            match stream.read(&mut buf) {
+                Ok(0) => {
+                    // EOF — process closed this pipe
+                    log::info!("[TERMINAL] {} EOF after {} reads", stream_name, read_count);
+                    break;
+                }
+                Ok(n) => {
                     read_count += 1;
-                    let with_newline = if is_stderr {
-                        format!("\x1b[31m{}\x1b[0m\r\n", text)
-                    } else {
-                        format!("{}\r\n", text)
-                    };
+                    // from_utf8_lossy preserves all bytes (replacing invalid UTF-8 with �)
+                    // while producing a valid String for xterm.js.
+                    let text = String::from_utf8_lossy(&buf[..n]).to_string();
+
+                    log::trace!(
+                        "[TERMINAL] {} read #{} for {}: bytes={}",
+                        stream_name, read_count, session_id, text.len()
+                    );
+
+                    if text.is_empty() {
+                        continue;
+                    }
 
                     // Store in circular buffer for late-joining viewers
                     {
                         let mut b = buffer_arc.lock().unwrap();
-                        for c in with_newline.chars() {
+                        for c in text.chars() {
                             b.push_back(c);
                             if b.len() > 4096 {
                                 b.pop_front();
@@ -107,7 +126,7 @@ fn spawn_reader_thread<R: std::io::Read + Send + 'static>(
 
                     match app_handle.emit("terminal-output", TerminalOutputEvent {
                         session_id: session_id.clone(),
-                        text: with_newline.clone(),
+                        text,
                     }) {
                         Ok(()) => {}
                         Err(e) => {
@@ -116,19 +135,28 @@ fn spawn_reader_thread<R: std::io::Read + Send + 'static>(
                     }
                 }
                 Err(e) => {
-                    log::warn!("[TERMINAL] {} read error after {} reads: {}", stream_name, read_count, e);
+                    // Pipe read error — log and exit (unlike ConPTY, piped stdio
+                    // errors are genuine failures, not normal pipe lifecycle)
+                    let code = e.raw_os_error();
+                    log::warn!(
+                        "[TERMINAL] {} read error for {}: {} (raw_os={:?})",
+                        stream_name, session_id, e, code
+                    );
                     break;
                 }
             }
         }
 
-        log::info!("[TERMINAL] {} reader exiting for {} after {} reads", stream_name, session_id, read_count);
+        log::info!(
+            "[TERMINAL] {} reader exited for {} after {} reads",
+            stream_name, session_id, read_count
+        );
     });
 }
 
-/// Represents an active terminal session using pipe-based I/O.
+/// Represents an active terminal session using std::process with piped stdio.
 pub struct TerminalSession {
-    pub child: Mutex<Child>,
+    pub process: Arc<Mutex<UnsafeChild>>,
     pub pid: u32,
     pub config_id: String,
     pub version_id: i64,
@@ -137,8 +165,8 @@ pub struct TerminalSession {
 
 impl TerminalSession {
     pub fn is_alive(&self) -> bool {
-        let mut child = self.child.lock().unwrap();
-        child.try_wait().map(|s| s.is_none()).unwrap_or(false)
+        let mut proc = self.process.lock().unwrap();
+        proc.0.try_wait().map(|r| r.is_none()).unwrap_or(false)
     }
 }
 
@@ -163,8 +191,12 @@ impl TerminalManager {
         }
     }
 
-    /// Spawn a new terminal process with stdout/stderr redirected to pipes.
-    /// Returns a session ID that can be used to interact with the terminal.
+    /// Spawn a new terminal process using std::process with Stdio::piped().
+    /// Both stdout and stderr are captured via raw `read()` calls, preserving
+    /// ANSI escape sequences and avoiding line-buffering truncation.
+    ///
+    /// Uses `cmd /c` to run the startup command through the Windows shell,
+    /// which handles path resolution and environment variable expansion.
     pub fn spawn(
         &self,
         app: tauri::AppHandle,
@@ -177,49 +209,38 @@ impl TerminalManager {
 
         let clean_command = startup_command.as_ref().map(|sc| strip_path_quotes(sc));
 
-        let cmd_str = if let Some(sc) = &clean_command {
-            // Escape cmd.exe metacharacters to prevent command injection / truncation
-            let escaped = sc.replace('^', "^^")
-                .replace('&', "^&")
-                .replace('|', "^|")
-                .replace('>', "^>")
-                .replace('<', "^<")
-                .replace('%', "^%")
-                .replace('!', "^!");
-            format!("cmd /K {}", escaped)
+        // Build cmd /c command — cmd.exe handles argument parsing and path resolution.
+        // We do NOT escape metacharacters here because cmd /c needs them to function.
+        let cmd_arg = if let Some(sc) = &clean_command {
+            sc.clone()
         } else {
-            "cmd /K".to_string()
+            String::new()
+        };
+
+        let cmd_display = if cmd_arg.is_empty() {
+            "cmd".to_string()
+        } else {
+            format!("cmd /c {}", &cmd_arg[..cmd_arg.len().min(80)])
         };
 
         log::info!("[TERMINAL] Spawning process: version_id={} | config_id={} | cmd={} | dir={} | sessions_before={}",
-            version_id, config_id, cmd_str, working_dir, self.session_count());
+            version_id, config_id, cmd_display, working_dir, self.session_count());
 
+        // Spawn via std::process with piped stdout+stderr
         let mut cmd = std::process::Command::new("cmd");
-        if let Some(sc) = &clean_command {
-            if !sc.is_empty() {
-                cmd.args(["/K", sc]);
-            } else {
-                cmd.arg("/K");
-            }
-        } else {
-            cmd.arg("/K");
+        cmd.arg("/c");
+        if !cmd_arg.is_empty() {
+            cmd.arg(&cmd_arg);
         }
-
-        // On Windows, use CREATE_NO_WINDOW to prevent cmd.exe from
-        // spawning a visible console window (output goes to our pipes instead).
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            cmd.creation_flags(CREATE_NO_WINDOW);
-        }
-
-        let child = cmd
-            .current_dir(&working_dir)
+        cmd.current_dir(&working_dir)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to spawn terminal process: {}", e))?;
+            .stderr(Stdio::piped());
+
+        // On Windows: do NOT create a new console window for the child process.
+        // This ensures all output goes through our pipes, not a separate console.
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+        let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn process: {}", e))?;
 
         let pid = child.id();
         log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}",
@@ -228,8 +249,13 @@ impl TerminalManager {
         let output_buffer = OutputBuffer::new();
         let buffer_arc = output_buffer.clone_arc();
 
+        // Take ownership of stdout and stderr pipes before storing the child.
+        // After take(), the Child's stdout/stderr become None (preventing double-close).
+        let stdout = child.stdout.take().ok_or_else(|| "No stdout pipe".to_string())?;
+        let stderr = child.stderr.take().ok_or_else(|| "No stderr pipe".to_string())?;
+
         let session = TerminalSession {
-            child: Mutex::new(child),
+            process: Arc::new(Mutex::new(UnsafeChild(child))),
             pid,
             config_id: config_id.clone(),
             version_id,
@@ -243,22 +269,9 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] sessions_after={}", self.session_count());
 
-        let (stdout, stderr) = {
-            let sess = self.sessions.lock().unwrap();
-            let s = sess.get(&session_id).unwrap();
-            let mut child = s.child.lock().unwrap();
-            (child.stdout.take(), child.stderr.take())
-        };
-
-        // Spawn stdout reader thread
-        if let Some(stdout) = stdout {
-            spawn_reader_thread(stdout, "stdout".to_string(), session_id.clone(), app.clone(), buffer_arc.clone(), false);
-        }
-
-        // Spawn stderr reader thread
-        if let Some(stderr) = stderr {
-            spawn_reader_thread(stderr, "stderr".to_string(), session_id.clone(), app.clone(), buffer_arc.clone(), true);
-        }
+        // Spawn reader threads for stdout and stderr in parallel
+        spawn_stdio_reader(stdout, "stdout".to_string(), session_id.clone(), app.clone(), buffer_arc.clone());
+        spawn_stdio_reader(stderr, "stderr".to_string(), session_id.clone(), app.clone(), buffer_arc);
 
         // Spawn process monitor: detect when process exits
         let app_handle = app.clone();
@@ -276,8 +289,7 @@ impl TerminalManager {
                     }
                 };
                 if !alive {
-                    let log_msg = format!("[TERMINAL] process exited for {}", sid);
-                    log::info!("{}", log_msg);
+                    log::info!("[TERMINAL] process exited for {}", sid);
                     let _ = app_handle.emit("terminal-exit", sid.clone());
                     break;
                 }
@@ -426,7 +438,6 @@ impl TerminalManager {
             Err(_) => String::new(),
         }
     }
-
 }
 
 impl Default for TerminalManager {

@@ -18,6 +18,11 @@ pub fn create_main_window(app: &tauri::AppHandle, initial_theme: &str) {
     let Color(r, g, b, _) = theme_to_color(initial_theme);
     let bg_hex = format!("#{:02x}{:02x}{:02x}", r, g, b);
 
+    // Disable WebView2 resource caching to ensure updated CSS/JS is always loaded.
+    // Without this, WebView2 serves stale cached bundles after app updates,
+    // causing the old (buggy) styles to persist even after installation.
+    let no_cache_script = r##"(function(){if(window.navigator&&navigator.serviceWorker){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(reg){reg.unregister()})})}})();if(window.performance&&performance.setResourceTimingBufferSize){performance.setResourceTimingBufferSize(1024)}"##.to_string();
+
     // Inject anti-flash style DIRECTLY via initialization_script.
     // This runs BEFORE any DOM parsing, eliminating the gap between
     // WebView creation and CSS load. No need for theme-init.js.
@@ -43,6 +48,7 @@ pub fn create_main_window(app: &tauri::AppHandle, initial_theme: &str) {
         .decorations(true)
         .theme(Some(tauri::Theme::Dark))
         .background_color(bg_color)
+        .initialization_script(&no_cache_script)
         .initialization_script(&dev_script)
         .initialization_script(&anti_flash_script)
         .build()
