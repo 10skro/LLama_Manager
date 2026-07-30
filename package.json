@@ -48,6 +48,7 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.5.5",
+    "tauri": "^0.15.0",
     "zustand": "^5.0.1"
   },
   "devDependencies": {

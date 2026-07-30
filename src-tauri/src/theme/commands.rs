@@ -4,6 +4,16 @@ use tauri::{AppHandle, Emitter, State};
 use crate::db::connection::DbManager;
 use crate::db::repo;
 
+/// Return the saved theme ID from SQLite, or the default if not set.
+/// Called by the frontend on startup to hydrate the theme store.
+#[tauri::command]
+pub fn get_saved_theme(db: State<'_, DbManager>) -> Result<String, String> {
+    let conn = db.lock_conn().map_err(|e| e.to_string())?;
+    Ok(repo::get_setting(&conn, "theme")
+        .map_err(|e| e.to_string())?
+        .unwrap_or_else(|| "catppuccin-mocha".to_string()))
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ThemeChangedEvent {

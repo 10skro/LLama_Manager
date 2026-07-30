@@ -57,11 +57,13 @@ function App() {
   ]);
 
   // Load settings and restore saved theme on app startup
-  // Theme is already applied by inline script in index.html from __INITIAL_THEME__ (injected by Rust)
+  // Theme is applied reactively by useTheme() once settings are loaded from the backend.
   useEffect(() => {
     const loadSettingsAndTheme = async () => {
       try {
+        console.log('[THEME-BOOT] ⑤ getSettings() start, bg from computed:', getComputedStyle(document.documentElement).getPropertyValue('--background').trim());
         const settings = await getSettings();
+        console.log('[THEME-BOOT] ⑥ getSettings() done, theme=', settings.theme);
         const merged: AppSettings = {
           storage_path: settings.storage_path ?? '',
           theme: settings.theme ?? DEFAULT_THEME_ID,
@@ -78,7 +80,6 @@ function App() {
         setSettingsLoaded(true);
 
         // Only update theme if it actually differs from the current store value
-        // (store already initialized from __INITIAL_THEME__ injected by Rust)
         const currentTheme = useAppStore.getState().activeTheme;
         if (settings.theme && settings.theme !== currentTheme) {
           const theme = getThemeById(settings.theme);

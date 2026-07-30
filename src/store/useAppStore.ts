@@ -1,24 +1,21 @@
 import { create } from 'zustand';
 import type { BuildFilters, AppSettings, CustomCommand } from '@/types';
-import { DEFAULT_THEME_ID, getThemeById } from '@/themes';
+import { DEFAULT_THEME_ID } from '@/themes';
 import { makeKey } from '@/utils/buildKey';
 
 /**
- * Hydrate the initial theme from Rust-injected __INITIAL_THEME__.
- * This value is set by the backend via initialization_script() before
- * the HTML is parsed, so it's available synchronously at module load time.
- * Falls back to DEFAULT_THEME_ID if not available.
+ * Read the theme injected by the Tauri backend via initialization_script.
+ * This runs at module load time, right after the backend has set
+ * window.__INITIAL_THEME__ in the WebView. Using this value as the store
+ * default eliminates the theme thrashing caused by the store starting with
+ * a hardcoded default that differs from the saved theme.
  */
-function getInitialTheme(): string {
-  const injected = window.__INITIAL_THEME__;
-  if (injected && injected.name) {
-    // Validate the theme ID exists in our theme registry
-    const theme = getThemeById(injected.name);
-    if (theme) {
-      return injected.name;
-    }
-  }
-  return DEFAULT_THEME_ID;
+function getBootTheme(): string {
+  // @ts-expect-error — window.__INITIAL_THEME__ is set by Tauri initialization_script
+  return (typeof window.__INITIAL_THEME__ === 'string' && window.__INITIAL_THEME__)
+    ? // @ts-expect-error — window.__INITIAL_THEME__ is set by Tauri initialization_script
+      window.__INITIAL_THEME__
+    : DEFAULT_THEME_ID;
 }
 
 interface ActiveDownloadInfo {
@@ -104,11 +101,9 @@ interface AppState {
   removeStoppingTerminal: (versionId: number) => void;
 }
 
-const initialTheme = getInitialTheme();
-
 const defaultSettings: AppSettings = {
   storage_path: '',
-  theme: initialTheme,
+  theme: DEFAULT_THEME_ID,
   auto_check_updates: true,
   show_update_modal: true,
   toast_duration: 5000,
@@ -211,8 +206,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       newBuilds: state.newBuilds.filter((b) => b !== build),
     })),
 
-  // Theme
-  activeTheme: initialTheme,
+  // Theme — hydrated from backend init script to avoid startup thrashing
+  activeTheme: getBootTheme(),
   setActiveTheme: (themeId: string) =>
     set((state) => {
       // Skip if theme hasn't actually changed (prevents unnecessary re-renders)

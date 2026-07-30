@@ -59,6 +59,7 @@ pub fn run() {
             crate::terminal::commands::open_terminal_window,
             crate::terminal::commands::kill_all_terminals,
             crate::theme::commands::persist_theme_change,
+            crate::theme::commands::get_saved_theme,
             crate::update::commands::check_app_update,
             crate::update::commands::install_app_update,
         ])

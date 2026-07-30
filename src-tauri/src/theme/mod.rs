@@ -1,3 +1,5 @@
 pub mod colors;
 pub mod commands;
-pub mod inject;
+
+#[cfg(test)]
+mod __tests__;
