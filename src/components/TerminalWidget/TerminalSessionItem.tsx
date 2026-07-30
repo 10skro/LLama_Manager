@@ -104,6 +104,7 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
       cursorStyle: 'bar',
       fontSize: 12,
       fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      lineHeight: 1,
       rows: 20,
       cols: 80,
       allowProposedApi: true,

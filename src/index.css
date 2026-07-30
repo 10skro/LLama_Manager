@@ -91,3 +91,50 @@
     border-radius: 3px;
   }
 }
+
+/* === xterm.js isolation ===
+   Tailwind's preflight (@tailwind base) applies global resets that interfere with
+   xterm.js internal elements, especially .xterm-char-measure-element which is used
+   to calculate character dimensions. Without these overrides, inherited font-family,
+   line-height, borders, and margins from Tailwind cause incorrect measurements,
+   resulting in oversized terminal text.
+   These rules MUST come AFTER @tailwind directives to take precedence. === */
+
+.xterm,
+.xterm * {
+  /* Counter Tailwind's `* { @apply border-border }` which adds borders to ALL elements */
+  border: none !important;
+  border-inline-start: none !important;
+  border-inline-end: none !important;
+  border-block-start: none !important;
+  border-block-end: none !important;
+}
+
+/* Ensure the character measurement element uses baseline styles.
+   xterm.js creates this element dynamically to measure font metrics.
+   If it inherits wrong font-family/line-height from Tailwind, all character
+   dimensions are calculated incorrectly, making terminal text appear oversized. */
+.xterm-char-measure-element {
+  /* Must match TerminalSessionItem.tsx fontFamily option exactly */
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: 0 !important;
+  z-index: -1 !important;
+}
+
+/* Reset box-sizing on xterm internals - Tailwind preflight may set border-box globally */
+.xterm,
+.xterm .xterm-helpers,
+.xterm .xterm-screen,
+.xterm .xterm-viewport {
+  box-sizing: content-box !important;
+}
+
+/* Ensure xterm canvas elements are not affected by inherited transforms */
+.xterm .xterm-screen canvas {
+  transform: none !important;
+}
