@@ -52,7 +52,6 @@ pub fn run() {
             crate::file::commands::scan_mmproj_files,
             crate::file::commands::validate_folder,
             crate::terminal::commands::spawn_terminal,
-            crate::terminal::commands::write_terminal_input,
             crate::terminal::commands::kill_terminal,
             crate::terminal::commands::list_active_terminals,
             crate::terminal::commands::get_terminal_by_config,

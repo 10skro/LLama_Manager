@@ -1,10 +1,15 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::{Emitter, Manager};
+
+/// Regex pattern compiled once at first use (lazy, thread-safe).
+/// Strips outer quotes from file path arguments to prevent "Invalid argument"
+/// errors when `cmd /K` passes quoted paths as literal characters.
+static PATH_QUOTE_RE: OnceLock<regex::Regex> = OnceLock::new();
 
 /// Strip outer quotes from file path arguments in a command string.
 ///
@@ -16,8 +21,10 @@ use tauri::{Emitter, Manager};
 /// Only strips quotes from tokens that look like file paths (contain `\` or `/`
 /// or end with a known file extension like `.gguf`, `.safetensors`, `.exe`, etc.).
 fn strip_path_quotes(cmd: &str) -> String {
-    let re = regex::Regex::new(r#""([^"]*[\./\\][^"]*\.(gguf|safetensors|exe|dll|so|dylib|mmproj|bin|model|ckpt|pt|bin2|pth))""#)
-        .expect("valid regex");
+    let re = PATH_QUOTE_RE.get_or_init(|| {
+        regex::Regex::new(r#""([^"]*[\./\\][^"]*\.(gguf|safetensors|exe|dll|so|dylib|mmproj|bin|model|ckpt|pt|bin2|pth))""#)
+            .expect("valid regex")
+    });
 
     re.replace_all(cmd, |caps: &regex::Captures| {
         // Return the path without surrounding quotes (as owned String to avoid lifetime issues)
@@ -333,21 +340,15 @@ impl TerminalManager {
         Ok(session_id)
     }
 
-    /// Write input to a terminal session (not supported with pipe-based I/O).
-    pub fn write_input(&self, _session_id: &str, _input: String) -> Result<(), String> {
-        Err("Input writing is not supported with pipe-based terminal".to_string())
-    }
-
     /// Kill a terminal session and ALL its child processes (including llama-server.exe).
     ///
     /// On Windows, calling child.kill() on cmd.exe does NOT terminate child processes
     /// like llama-server.exe. They survive as orphan processes.
     /// We use `taskkill /T /F /PID` to forcefully kill the entire process tree.
     ///
-    /// This method runs taskkill on a blocking thread (via tokio::task::spawn_blocking)
-    /// so it does NOT block the Tauri IPC thread. The method returns immediately after
-    /// scheduling the kill. A "terminal-exit" event is emitted once the process tree
-    /// is confirmed dead, so the frontend can show a "Stopping..." status in the meantime.
+    /// Runs taskkill synchronously. Tauri IPC commands already execute on a separate
+    /// thread, so blocking briefly for taskkill does not freeze the UI. This avoids
+    /// panics when the Tokio runtime has been dropped (e.g. during app shutdown).
     pub fn kill(&self, app: tauri::AppHandle, session_id: &str) -> Result<String, String> {
         let session = {
             let mut sessions = self
@@ -365,42 +366,32 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] Killing process tree: session={} | pid={}", session_id, pid);
 
-        // Clone session_id for the async closure (owned String, 'static lifetime)
-        let sid = session_id.to_string();
-
-        // Run taskkill on a blocking thread so the Tauri IPC thread is NOT blocked.
-        // The method returns immediately after spawning the task.
-        tokio::task::spawn_blocking(move || {
-            log::info!("[TERMINAL] spawn_blocking: executing taskkill for session={} | pid={}", sid, pid);
-
-            // Use taskkill /T /F to kill the entire process tree (cmd.exe + all children like llama-server.exe)
-            // /T = kill child processes tree
-            // /F = force termination
-            let taskkill_result = std::process::Command::new("taskkill")
-                .args(["/T", "/F", "/PID", &pid.to_string()])
-                .output();
-
-            match taskkill_result {
-                Ok(output) if output.status.success() => {
-                    log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", sid, pid);
-                }
-                Ok(output) => {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
-                        sid, pid, stderr);
-                }
-                Err(e) => {
-                    // Process may have already exited — not a critical error
-                    log::warn!("[TERMINAL] Failed to execute taskkill for PID {}: {} (process may have already exited)", pid, e);
-                }
+        // Use taskkill /T /F to kill the entire process tree (cmd.exe + all children like llama-server.exe)
+        // /T = kill child processes tree
+        // /F = force termination
+        match std::process::Command::new("taskkill")
+            .args(["/T", "/F", "/PID", &pid.to_string()])
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", session_id, pid);
             }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
+                    session_id, pid, stderr);
+            }
+            Err(e) => {
+                // Process may have already exited — not a critical error
+                log::warn!("[TERMINAL] Failed to execute taskkill for PID {}: {} (process may have already exited)", pid, e);
+            }
+        }
 
-            // Small delay to let the OS finish cleaning up the process tree
-            std::thread::sleep(std::time::Duration::from_millis(200));
+        // Small delay to let the OS finish cleaning up the process tree
+        std::thread::sleep(std::time::Duration::from_millis(200));
 
-            // Emit terminal-exit event so the frontend can clear the "Stopping..." status
-            let _ = app.emit("terminal-exit", sid.clone());
-        });
+        // Emit terminal-exit event so the frontend can clear the "Stopping..." status
+        let _ = app.emit("terminal-exit", session_id.to_string());
 
         Ok(config_id)
     }

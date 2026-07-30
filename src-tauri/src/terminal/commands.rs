@@ -19,16 +19,6 @@ pub fn spawn_terminal(
     state_terminal.spawn(app, config_id, version_id, working_dir, startup_command)
 }
 
-/// Write input to a terminal session.
-#[tauri::command]
-pub fn write_terminal_input(
-    state_terminal: State<'_, TerminalManager>,
-    session_id: String,
-    input: String,
-) -> Result<(), String> {
-    state_terminal.write_input(&session_id, input)
-}
-
 /// Kill a terminal session.
 /// Runs taskkill on a blocking thread (non-blocking for the Tauri IPC thread).
 /// Emits a "terminal-exit" event once the process tree is confirmed dead.
