@@ -3,6 +3,11 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
+// xterm.js base CSS MUST be imported BEFORE index.css so that in the final
+// bundled CSS, xterm's base styles come before Tailwind's custom xterm overrides.
+// In production builds, CSS is concatenated in import order — if overrides
+// come before base styles, the cascade breaks and terminal text renders wrong.
+import '@xterm/xterm/css/xterm.css';
 import './index.css';
 
 // THEME-BOOT diagnostic: mark CSS load completion
