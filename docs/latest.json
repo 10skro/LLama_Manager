@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.81",
-  "notes": "## Changes\n\n### Bug Fixes\n- Fix application panic when closing server during shutdown\n- Remove duplicate changelog modal appearing on startup\n\n### Performance\n- Compile terminal path regex once at first use instead of per spawn",
-  "pub_date": "2026-07-30T09:00:00Z",
+  "version": "v0.6.82",
+  "notes": "## Changes\n\n### Bug Fixes\n- Eliminate UI freeze when stopping servers or closing the app",
+  "pub_date": "2026-07-30T10:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.81/Llama.Manager_0.6.81_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTYvNVpKZC9ybFRRM1kxNXkydm12MjFsZHpXbHRKc29vL0JQcU9KWm1lVDgyWlo2Y2F2dm5pTWt5NGRQUmNsY1RETjFKQ0pqVjhueHNIbFY0RWtJRXdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1Mzk2NTU3CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuODFfeDY0LXNldHVwLmV4ZQpWL1h5Zm5MMXNpa0FvSzZBenEzaVlhN3FXKzFOcVFtdjZOSUd5b05nUzdpZEdYbnpPMHE2ZzFnSmdrd3VGYTloZmk5ZjNUaWs4L3YwMGl0THRrL3JDQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.82/Llama.Manager_0.6.82_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTMwYnRkbEJrdEgyZFFRT2syQkNlUlpDd1kxMjFrUGZ5dzJERXN4bXVXMlZwQnVIeFNRbXpqbGpRdWc0SWRNZ3RWYmNoMmgvdXlUTFpYYytBV3k0eGdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1Mzk4NjEyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuODJfeDY0LXNldHVwLmV4ZQpZWUEvNElvaTRXUGkydXdsVy9nd2k4ZEF3RklLRVR2Uk5QS2hFNTg4d1c5RUJKblJ0RDRLTGxVUUVrNjZrYjkyQ1BnMEs5c3VnYzJ0Vllxcmo0WS9Edz09Cg=="
     }
   }
 }

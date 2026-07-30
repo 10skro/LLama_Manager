@@ -331,18 +331,17 @@ impl TerminalManager {
             }
         }
 
-        // Small delay to let the OS finish cleaning up the process tree
-        std::thread::sleep(std::time::Duration::from_millis(200));
-
-        // Emit terminal-exit event so the frontend can clear the "Stopping..." status
+        // taskkill /F /T is synchronous — it returns only after the process tree is dead.
+        // No sleep needed. Emit terminal-exit so the frontend clears "Stopping..." status.
         let _ = app.emit("terminal-exit", session_id.to_string());
 
         Ok(config_id)
     }
 
     /// Kill all terminal sessions and their child processes (cleanup on app exit).
-    /// Runs taskkill synchronously since this is only called during app shutdown
-    /// where blocking the main thread is acceptable.
+    /// Spawns taskkill for each session in parallel using std::thread, then joins
+    /// all handles. This reduces total kill time from O(n * taskkill) to O(max(taskkill)).
+    /// Uses std::thread (not tokio) to avoid panics when the Tokio runtime is dropped.
     /// Returns the number of sessions that were killed.
     pub fn kill_all(&self) -> usize {
         let sessions: Vec<_> = match self.sessions.lock() {
@@ -351,18 +350,29 @@ impl TerminalManager {
         };
 
         let count = sessions.len();
-        log::info!("[TERMINAL] kill_all: killing {} session(s)", count);
+        log::info!("[TERMINAL] kill_all: killing {} session(s) in parallel", count);
 
-        for session in sessions {
-            let pid = session.pid;
-            log::info!("[TERMINAL] kill_all: killing process tree pid={}", pid);
+        // Spawn taskkill for each session in parallel
+        let handles: Vec<_> = sessions
+            .into_iter()
+            .map(|session| {
+                let pid = session.pid;
+                std::thread::spawn(move || {
+                    log::info!("[TERMINAL] kill_all: killing process tree pid={}", pid);
 
-            if let Err(e) = std::process::Command::new("taskkill")
-                .args(["/T", "/F", "/PID", &pid.to_string()])
-                .output()
-            {
-                log::warn!("[TERMINAL] kill_all: failed to execute taskkill for PID {}: {}", pid, e);
-            }
+                    if let Err(e) = std::process::Command::new("taskkill")
+                        .args(["/T", "/F", "/PID", &pid.to_string()])
+                        .output()
+                    {
+                        log::warn!("[TERMINAL] kill_all: failed to execute taskkill for PID {}: {}", pid, e);
+                    }
+                })
+            })
+            .collect();
+
+        // Wait for all taskkill threads to complete
+        for handle in handles {
+            let _ = handle.join();
         }
 
         count
