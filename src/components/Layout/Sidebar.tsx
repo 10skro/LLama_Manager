@@ -52,7 +52,7 @@ export function Sidebar() {
       <Separator className="border-border/50" />
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-2 py-4">
+      <ScrollArea type="hover" className="flex-1 px-2 py-4">
         <nav className="flex flex-col gap-1">
           {navItems.map(({ path, label, icon: Icon }) => {
             const isActive = location.pathname === path;
