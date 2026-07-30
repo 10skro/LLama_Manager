@@ -33,13 +33,19 @@ pub fn create_main_window(app: &tauri::AppHandle, initial_theme: &str) {
         .build()
         .expect("Failed to create main window");
 
-    // Handle main window close: kill terminals + close terminal widget
+    // Handle main window close: kill terminals (async) + close terminal widget
+    // Spawn kill_all on std::thread to avoid blocking the main UI thread.
+    // Uses std::thread (not tokio) since the Tokio runtime may be dropped at shutdown.
     let app_handle = app.clone();
     main_window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { .. } = event {
-            log::info!("[APP] CloseRequested: killing all terminal sessions");
-            let terminal = app_handle.state::<TerminalManager>();
-            terminal.kill_all();
+            log::info!("[APP] CloseRequested: spawning async kill_all for terminal sessions");
+            // Clone for the spawn closure BEFORE moving into it
+            let kill_handle = app_handle.clone();
+            std::thread::spawn(move || {
+                let terminal = kill_handle.state::<TerminalManager>();
+                terminal.kill_all();
+            });
             if let Some(widget) = app_handle.get_webview_window("terminal") {
                 let _ = widget.close();
             }
@@ -48,11 +54,15 @@ pub fn create_main_window(app: &tauri::AppHandle, initial_theme: &str) {
 }
 
 /// Register the tauri://destroy listener that kills all terminal sessions
-/// on app shutdown.
+/// on app shutdown. Spawns kill_all on std::thread to avoid blocking the
+/// main thread. Acts as a safety net in case CloseRequested's thread didn't finish.
 pub fn register_destroy_listener(app: &tauri::AppHandle) {
     let app_handle = app.clone();
     app_handle.clone().listen("tauri://destroy", move |_| {
-        let terminal = app_handle.state::<TerminalManager>();
-        terminal.kill_all();
+        let app_handle = app_handle.clone();
+        std::thread::spawn(move || {
+            let terminal = app_handle.state::<TerminalManager>();
+            terminal.kill_all();
+        });
     });
 }
