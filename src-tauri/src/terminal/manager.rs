@@ -175,12 +175,8 @@ impl TerminalManager {
     ) -> Result<String, String> {
         let session_id = uuid::Uuid::new_v4().to_string();
 
-        // Strip quotes from file path arguments to prevent "Invalid argument" errors.
-        // When cmd /K receives a command with quoted paths, the quotes become literal
-        // characters in the arguments passed to the target process.
         let clean_command = startup_command.as_ref().map(|sc| strip_path_quotes(sc));
 
-        // Build the command to run
         let cmd_str = if let Some(sc) = &clean_command {
             // Escape cmd.exe metacharacters to prevent command injection / truncation
             let escaped = sc.replace('^', "^^")
@@ -198,9 +194,6 @@ impl TerminalManager {
         log::info!("[TERMINAL] Spawning process: version_id={} | config_id={} | cmd={} | dir={} | sessions_before={}",
             version_id, config_id, cmd_str, working_dir, self.session_count());
 
-        // Spawn process with stdout/stderr redirected to pipes.
-        // Use /C with "exit" to ensure cmd.exe exits after the command finishes.
-        // Actually use /K to keep cmd alive, but pass command as separate arg.
         let mut cmd = std::process::Command::new("cmd");
         if let Some(sc) = &clean_command {
             if !sc.is_empty() {
@@ -232,7 +225,6 @@ impl TerminalManager {
         log::info!("[TERMINAL] Process spawned: session={} | pid={} | version_id={} | config_id={}",
             session_id, pid, version_id, config_id);
 
-        // Store session with output buffer (4 KB circular buffer)
         let output_buffer = OutputBuffer::new();
         let buffer_arc = output_buffer.clone_arc();
 
@@ -251,7 +243,6 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] sessions_after={}", self.session_count());
 
-        // Take stdout/stderr pipes from the stored session before spawning reader threads.
         let (stdout, stderr) = {
             let sess = self.sessions.lock().unwrap();
             let s = sess.get(&session_id).unwrap();
@@ -322,9 +313,6 @@ impl TerminalManager {
 
         log::info!("[TERMINAL] Killing process tree: session={} | pid={}", session_id, pid);
 
-        // Use taskkill /T /F to kill the entire process tree (cmd.exe + all children like llama-server.exe)
-        // /T = kill child processes tree
-        // /F = force termination
         match std::process::Command::new("taskkill")
             .args(["/T", "/F", "/PID", &pid.to_string()])
             .output()
@@ -369,7 +357,6 @@ impl TerminalManager {
             let pid = session.pid;
             log::info!("[TERMINAL] kill_all: killing process tree pid={}", pid);
 
-            // Use taskkill /T /F to kill the entire process tree
             if let Err(e) = std::process::Command::new("taskkill")
                 .args(["/T", "/F", "/PID", &pid.to_string()])
                 .output()
