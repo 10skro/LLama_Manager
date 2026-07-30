@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.95",
-  "notes": "## Changes\n\n### Bug Fixes\n- Fix terminal text appearing oversized due to Tailwind CSS interference with xterm.js character measurement",
-  "pub_date": "2026-07-30T16:00:00Z",
+  "version": "v0.6.96",
+  "notes": "## Changes\n\n### Bug Fixes\n- Fix terminal output not displaying — replaced ConPTY with Stdio::piped() for reliable stdout/stderr capture\n\n### Maintenance\n- Remove conpty crate dependency, simplify terminal architecture\n- Disable WebView2 resource caching to prevent stale bundles after updates",
+  "pub_date": "2026-07-31T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.95/Llama.Manager_0.6.95_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTVWZ2NPbWRQMWk2aFg1VkZ4ekE1SmRMWUtKbHpid0pEK0xrbEdoSFE3RDZ1ZzZYVk1PcnhzYjRtUit6bFQ2bjY4SW9LZkZQVURxMCtDYVJHeGVmVkFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NDQ1ODExCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuOTVfeDY0LXNldHVwLmV4ZQo3bkJBMXdHbmVhVDZOeHNJUnFweVpyVnk3Z2QzMU1LZmN2bDJBbmxUMVdJbmloSGR4QytheXpJbExwTDJQbTBiNi9JUlgwUXM1U1dESXJVSzUxZDFDUT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.96/Llama.Manager_0.6.96_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTdkRTNETGJwczdncXBMR1J5SURRak5aaStKR2Z4K2VFTm9mVTFyRUViM3IvZG5raTcrR1RIT1IwT083RmpsdjZpUExqd3ZNSjY2TjBYcTk2U0VWMndRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NDUzNTE4CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuOTZfeDY0LXNldHVwLmV4ZQpOcnZZN0NPL1dBM0UzOFJSRkZaK1RENVVCSVl4UURQemVEQ1BPK08vb0swb3k3ZkJjTnliTzFOSVk4cWRINmhDLzlqaXlEZm93aHIzM3paTjRwVjVEQT09Cg=="
     }
   }
 }
