@@ -3,7 +3,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   LayoutDashboard,
   FileStack,
@@ -52,7 +51,7 @@ export function Sidebar() {
       <Separator className="border-border/50" />
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-2 py-4">
+      <div className="flex-1 px-2 py-4 overflow-auto">
         <nav className="flex flex-col gap-1">
           {navItems.map(({ path, label, icon: Icon }) => {
             const isActive = location.pathname === path;
@@ -75,7 +74,7 @@ export function Sidebar() {
             );
           })}
         </nav>
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
       <Separator className="border-border/50" />
