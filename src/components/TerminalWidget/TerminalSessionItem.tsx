@@ -103,7 +103,7 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
       cursorBlink: true,
       cursorStyle: 'bar',
       fontSize: 12,
-      fontFamily: 'Cascadia Code, Consolas, "Courier New", monospace',
+      fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       rows: 20,
       cols: 80,
       allowProposedApi: true,
