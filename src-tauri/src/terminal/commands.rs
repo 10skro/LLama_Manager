@@ -1,10 +1,10 @@
 use tauri::{AppHandle, Manager, State, WebviewWindow};
+use tauri::webview::Color;
 
 use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::terminal::manager::{ActiveTerminalInfo, TerminalManager};
 use crate::theme::colors::theme_to_color;
-use crate::theme::inject::build_initialization_script;
 
 /// Spawn a new terminal session for a given config/version.
 #[tauri::command]
@@ -92,10 +92,22 @@ pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
         .and_then(|c| repo::get_setting(&c, "theme").ok().flatten())
         .unwrap_or_else(|| "catppuccin-mocha".to_string());
 
-    // Build initialization script (runs BEFORE HTML is parsed)
-    let init_script = build_initialization_script(&theme);
     let dev_mode = cfg!(debug_assertions);
     let dev_script = format!(r#"window.__DEV_MODE__={};"#, dev_mode);
+    let Color(r, g, b, _) = theme_to_color(&theme);
+    let bg_hex = format!("#{:02x}{:02x}{:02x}", r, g, b);
+    // Null-guard: document.documentElement may not exist yet in some WebView2 contexts.
+    // CRITICAL: Set --background (HSL) inline on <html> to override the :root CSS
+    // declaration. Inline styles have higher specificity, so Tailwind's bg-background
+    // reads the correct theme color from the first paint — zero flash.
+    let anti_flash_script = format!(
+        r##"(function(){{console.log("[THEME-BOOT] ① initialization_script (terminal): theme={theme}, bg={bg}");var el=document.documentElement;if(el){{el.setAttribute("data-theme","{theme}");el.style.backgroundColor="{bg}";var r={r},g={g},b={b};var rn=r/255,gn=g/255,bn=b/255,mx=Math.max(rn,gn,bn),mn=Math.min(rn,gn,bn),l=(mx+mn)/2,h=0,s=0;if(mx!==mn){{var d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);if(mx===rn)h=((gn-bn)/d+(gn<bn?6:0))/6;else if(mx===gn)h=((bn-rn)/d+2)/6;else h=((rn-gn)/d+4)/6;}}el.style.setProperty("--background",Math.round(h*360)+" "+Math.round(s*100)+"% "+Math.round(l*100)+"%");}}window.__INITIAL_THEME__="{theme}";}})();"##,
+        theme = theme,
+        bg = bg_hex,
+        r = r,
+        g = g,
+        b = b,
+    );
     let bg_color = theme_to_color(&theme);
 
     // Fire-and-forget: spawn on tokio so the command returns immediately
@@ -109,8 +121,8 @@ pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
             .decorations(true)
             .theme(Some(tauri::Theme::Dark))
             .background_color(bg_color)
-            .initialization_script(&init_script)
             .initialization_script(&dev_script)
+            .initialization_script(&anti_flash_script)
             .build();
 
         if let Err(e) = result {

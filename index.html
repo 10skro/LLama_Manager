@@ -6,13 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- CSP must match src-tauri/tauri.conf.json security.csp -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://ipc.localhost https://api.github.com; frame-src 'none'; object-src 'none';" />
-    <!-- Critical: anti-flash script runs BEFORE any CSS loads -->
-    <!-- Uses external file to comply with CSP (no inline scripts allowed) -->
-    <script src="/theme-init.js"></script>
+    <!-- Anti-flash: neutral baseline BEFORE CSS load.
+         The Tauri initialization_script overrides these with the user's actual
+         theme colors BEFORE any paint occurs, so there is zero flash.
+         These neutral dark values only show if the script fails to execute. -->
+    <style>html,body,#root{background-color:#111;margin:0}</style>
+    <!-- Anti-flash style is injected via Tauri initialization_script (before DOM) -->
     <title>LlamaCpp Manager</title>
   </head>
-  <body class="bg-background text-foreground antialiased">
-    <div id="root"></div>
+  <body class="bg-background text-foreground antialiased" style="background-color: #111; margin: 0;">
+    <div id="root" style="background-color: #111; min-height: 100vh;"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
