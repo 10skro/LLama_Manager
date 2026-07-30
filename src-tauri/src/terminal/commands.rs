@@ -20,7 +20,7 @@ pub fn spawn_terminal(
 }
 
 /// Kill a terminal session.
-/// Runs taskkill on a blocking thread (non-blocking for the Tauri IPC thread).
+/// Runs taskkill synchronously (Tauri IPC already executes on a separate thread).
 /// Emits a "terminal-exit" event once the process tree is confirmed dead.
 #[tauri::command]
 pub fn kill_terminal(
@@ -77,7 +77,6 @@ pub fn get_terminal_buffer(
 pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
     let window_label = "terminal";
 
-    // Check if window already exists
     if let Some(existing) = app.get_webview_window(window_label) {
         existing.minimize().ok();
         existing.unminimize().ok();
