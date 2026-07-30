@@ -9,7 +9,7 @@ use tauri::{Emitter, Manager};
 /// Regex pattern compiled once at first use (lazy, thread-safe).
 /// Strips outer quotes from file path arguments to prevent "Invalid argument"
 /// errors when `cmd /K` passes quoted paths as literal characters.
-static PATH_QUOTE_RE: OnceLock<regex::Regex> = OnceLock::new();
+pub(crate) static PATH_QUOTE_RE: OnceLock<regex::Regex> = OnceLock::new();
 
 /// Strip outer quotes from file path arguments in a command string.
 ///
@@ -20,7 +20,7 @@ static PATH_QUOTE_RE: OnceLock<regex::Regex> = OnceLock::new();
 ///
 /// Only strips quotes from tokens that look like file paths (contain `\` or `/`
 /// or end with a known file extension like `.gguf`, `.safetensors`, `.exe`, etc.).
-fn strip_path_quotes(cmd: &str) -> String {
+pub(crate) fn strip_path_quotes(cmd: &str) -> String {
     let re = PATH_QUOTE_RE.get_or_init(|| {
         regex::Regex::new(r#""([^"]*[\./\\][^"]*\.(gguf|safetensors|exe|dll|so|dylib|mmproj|bin|model|ckpt|pt|bin2|pth))""#)
             .expect("valid regex")
@@ -435,46 +435,5 @@ impl TerminalManager {
 impl Default for TerminalManager {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn strip_path_quotes_removes_quotes_from_gguf_path() {
-        let input = r#"llama-server.exe -m "C:\models\llama-3.gguf""#;
-        let output = strip_path_quotes(input);
-        assert_eq!(output, r#"llama-server.exe -m C:\models\llama-3.gguf"#);
-    }
-
-    #[test]
-    fn strip_path_quotes_keeps_non_path_quotes() {
-        let input = r#"echo "hello world""#;
-        let output = strip_path_quotes(input);
-        // "hello world" has no path separator or file extension → kept as-is
-        assert_eq!(output, r#"echo "hello world""#);
-    }
-
-    #[test]
-    fn strip_path_quotes_multiple_paths() {
-        let input = r#"tool.exe --input "C:\data\file.bin" --output "D:\out\result.ckpt""#;
-        let output = strip_path_quotes(input);
-        assert_eq!(output, r#"tool.exe --input C:\data\file.bin --output D:\out\result.ckpt"#);
-    }
-
-    #[test]
-    fn strip_path_quotes_empty_string() {
-        assert_eq!(strip_path_quotes(""), "");
-    }
-
-    #[test]
-    fn once_lock_regex_compiles_once() {
-        // Call strip_path_quotes twice — second call should reuse the cached regex,
-        // not recompile. If the regex is invalid, the first call panics.
-        let _ = strip_path_quotes(r#""C:\test\model.gguf""#);
-        let _ = strip_path_quotes(r#""D:\other\safetensors.safetensors""#);
-        // If we reach here, the OnceLock worked and the regex compiled successfully.
     }
 }
