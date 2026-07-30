@@ -23,6 +23,7 @@ interface TerminalSessionItemProps {
 function mapToXtermTheme(themeId: string): ITheme {
   const theme = getThemeById(themeId);
   if (!theme) {
+    console.warn(`[TERMINAL] Theme "${themeId}" not found, falling back to Catppuccin Mocha`);
     return {
       background: '#1e1e2e',
       foreground: '#cdd6f4',
@@ -96,14 +97,27 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
     if (!terminalRef.current) return;
 
     const xtermTheme = mapToXtermTheme(activeTheme);
+    console.log(
+      '[TERMINAL] Init session',
+      sessionId,
+      'with theme:',
+      activeTheme,
+      'bg:',
+      xtermTheme.background,
+      'fg:',
+      xtermTheme.foreground
+    );
 
     terminalRef.current.style.backgroundColor = xtermTheme.background || '';
 
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: 'bar',
-      fontSize: 12,
-      fontFamily: 'Cascadia Code, Consolas, "Courier New", monospace',
+      fontSize: 13,
+      fontFamily: 'Cascadia Code, "Cascadia Mono", Consolas, "Courier New", monospace',
+      fontWeightBold: 'bold',
+      letterSpacing: 0,
+      lineHeight: 1.2,
       rows: 20,
       cols: 80,
       allowProposedApi: true,
@@ -188,7 +202,11 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
           ✕
         </button>
       </div>
-      <div ref={terminalRef} className="flex-1 p-1 overflow-hidden min-h-0" />
+      <div
+        ref={terminalRef}
+        className="flex-1 overflow-hidden min-h-0"
+        style={{ padding: '4px' }}
+      />
     </div>
   );
 }
