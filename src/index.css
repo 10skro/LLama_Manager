@@ -38,31 +38,34 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Fallback CSS variables matching default theme (catppuccin-mocha).
-     These values ensure Tailwind classes resolve correctly BEFORE React mounts
-     and applyTheme() overrides them with the user's actual theme.
-     Using real HSL values instead of transparent prevents white flash on startup. */
+  /* Neutral CSS variable fallbacks — NOT theme-specific.
+     The Tauri initialization_script sets ALL these variables inline on <html>
+     BEFORE any CSS is parsed, with the user's actual saved theme colors.
+     Since inline styles override stylesheet :root declarations, the theme
+     is correctly applied from the first paint with zero flash.
+     These fallbacks only activate if the initialization_script fails,
+     providing a readable dark appearance (not pure black) during loading. */
   :root {
-    --background: 240 15% 16%;
-    --foreground: 220 14% 77%;
-    --card: 240 22% 14%;
-    --card-foreground: 220 14% 77%;
-    --popover: 240 22% 14%;
-    --popover-foreground: 220 14% 77%;
-    --primary: 217 38% 72%;
-    --primary-foreground: 0 0% 15%;
-    --secondary: 240 13% 25%;
-    --secondary-foreground: 220 14% 77%;
-    --muted: 240 13% 25%;
-    --muted-foreground: 240 7% 45%;
-    --accent: 267 84% 81%;
-    --accent-foreground: 0 0% 15%;
-    --destructive: 345 74% 75%;
-    --destructive-foreground: 0 0% 15%;
-    --border: 240 22% 11%;
-    --input: 240 22% 11%;
-    --ring: 217 38% 72%;
-    --sidebar: 240 23% 11%;
+    --background: 225 15% 12%;
+    --foreground: 220 10% 75%;
+    --card: 220 15% 10%;
+    --card-foreground: 220 10% 75%;
+    --popover: 220 15% 10%;
+    --popover-foreground: 220 10% 75%;
+    --primary: 220 15% 65%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 220 10% 75%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 220 15% 65%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 60% 60%;
+    --destructive-foreground: 0 0% 10%;
+    --border: 220 15% 12%;
+    --input: 220 15% 12%;
+    --ring: 220 15% 65%;
+    --sidebar: 220 15% 10%;
     --radius: 0.75rem;
     --custom-font: 'Instrument Sans';
   }

@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
 
+// THEME-BOOT diagnostic: mark CSS load completion
+console.log('[THEME-BOOT] ② CSS loaded, bg from computed:', getComputedStyle(document.documentElement).getPropertyValue('--background').trim());
+
 // Global error handlers to catch silent crashes that freeze the UI
 window.addEventListener('error', (event) => {
   console.error('[GlobalError]', event.error || event.message);
@@ -14,9 +17,8 @@ window.addEventListener('unhandledrejection', (event) => {
   event.preventDefault(); // Prevent Chrome from showing "A listener indicated an asynchronous error"
 });
 
-// Theme is already applied by the inline script in index.html (runs during HTML parsing,
-// before any CSS/JS loads). No need to re-apply here — useTheme() in App.tsx handles
-// reactive theme changes after React mount.
+// Theme is applied reactively by useTheme() after React mounts.
+// The WebView background_color prevents flash before HTML paints.
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,15 +34,17 @@ const isTerminalWindow = new URLSearchParams(window.location.search).get('window
 
 if (isTerminalWindow) {
   // Render the terminal widget app (no router, no query provider needed)
-  // Theme is already applied by inline script in index.html from __INITIAL_THEME__
+  // Theme is applied by useTheme() hook after React mounts
   const root = document.getElementById('root')!;
   (async () => {
+    console.log('[THEME-BOOT] ③ React mount (terminal)');
     const { default: TerminalWidgetApp } =
       await import('./components/TerminalWidget/TerminalWidgetApp');
     ReactDOM.createRoot(root).render(<TerminalWidgetApp />);
   })();
 } else {
   // Render the main application
+  console.log('[THEME-BOOT] ③ React mount (main)');
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>

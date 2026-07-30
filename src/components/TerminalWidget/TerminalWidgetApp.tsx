@@ -3,12 +3,34 @@ import { listen } from '@tauri-apps/api/event';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import { getThemeById, applyTheme } from '@/themes';
 import { useAppStore } from '@/store/useAppStore';
+import { getSettings } from '@/services/settings';
 import { TerminalWidget } from './TerminalWidget';
 
 export default function TerminalWidgetApp() {
   const unlistenRef = useRef<UnlistenFn | null>(null);
   const activeTheme = useAppStore((s) => s.activeTheme);
   const setActiveTheme = useAppStore((s) => s.setActiveTheme);
+
+  // Load the saved theme from the database on mount.
+  // The terminal window's Zustand store initializes with DEFAULT_THEME_ID,
+  // so we must fetch the real saved theme to apply it immediately.
+  useEffect(() => {
+    const loadSavedTheme = async () => {
+      try {
+        const settings = await getSettings();
+        if (settings.theme) {
+          const theme = getThemeById(settings.theme);
+          if (theme) {
+            applyTheme(theme);
+            setActiveTheme(settings.theme);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load saved theme for terminal:', err);
+      }
+    };
+    loadSavedTheme();
+  }, [setActiveTheme]);
 
   // Apply the initial theme on mount so CSS variables are fully set.
   // theme-init.js only sets a bare-bones anti-flash style; applyTheme() sets

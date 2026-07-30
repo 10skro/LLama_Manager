@@ -34,3 +34,5 @@ pub fn theme_to_color(theme_id: &str) -> Color {
     let (r, g, b) = parse_hex_color(base_hex);
     Color(r, g, b, 255)
 }
+
+
