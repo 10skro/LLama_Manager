@@ -349,7 +349,7 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
       </div>
 
       {/* Config Display */}
-      <VersionConfigDisplay link={configLink ?? null} configName={linkedConfig?.name} />
+      <VersionConfigDisplay link={configLink ?? null} configName={linkedConfig?.name} configColor={linkedConfig?.color} />
 
       {/* Override Badge */}
       {hasOverride && (
