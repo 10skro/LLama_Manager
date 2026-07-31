@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://ipc.localhost https://api.github.com; frame-src 'none'; object-src 'none'"
+      "csp": null
     }
   },
   "plugins": {

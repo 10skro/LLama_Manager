@@ -54,6 +54,9 @@ pub fn create_main_window(app: &tauri::AppHandle, initial_theme: &str) {
         .build()
         .expect("Failed to create main window");
 
+    // Force DevTools open in release for debugging (temporary)
+    main_window.open_devtools();
+
     // Handle main window close: kill terminals (async) + close terminal widget
     // Spawn kill_all on std::thread to avoid blocking the main UI thread.
     // Uses std::thread (not tokio) since the Tokio runtime may be dropped at shutdown.

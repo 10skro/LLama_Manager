@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-// xterm.css already imported globally in main.tsx
 import { useAppStore } from '@/store/useAppStore';
 import { getThemeById } from '@/themes';
 import type { ITheme } from '@xterm/xterm';
@@ -90,18 +90,18 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
   }, [activeTheme]);
 
   // Terminal initialization (runs once on mount)
-  // activeTheme is intentionally excluded from deps — theme updates are handled by the
-  // separate useEffect above (line 82) which re-applies colors without full re-init.
   useEffect(() => {
     if (!terminalRef.current) return;
 
     const xtermTheme = mapToXtermTheme(activeTheme);
-
     terminalRef.current.style.backgroundColor = xtermTheme.background || '';
 
-    // Wait for fonts to load before initializing the canvas, otherwise xterm.js
-    // measures character dimensions with the wrong font and lines overlap.
+    let resources: ReturnType<typeof initTerminal> = null;
+    let isMounted = true; // Sécurise contre les démontages rapides
+
     const initTerminal = () => {
+      if (!isMounted) return null;
+
       const container = terminalRef.current;
       if (!container) return null;
 
@@ -109,34 +109,41 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
         cursorBlink: true,
         cursorStyle: 'bar',
         fontSize: 12,
-        fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-        lineHeight: 1,
-        rows: 20,
-        cols: 80,
+        fontFamily:
+          'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        lineHeight: 1.2,
         allowProposedApi: true,
         theme: xtermTheme,
       });
 
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
-      term.open(container);
 
       xtermRef.current = term;
       fitAddonRef.current = fitAddon;
 
-      const fitTerminal = () => {
-        if (fitAddonRef.current) {
-          fitAddonRef.current.fit();
+      // Wait for the Flexbox layout to finish before opening the terminal.
+      // In production builds, JS executes faster than DOM layout, so the container
+      // may still be 0px tall when useEffect fires. requestAnimationFrame guarantees
+      // the browser has painted the frame and assigned real dimensions.
+      const waitForLayout = () => {
+        if (!isMounted) return;
+
+        if (container.clientHeight === 0 || container.clientWidth === 0) {
+          requestAnimationFrame(waitForLayout);
+          return;
         }
+
+        term.open(container);
+        fitAddon.fit();
       };
 
-      // Delay initial fit to let the Tauri DOM layout stabilize in production builds.
-      setTimeout(() => {
-        fitTerminal();
-      }, 50);
+      requestAnimationFrame(waitForLayout);
 
       const resizeObserver = new ResizeObserver(() => {
-        fitTerminal();
+        if (fitAddonRef.current && container.clientHeight > 0) {
+          fitAddonRef.current.fit();
+        }
       });
       resizeObserver.observe(container);
 
@@ -166,28 +173,35 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
       return { term, resizeObserver, unlistenOutput, unlistenExit };
     };
 
-    let resources: ReturnType<typeof initTerminal> = null;
+    // 1. FORCER LE CHARGEMENT DE LA POLICE ICI
+    const fontToLoad = '12px "JetBrains Mono"';
 
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => {
-        resources = initTerminal();
-      });
+    if (document.fonts && document.fonts.load) {
+      document.fonts
+        .load(fontToLoad)
+        .then(() => {
+          resources = initTerminal();
+        })
+        .catch(() => {
+          // Fallback immédiat si le réseau ou la police bloque
+          resources = initTerminal();
+        });
     } else {
       resources = initTerminal();
     }
 
     return () => {
+      isMounted = false; // Bloque initTerminal si la promesse n'est pas encore résolue
       if (!resources) return;
+
       resources.resizeObserver.disconnect();
       resources.unlistenOutput.then((u) => u());
       resources.unlistenExit.then((u) => u());
       resources.term.dispose();
       xtermRef.current = null;
       fitAddonRef.current = null;
-      resources = null;
     };
-    // activeTheme excluded: theme updates handled by separate useEffect (line 82)
-  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   const handleClose = useCallback(() => {
     invoke('kill_terminal', { sessionId }).catch((err) => {

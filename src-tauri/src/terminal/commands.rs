@@ -121,7 +121,9 @@ pub async fn open_terminal_window(app: AppHandle) -> Result<(), String> {
             .initialization_script(&anti_flash_script)
             .build();
 
-        if let Err(e) = result {
+        if let Ok(w) = result {
+            w.open_devtools();
+        } else if let Err(e) = result {
             log::error!("Failed to create terminal window: {}", e);
         }
     });
