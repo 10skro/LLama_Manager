@@ -1,11 +1,11 @@
 {
-  "version": "v0.7.10",
-  "notes": "## Changes\n\n### Features\n\n- Add server status machine with transition validation and reactive `useServerStatus` hook\n\n### Bug Fixes\n\n- Eliminate error badge flash on intentional server stop — unify terminal-exit event with reason payload to prevent IPC race condition\n- Replace Radix ScrollArea with native overflow in ChangelogModal, add global scrollbar styling",
+  "version": "v0.7.40",
+  "notes": "## Changes\n\n### Features\n\n- Export custom commands as portable JSON config files for easy sharing and backup\n\n### Refactoring\n\n- Extract shared ServerRunningWarningDialog component, eliminate duplicated code across 3 files\n- Translate all UI strings and comments to English\n\n### Maintenance\n\n- Resolve all linting and formatting warnings across the codebase",
   "pub_date": "2026-07-31T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.7.10/Llama.Manager_0.7.10_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTN3MGVKd3ZFK2M0dThyYVFMNTJqVDVjeGFnRzRtUUxaZzJ2SVU5dHdDZ1BWcG5jRDZiNG9zZFl6N2ExelFQNDFIK1FPQkM0VjRZLzcvRXhLM04wSWdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NTE1NDk5CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjcuMTBfeDY0LXNldHVwLmV4ZQpjUlJSQUt6U0U2dEo1QWQxN2RJR0Z6d21OMWZxT25WYURNb1UwQVNYeXFwcTdqU0FvL1ptNU8yd1lFaGIveXF5YUhwNGpqeDMzSFZWL2VjbFBYVEFBUT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.7.40/Llama.Manager_0.7.40_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXpiQ3VpU1ZZcWhzZXp3L0pzaHVMVTNZbGVtZ1BUN0RDMzVwTWdyNjh0OWtJT0xEc29SSTJJSHBaTE5oWEVFbjBYcFJFeXQzZGJwNTVzNEs1bVZGS0FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NTIxNjUzCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjcuNDBfeDY0LXNldHVwLmV4ZQoyYXJ3YWc3cEtiaHRMSHBSMzVZL3J5SnZjT3kzZmoreDZWbktrNmU4YjdaZU5yZks0VWFpeDR1cGlxZTU2eVM3R0d1NDlFUyt4T2dmUGZ3VXg5a1JDdz09Cg=="
     }
   }
 }
