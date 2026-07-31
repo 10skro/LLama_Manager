@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Loader2 } from 'lucide-react';
 import { ChangelogRenderer } from '@/components/ChangelogRenderer';
 import { fetchReleaseChangelog } from '@/services/github';
@@ -76,7 +76,7 @@ export function ChangelogModal({
         <DialogHeader>
           <DialogTitle>Changelog - {buildNumber}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <div className="max-h-[60vh] overflow-auto pr-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-3" />
@@ -91,7 +91,7 @@ export function ChangelogModal({
               No changelog available for this release.
             </p>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
