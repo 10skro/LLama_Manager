@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import type { AppSettings } from '@/types';
-import { useDebouncedFolderInput } from '@/hooks/useDebouncedFolderInput';
+import { useDebouncedFolderInput } from '@/hooks/Settings/useDebouncedFolderInput';
 
 interface ModelsSectionProps {
   settings: AppSettings | null;

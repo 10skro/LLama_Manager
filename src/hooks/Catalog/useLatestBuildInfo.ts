@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useInstalledVersions } from './useInstalledVersions';
+import { useInstalledVersions } from '@/hooks/useInstalledVersions';
 import { useBuilds } from './useBuilds';
 
 interface BuildInfo {

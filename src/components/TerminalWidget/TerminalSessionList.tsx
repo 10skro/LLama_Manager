@@ -1,4 +1,4 @@
-import type { TerminalSession } from '@/hooks/useTerminalSessions';
+import type { TerminalSession } from '@/hooks/Terminal/useTerminalSessions';
 
 interface TerminalSessionListProps {
   sessions: TerminalSession[];

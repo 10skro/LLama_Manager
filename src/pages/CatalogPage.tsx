@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useBuilds } from '@/hooks/useBuilds';
+import { useBuilds } from '@/hooks/Catalog/useBuilds';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
-import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
+import { useFavorites, useToggleFavorite } from '@/hooks/Catalog/useFavorites';
 import { useAppStore } from '@/store/useAppStore';
 import { makeKey } from '@/utils/buildKey';
 import { formatRelativeTime } from '@/utils/format';
@@ -11,9 +11,9 @@ import { BuildsTable } from '@/components/Catalog/BuildsTable';
 import { ChangelogModal } from '@/components/shared/ChangelogModal';
 import { AlertCircle, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useVersionSearch } from '@/hooks/useVersionSearch';
-import { useCatalogRefresh } from '@/hooks/useCatalogRefresh';
-import { useCatalogActions } from '@/hooks/useCatalogActions';
+import { useVersionSearch } from '@/hooks/Catalog/useVersionSearch';
+import { useCatalogRefresh } from '@/hooks/Catalog/useCatalogRefresh';
+import { useCatalogActions } from '@/hooks/Catalog/useCatalogActions';
 
 export function CatalogPage() {
   const { filters, setFilters } = useAppStore();

@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES } from '@/themes';
 import { AVAILABLE_FONTS } from '@/fonts';
-import { useSettingsPersistence } from '@/hooks/useSettingsPersistence';
+import { useSettingsPersistence } from '@/hooks/Settings/useSettingsPersistence';
 
 interface AppearanceSectionProps {
   settings: AppSettings | null;

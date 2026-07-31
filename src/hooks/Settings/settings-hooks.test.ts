@@ -23,7 +23,7 @@ describe('settings hooks — smoke tests', () => {
         useEffect: vi.fn(),
       }));
 
-      const mod = await import('@/hooks/useGithubTokenState');
+      const mod = await import('@/hooks/Settings/useGithubTokenState');
       expect(typeof mod.useGithubTokenState).toBe('function');
     });
   });
@@ -41,7 +41,7 @@ describe('settings hooks — smoke tests', () => {
         useCallback: vi.fn((fn) => fn),
       }));
 
-      const mod = await import('@/hooks/useDebouncedFolderInput');
+      const mod = await import('@/hooks/Settings/useDebouncedFolderInput');
       expect(typeof mod.useDebouncedFolderInput).toBe('function');
     });
   });
@@ -52,7 +52,7 @@ describe('settings hooks — smoke tests', () => {
         saveSettings: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const mod = await import('@/hooks/useSettingsPersistence');
+      const mod = await import('@/hooks/Settings/useSettingsPersistence');
       expect(typeof mod.useSettingsPersistence).toBe('function');
     });
   });

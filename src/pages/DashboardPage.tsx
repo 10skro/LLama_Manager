@@ -4,10 +4,10 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import type { InstalledVersion } from '@/types';
 import { useInstalledVersions } from '@/hooks/useInstalledVersions';
-import { useStorageUsage } from '@/hooks/useStorageUsage';
-import { useLatestBuildInfo } from '@/hooks/useLatestBuildInfo';
-import { useVersionConfigLinks } from '@/hooks/useVersionConfigLinks';
-import { useConfigs } from '@/hooks/useConfigs';
+import { useStorageUsage } from '@/hooks/Dashboard/useStorageUsage';
+import { useLatestBuildInfo } from '@/hooks/Catalog/useLatestBuildInfo';
+import { useVersionConfigLinks } from '@/hooks/Dashboard/useVersionConfigLinks';
+import { useConfigs } from '@/hooks/Configs/useConfigs';
 import { useToast, type ToastOptions } from '@/hooks/use-toast';
 import {
   uninstallVersion,

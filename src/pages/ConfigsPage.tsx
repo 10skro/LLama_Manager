@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useConfigs } from '@/hooks/useConfigs';
+import { useConfigs } from '@/hooks/Configs/useConfigs';
 import { Button } from '@/components/ui/button';
 import { Terminal, Plus } from 'lucide-react';
 import { CustomCommandModal } from '@/components/CustomCommand/CustomCommandModal';
