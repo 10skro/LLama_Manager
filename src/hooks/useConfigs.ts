@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { getCustomCommands } from '@/services/customCommand';
 import type { ConfigEntry, CustomCommand } from '@/types';
 
-type ConfigFilter = 'all' | 'custom';
+export type ConfigFilter = 'all' | 'custom';
 
 export function useConfigs() {
   const [entries, setEntries] = useState<ConfigEntry[]>([]);

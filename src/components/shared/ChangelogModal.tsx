@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import { Loader2 } from 'lucide-react';
-import { ChangelogRenderer } from '@/components/ChangelogRenderer';
+import { ChangelogRenderer } from './ChangelogRenderer';
 import { fetchReleaseChangelog } from '@/services/github';
 
 interface ChangelogModalProps {

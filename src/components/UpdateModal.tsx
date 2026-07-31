@@ -8,10 +8,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
-import { ChangelogRenderer } from '@/components/ChangelogRenderer';
+import { ChangelogRenderer } from '@/components/shared/ChangelogRenderer';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useServerCheck } from '@/hooks/useServerCheck';
-import { ServerRunningWarningDialog } from '@/components/ServerRunningWarningDialog';
+import { ServerRunningWarningDialog } from '@/components/shared/ServerRunningWarningDialog';
 
 interface UpdateModalProps {
   open: boolean;

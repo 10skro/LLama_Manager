@@ -4,7 +4,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate, formatSize } from '@/utils/format';
-import { BuildStatusBadge } from '@/components/BuildStatusBadge';
+import { BuildStatusBadge } from './BuildStatusBadge';
 import { Star, Info } from 'lucide-react';
 import type { Build } from '@/types';
 

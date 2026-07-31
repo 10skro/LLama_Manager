@@ -12,8 +12,8 @@ import {
 import { Bell, Terminal, Download, Loader2, FileText } from 'lucide-react';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useServerCheck } from '@/hooks/useServerCheck';
-import { ChangelogModal } from '@/components/ChangelogModal';
-import { ServerRunningWarningDialog } from '@/components/ServerRunningWarningDialog';
+import { ChangelogModal } from '@/components/shared/ChangelogModal';
+import { ServerRunningWarningDialog } from '@/components/shared/ServerRunningWarningDialog';
 import { useState } from 'react';
 
 const pageTitles: Record<string, string> = {

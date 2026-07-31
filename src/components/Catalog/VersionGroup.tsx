@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { getBackendColor } from '@/utils/backendColors';
 import { formatDate } from '@/utils/format';
-import { BuildStatusBadge } from '@/components/BuildStatusBadge';
+import { BuildStatusBadge } from './BuildStatusBadge';
 import { ChevronDown } from 'lucide-react';
 import { makeKey, getRowKey } from '@/utils/buildKey';
 import { BuildRow } from './BuildRow';

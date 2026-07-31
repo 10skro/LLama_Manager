@@ -8,7 +8,7 @@ import { formatRelativeTime } from '@/utils/format';
 import { CatalogHeader } from '@/components/Catalog/CatalogHeader';
 import { FilterBar } from '@/components/Catalog/FilterBar';
 import { BuildsTable } from '@/components/Catalog/BuildsTable';
-import { ChangelogModal } from '@/components/ChangelogModal';
+import { ChangelogModal } from '@/components/shared/ChangelogModal';
 import { AlertCircle, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useVersionSearch } from '@/hooks/useVersionSearch';

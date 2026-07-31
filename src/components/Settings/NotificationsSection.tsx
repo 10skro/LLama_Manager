@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import type { AppSettings } from '@/types';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useSettingsPersistence } from '@/hooks/useSettingsPersistence';
-import { ChangelogModal } from '@/components/ChangelogModal';
-import { ServerRunningWarningDialog } from '@/components/ServerRunningWarningDialog';
+import { ChangelogModal } from '@/components/shared/ChangelogModal';
+import { ServerRunningWarningDialog } from '@/components/shared/ServerRunningWarningDialog';
 import { useServerCheck } from '@/hooks/useServerCheck';
 
 const TOAST_DURATIONS = [
