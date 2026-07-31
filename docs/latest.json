@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.97",
-  "notes": "## Changes\n\n### Bug Fixes\n- Fix terminal text formatting in production builds by bundling xterm CSS in the main entry point",
+  "version": "v0.6.98",
+  "notes": "## Changes\n\n### Bug Fixes\n- Fix terminal text lines overlapping in production build caused by CSP nonce blocking xterm.js inline styles\n- Align character measurement line-height with terminal configuration to prevent vertical rendering corruption",
   "pub_date": "2026-07-31T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.97/Llama.Manager_0.6.97_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVS9DSnlUaWJhbGt4ZG1hbUI0UGQ4c1k3UGdQamJjT2IyV0VPNDdtK3Q5d0IxYXpYNGFFVjZtTDlHazdldVZBWm5QNEd4dmpqQzFOV0s0VGtKbHVZd2d3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NDU1MzIyCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuOTdfeDY0LXNldHVwLmV4ZQpoQ3h0WEFiT0V3aG5WbEk3a0QwbzJnaHZOZERxWGZQczIwOWhqcG5jQXNNUFA5WVJ6aWwrRVdIQWpMbElaYVBsbU1hVjdmWDlDUFBKT3BwM1BOdm1Edz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.98/Llama.Manager_0.6.98_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTZCM0FFbXVNelhBUWkvU1d3RE5Tc2NNYUlUd3V0SXlYeWR1UFBuSVRXVTVsS21YQVVWakcvcUY3aFNhQ1lyTHhFSkplKzdiaDBNRVpocnd5RjBoalFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NDYyODYzCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuOThfeDY0LXNldHVwLmV4ZQpwSmZjYTJmRVU2bzFZaG9UUGQ0Y2lLbGN3ZFlEMW41K2hyZW84SWtUR3NnczFaMThjWldrZWtSUjBMMUk5d1RnaEF0MEZIeVd1ZWNZZHRDMU9uVmNBZz09Cg=="
     }
   }
 }
