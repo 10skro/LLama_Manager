@@ -1,11 +1,11 @@
 {
-  "version": "v0.7.40",
-  "notes": "## Changes\n\n### Features\n\n- Export custom commands as portable JSON config files for easy sharing and backup\n\n### Refactoring\n\n- Extract shared ServerRunningWarningDialog component, eliminate duplicated code across 3 files\n- Translate all UI strings and comments to English\n\n### Maintenance\n\n- Resolve all linting and formatting warnings across the codebase",
-  "pub_date": "2026-07-31T00:00:00Z",
+  "version": "0.7.40",
+  "notes": "## Changes\n\n### Features\n\n- Export custom commands as portable JSON config files for easy sharing and backup\n\n### Bug Fixes\n\n- Resolve all ESLint and Prettier warnings across the codebase\n\n### Refactoring\n\n- Extract shared ServerRunningWarningDialog component, eliminate duplicated code across 3 files\n- Translate all UI strings and comments to English",
+  "pub_date": "2026-07-31T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.7.40/Llama.Manager_0.7.40_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXpiQ3VpU1ZZcWhzZXp3L0pzaHVMVTNZbGVtZ1BUN0RDMzVwTWdyNjh0OWtJT0xEc29SSTJJSHBaTE5oWEVFbjBYcFJFeXQzZGJwNTVzNEs1bVZGS0FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NTIxNjUzCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjcuNDBfeDY0LXNldHVwLmV4ZQoyYXJ3YWc3cEtiaHRMSHBSMzVZL3J5SnZjT3kzZmoreDZWbktrNmU4YjdaZU5yZks0VWFpeDR1cGlxZTU2eVM3R0d1NDlFUyt4T2dmUGZ3VXg5a1JDdz09Cg=="
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVS9vUEFaQ0k5cDU5Z0h5SWFXOEw3citxMVREN3JaSG5GVUI3dDVYcU1HQmgyQzZKODJHL1dQa0lpVi9sL1VJcWY0ODZMOVdJcWNabnRGRkgzYzFRcmc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NTIyODQwCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjcuNDBfeDY0LXNldHVwLmV4ZQpGYWl1SWhYWTlYeUJOdTZRdjdYdFVmWnpBOWV6c0o4djQ0Zmt5QkhIQVMrLzNMZ1F2QnZsT2RKV0RIMzFndTYwdHZMUnB6c09NVmx6dkl3b3A0WmRBUT09Cg=="
     }
   }
 }
