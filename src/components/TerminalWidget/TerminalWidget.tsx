@@ -115,7 +115,7 @@ export function TerminalWidget() {
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-foreground/30">Sélectionnez une session</p>
+                  <p className="text-sm text-foreground/30">Select a session</p>
                 </div>
               )}
             </div>

@@ -15,7 +15,7 @@ export function DevBanner() {
       role="banner"
       className="bg-yellow-500/15 border-b border-yellow-500/30 text-yellow-500 text-center text-xs font-medium py-1 select-none"
     >
-      ⚠ DEV BUILD — Vous êtes sur une version de développement
+      ⚠ DEV BUILD — You are on a development version
     </div>
   );
 }

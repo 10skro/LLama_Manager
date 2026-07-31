@@ -7,10 +7,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, AlertTriangle } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { ChangelogRenderer } from '@/components/ChangelogRenderer';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useServerCheck } from '@/hooks/useServerCheck';
+import { ServerRunningWarningDialog } from '@/components/ServerRunningWarningDialog';
 
 interface UpdateModalProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-peach" />
-              Mise à jour disponible
+              Update Available
             </DialogTitle>
             <DialogDescription>
               Version <strong>{updateInfo.version}</strong>
@@ -58,23 +59,23 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Plus tard
+              Later
             </Button>
             <Button onClick={handleInstall} disabled={isInstalling || stoppingServers}>
               {stoppingServers ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Arrêt des serveurs en cours...
+                  Stopping servers...
                 </>
               ) : isInstalling ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Installation...
+                  Installing...
                 </>
               ) : (
                 <>
                   <Download className="h-4 w-4" />
-                  Installer et redémarrer
+                  Install & Restart
                 </>
               )}
             </Button>
@@ -83,27 +84,11 @@ export function UpdateModal({ open, onOpenChange }: UpdateModalProps) {
       </Dialog>
 
       {/* Warning dialog when servers are running */}
-      <Dialog open={showWarning} onOpenChange={setShowWarning}>
-        <DialogContent className="max-w-md" onCloseAutoFocus={() => {}}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Serveurs en cours d'exécution
-            </DialogTitle>
-            <DialogDescription>
-              Des serveurs sont actuellement actifs et seront arrêtés avant l'installation de la
-              mise à jour. Voulez-vous continuer ?
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowWarning(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleConfirmWithServers}>Continuer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ServerRunningWarningDialog
+        open={showWarning}
+        onOpenChange={setShowWarning}
+        onConfirm={handleConfirmWithServers}
+      />
     </>
   );
 }

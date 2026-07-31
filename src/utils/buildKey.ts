@@ -1,12 +1,12 @@
-// Module unique de gestion des clés de build
+// Single module for build key management
 
-// Clé composite stable pour matching installé/download/store
+// Stable composite key for installed/download/store matching
 // Format: "build_number|backend|architecture"
 export function makeKey(buildNumber: string, backend: string, architecture: string): string {
   return `${buildNumber}|${backend}|${architecture}`;
 }
 
-// Parse une clé composite
+// Parse a composite key
 export function parseKey(key: string): {
   buildNumber: string;
   backend: string;
@@ -17,8 +17,8 @@ export function parseKey(key: string): {
   return { buildNumber: parts[0], backend: parts[1], architecture: parts[2] };
 }
 
-// Clé unique pour React rendering et favorite matching
-// Utilise download_url comme clé primaire (plus stable que build_number+backend)
+// Unique key for React rendering and favorite matching
+// Uses download_url as primary key (more stable than build_number+backend)
 export function getRowKey(build: {
   download_url: string;
   build_number: string;

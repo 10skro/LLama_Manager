@@ -1,7 +1,7 @@
 import type { Theme } from './index';
 import { hexToHSL } from './utils';
 
-// Définir les couleurs Rosé Pine Moon (15 couleurs officielles)
+// Define Rosé Pine Moon colors (15 official colors)
 const rosepineMoonColors: Record<string, string> = {
   base: '#232136',
   surface: '#2a273f',

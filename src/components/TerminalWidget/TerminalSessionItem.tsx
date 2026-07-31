@@ -97,7 +97,7 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
     terminalRef.current.style.backgroundColor = xtermTheme.background || '';
 
     let resources: ReturnType<typeof initTerminal> = null;
-    let isMounted = true; // Sécurise contre les démontages rapides
+    let isMounted = true; // Protects against rapid unmounts
 
     const initTerminal = () => {
       if (!isMounted) return null;
@@ -173,7 +173,7 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
       return { term, resizeObserver, unlistenOutput, unlistenExit };
     };
 
-    // 1. FORCER LE CHARGEMENT DE LA POLICE ICI
+    // 1. FORCE FONT LOADING HERE
     const fontToLoad = '12px "JetBrains Mono"';
 
     if (document.fonts && document.fonts.load) {
@@ -183,7 +183,7 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
           resources = initTerminal();
         })
         .catch(() => {
-          // Fallback immédiat si le réseau ou la police bloque
+          // Immediate fallback if the network or font blocks
           resources = initTerminal();
         });
     } else {
@@ -191,7 +191,7 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
     }
 
     return () => {
-      isMounted = false; // Bloque initTerminal si la promesse n'est pas encore résolue
+      isMounted = false; // Blocks initTerminal if the promise isn't resolved yet
       if (!resources) return;
 
       resources.resizeObserver.disconnect();

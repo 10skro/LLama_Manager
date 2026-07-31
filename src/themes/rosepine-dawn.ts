@@ -1,7 +1,7 @@
 import type { Theme } from './index';
 import { hexToHSL } from './utils';
 
-// Définir les couleurs Rosé Pine Dawn (15 couleurs officielles)
+// Define Rosé Pine Dawn colors (15 official colors)
 const rosepineDawnColors: Record<string, string> = {
   base: '#faf4ed',
   surface: '#fffaf3',

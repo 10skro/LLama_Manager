@@ -1,7 +1,7 @@
 import type { Theme } from './index';
 import { hexToHSL } from './utils';
 
-// Définir les couleurs Catppuccin Mocha
+// Define Catppuccin Mocha colors
 const catppuccinMochaColors: Record<string, string> = {
   rosewater: '#f5e0dc',
   flamingo: '#f2cdcd',

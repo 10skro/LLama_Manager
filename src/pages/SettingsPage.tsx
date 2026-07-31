@@ -31,19 +31,11 @@ import {
   RefreshCw,
   Download,
   FileText,
-  AlertTriangle,
 } from 'lucide-react';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useServerCheck } from '@/hooks/useServerCheck';
 import { ChangelogModal } from '@/components/ChangelogModal';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { ServerRunningWarningDialog } from '@/components/ServerRunningWarningDialog';
 import type { AppSettings } from '@/types';
 import { AVAILABLE_THEMES, getThemeById } from '@/themes';
 import { AVAILABLE_FONTS } from '@/fonts';
@@ -881,27 +873,11 @@ export function SettingsPage() {
         />
 
         {/* Warning dialog when servers are running */}
-        <Dialog open={showWarning} onOpenChange={setShowWarning}>
-          <DialogContent className="max-w-md" onCloseAutoFocus={() => {}}>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                Serveurs en cours d'exécution
-              </DialogTitle>
-              <DialogDescription>
-                Des serveurs sont actuellement actifs et seront arrêtés avant l'installation de la
-                mise à jour. Voulez-vous continuer ?
-              </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowWarning(false)}>
-                Annuler
-              </Button>
-              <Button onClick={handleConfirmWithServers}>Continuer</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ServerRunningWarningDialog
+          open={showWarning}
+          onOpenChange={setShowWarning}
+          onConfirm={handleConfirmWithServers}
+        />
       </div>{' '}
       {/* end max-w-3xl mx-auto wrapper */}
     </div>
