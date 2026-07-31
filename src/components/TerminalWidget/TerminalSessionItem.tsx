@@ -93,7 +93,10 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    const xtermTheme = mapToXtermTheme(activeTheme);
+    // Read theme directly from store to avoid re-initializing the terminal
+    // on every theme change (the separate theme-updating effect handles that).
+    const currentTheme = useAppStore.getState().activeTheme;
+    const xtermTheme = mapToXtermTheme(currentTheme);
     terminalRef.current.style.backgroundColor = xtermTheme.background || '';
 
     let resources: ReturnType<typeof initTerminal> = null;

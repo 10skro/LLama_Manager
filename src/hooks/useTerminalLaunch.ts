@@ -248,7 +248,7 @@ export function useTerminalLaunch({
 
       // Notify floating terminal window of session changes
       emit('terminal-sessions-update', null).catch(() => {});
-    } catch (err) {
+    } catch (_err) {
       // Process may already be dead (user closed terminal via X button).
       // In that case, just clean up the session silently — no error toast needed.
       clearTerminalSession(version.id);

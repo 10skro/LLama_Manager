@@ -498,8 +498,20 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
               className="flex-1 gap-2"
               onClick={handleToggle}
               disabled={!hasConfig}
-              aria-label={hasConfig ? (hasSession ? 'Stop server' : 'Start server') : 'Link a configuration first to enable Play'}
-              title={hasConfig ? (hasSession ? 'Stop server' : 'Start server') : 'Link a configuration first to enable Play'}
+              aria-label={
+                hasConfig
+                  ? hasSession
+                    ? 'Stop server'
+                    : 'Start server'
+                  : 'Link a configuration first to enable Play'
+              }
+              title={
+                hasConfig
+                  ? hasSession
+                    ? 'Stop server'
+                    : 'Start server'
+                  : 'Link a configuration first to enable Play'
+              }
             >
               {hasSession ? (
                 <>

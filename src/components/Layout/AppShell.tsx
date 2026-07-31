@@ -64,7 +64,7 @@ export function AppShell({ children }: AppShellProps) {
           // The terminal instance still exists, user can check logs then click Stop to kill it.
           updateTerminalStatus(foundVersionId, 'error', sessionId);
         }
-      },
+      }
     );
 
     return () => {

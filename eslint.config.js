@@ -59,7 +59,7 @@ export default [
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
       // Pre-existing issues — warn only, fix in dedicated PR
       '@typescript-eslint/no-explicit-any': 'warn',

@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import type { BuildFilters, AppSettings, CustomCommand, TerminalSession, ServerStatus } from '@/types';
+import type {
+  BuildFilters,
+  AppSettings,
+  CustomCommand,
+  TerminalSession,
+  ServerStatus,
+} from '@/types';
 import { DEFAULT_THEME_ID } from '@/themes';
 import { makeKey } from '@/utils/buildKey';
 
@@ -12,7 +18,7 @@ import { makeKey } from '@/utils/buildKey';
  */
 function getBootTheme(): string {
   // @ts-expect-error — window.__INITIAL_THEME__ is set by Tauri initialization_script
-  return (typeof window.__INITIAL_THEME__ === 'string' && window.__INITIAL_THEME__)
+  return typeof window.__INITIAL_THEME__ === 'string' && window.__INITIAL_THEME__
     ? // @ts-expect-error — window.__INITIAL_THEME__ is set by Tauri initialization_script
       window.__INITIAL_THEME__
     : DEFAULT_THEME_ID;

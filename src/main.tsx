@@ -11,7 +11,10 @@ import '@xterm/xterm/css/xterm.css';
 import './index.css';
 
 // THEME-BOOT diagnostic: mark CSS load completion
-console.log('[THEME-BOOT] ② CSS loaded, bg from computed:', getComputedStyle(document.documentElement).getPropertyValue('--background').trim());
+console.log(
+  '[THEME-BOOT] ② CSS loaded, bg from computed:',
+  getComputedStyle(document.documentElement).getPropertyValue('--background').trim()
+);
 
 // Global error handlers to catch silent crashes that freeze the UI
 window.addEventListener('error', (event) => {

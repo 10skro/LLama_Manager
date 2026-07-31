@@ -54,7 +54,12 @@ export function getColorPalette(themeId: string): ConfigPickerColor[] {
 // Applies theme CSS variables to :root
 // Idempotent: only modifies the DOM if the value has actually changed
 export function applyTheme(theme: Theme) {
-  console.log('[THEME-BOOT] ④ applyTheme:', theme.id, 'bg from computed:', getComputedStyle(document.documentElement).getPropertyValue('--background').trim());
+  console.log(
+    '[THEME-BOOT] ④ applyTheme:',
+    theme.id,
+    'bg from computed:',
+    getComputedStyle(document.documentElement).getPropertyValue('--background').trim()
+  );
   const root = document.documentElement;
   const computed = getComputedStyle(root);
   let hasChanges = false;
