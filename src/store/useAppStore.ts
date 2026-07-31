@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BuildFilters, AppSettings, CustomCommand } from '@/types';
+import type { BuildFilters, AppSettings, CustomCommand, TerminalSession, ServerStatus } from '@/types';
 import { DEFAULT_THEME_ID } from '@/themes';
 import { makeKey } from '@/utils/buildKey';
 
@@ -86,19 +86,14 @@ interface AppState {
   removeCustomCommand: (id: string) => void;
   updateCustomCommand: (command: CustomCommand) => void;
 
-  // Running terminals tracking (version_id -> session_id)
+  // Unified terminal session tracking (version_id -> TerminalSession)
   // Each version card gets its own independent session, even if sharing the same config.
-  runningTerminals: Record<number, string>;
-  setRunningTerminal: (versionId: number, sessionId: string) => void;
-  removeRunningTerminal: (versionId: number) => void;
-  removeRunningTerminalBySessionId: (sessionId: string) => void;
-  syncRunningTerminals: (sessions: { sessionId: string; versionId: number }[]) => void;
-
-  // Stopping terminals tracking (version_id -> session_id)
-  // Set when kill is initiated, cleared when terminal-exit event fires.
-  stoppingTerminals: Record<number, string>;
-  setStoppingTerminal: (versionId: number, sessionId: string) => void;
-  removeStoppingTerminal: (versionId: number) => void;
+  // Status transitions are enforced by serverStatusMachine (stopped → running → stopping → stopped).
+  terminalSessions: Record<number, TerminalSession>;
+  updateTerminalStatus: (versionId: number, status: ServerStatus, sessionId?: string) => void;
+  clearTerminalSession: (versionId: number) => void;
+  syncTerminalSessions: (sessions: { sessionId: string; versionId: number }[]) => void;
+  removeTerminalBySessionId: (sessionId: string) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -235,59 +230,46 @@ export const useAppStore = create<AppState>((set, get) => ({
       customCommands: state.customCommands.map((c) => (c.id === command.id ? command : c)),
     })),
 
-  // Running terminals tracking (version_id -> session_id)
-  runningTerminals: {},
-  setRunningTerminal: (versionId, sessionId) =>
-    set((state) => ({
-      runningTerminals: { ...state.runningTerminals, [versionId]: sessionId },
-    })),
-  removeRunningTerminal: (versionId) =>
+  // Unified terminal session tracking (version_id -> TerminalSession)
+  terminalSessions: {},
+  updateTerminalStatus: (versionId, status, sessionId) =>
     set((state) => {
-      const next = { ...state.runningTerminals };
-      delete next[versionId];
-      return { runningTerminals: next };
+      const existing = state.terminalSessions[versionId];
+      const sid = sessionId ?? existing?.sessionId;
+      if (!sid) return {};
+      return {
+        terminalSessions: { ...state.terminalSessions, [versionId]: { sessionId: sid, status } },
+      };
     }),
-  removeRunningTerminalBySessionId: (sessionId) =>
+  clearTerminalSession: (versionId) =>
     set((state) => {
-      const next = { ...state.runningTerminals };
-      for (const [versionIdStr, sid] of Object.entries(next)) {
-        if (sid === sessionId) {
+      const next = { ...state.terminalSessions };
+      delete next[versionId];
+      return { terminalSessions: next };
+    }),
+  syncTerminalSessions: (sessions) =>
+    set(() => {
+      const map: Record<number, TerminalSession> = {};
+      for (const s of sessions) {
+        map[s.versionId] = { sessionId: s.sessionId, status: 'running' };
+      }
+      return { terminalSessions: map };
+    }),
+  removeTerminalBySessionId: (sessionId) =>
+    set((state) => {
+      const next = { ...state.terminalSessions };
+      for (const [versionIdStr, session] of Object.entries(next)) {
+        if (session.sessionId === sessionId) {
           delete next[Number(versionIdStr)];
           break;
         }
       }
-      return { runningTerminals: next };
-    }),
-  syncRunningTerminals: (sessions) =>
-    set(() => {
-      const map: Record<number, string> = {};
-      for (const s of sessions) {
-        map[s.versionId] = s.sessionId;
-      }
-      return { runningTerminals: map };
-    }),
-
-  // Stopping terminals tracking (version_id -> session_id)
-  stoppingTerminals: {},
-  setStoppingTerminal: (versionId, sessionId) =>
-    set((state) => ({
-      stoppingTerminals: { ...state.stoppingTerminals, [versionId]: sessionId },
-    })),
-  removeStoppingTerminal: (versionId) =>
-    set((state) => {
-      const next = { ...state.stoppingTerminals };
-      delete next[versionId];
-      return { stoppingTerminals: next };
+      return { terminalSessions: next };
     }),
 }));
 
 // Computed helpers (use directly in components)
-export function useGetRunningSessionId(versionId: number): string | undefined {
-  const runningTerminals = useAppStore((s) => s.runningTerminals);
-  return runningTerminals[versionId];
-}
-
-export function useGetStoppingSessionId(versionId: number): string | undefined {
-  const stoppingTerminals = useAppStore((s) => s.stoppingTerminals);
-  return stoppingTerminals[versionId];
+export function useGetTerminalSession(versionId: number): TerminalSession | undefined {
+  const terminalSessions = useAppStore((s) => s.terminalSessions);
+  return terminalSessions[versionId];
 }

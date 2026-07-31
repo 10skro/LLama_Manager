@@ -3,6 +3,7 @@ import { emit } from '@tauri-apps/api/event';
 import { useToast } from '@/hooks/use-toast';
 import { saveCardCustomization, deleteCardCustomization } from '@/services/version';
 import { useTerminalLaunch } from '@/hooks/useTerminalLaunch';
+import { useServerStatus } from '@/hooks/useServerStatus';
 import type { InstalledVersion, ConfigEntry, VersionOverride } from '@/types';
 import { getBackendColor } from '@/utils/backendColors';
 import { Button } from '@/components/ui/button';
@@ -84,7 +85,7 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
   const override = versionOverrides[version.id] ?? null;
   const configLink = getLink(version.id) ?? null;
 
-  const { handleToggle, isRunning, isStopping, hasConfig } = useTerminalLaunch({
+  const { handleToggle, hasSession, hasConfig } = useTerminalLaunch({
     version,
     configLink,
     configs,
@@ -97,6 +98,9 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
       });
     },
   });
+
+  // Reactive server status badge (FR-003) — driven by useServerStatus for extensibility
+  const { status: serverStatus } = useServerStatus(version.id);
 
   const isEditing = editingDropdownId === version.id;
   const activeCustomization = isEditing
@@ -349,7 +353,11 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
       </div>
 
       {/* Config Display */}
-      <VersionConfigDisplay link={configLink ?? null} configName={linkedConfig?.name} configColor={linkedConfig?.color} />
+      <VersionConfigDisplay
+        link={configLink ?? null}
+        configName={linkedConfig?.name}
+        configColor={linkedConfig?.color}
+      />
 
       {/* Override Badge */}
       {hasOverride && (
@@ -372,28 +380,39 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
         </div>
       )}
 
-      {/* Running Badge */}
-      {isRunning && (
+      {/* Server Status Badge (FR-003) — extensible: add new statuses in serverStatusMachine only */}
+      {serverStatus !== 'stopped' && (
         <div className="px-3 pb-1.5">
           <Badge
             variant="outline"
-            className="border-green/30 text-green text-xs gap-1 items-center"
+            className={`text-xs gap-1 items-center ${
+              serverStatus === 'running'
+                ? 'border-green/30 text-green'
+                : serverStatus === 'stopping'
+                  ? 'border-amber/30 text-amber'
+                  : serverStatus === 'starting'
+                    ? 'border-blue/30 text-blue'
+                    : 'border-red/30 text-red'
+            }`}
           >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
-            Running
-          </Badge>
-        </div>
-      )}
-
-      {/* Stopping Badge */}
-      {isStopping && (
-        <div className="px-3 pb-1.5">
-          <Badge
-            variant="outline"
-            className="border-amber/30 text-amber text-xs gap-1 items-center"
-          >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber animate-pulse" />
-            Stopping...
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full animate-pulse ${
+                serverStatus === 'running'
+                  ? 'bg-green'
+                  : serverStatus === 'stopping'
+                    ? 'bg-amber'
+                    : serverStatus === 'starting'
+                      ? 'bg-blue'
+                      : 'bg-red'
+              }`}
+            />
+            {serverStatus === 'running'
+              ? 'Running'
+              : serverStatus === 'stopping'
+                ? 'Stopping...'
+                : serverStatus === 'starting'
+                  ? 'Starting...'
+                  : 'Error'}
           </Badge>
         </div>
       )}
@@ -474,36 +493,15 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
 
           <div className="flex items-center gap-2 mt-auto">
             <Button
-              variant={isRunning ? 'destructive' : 'outline'}
+              variant={hasSession ? 'destructive' : 'outline'}
               size="sm"
               className="flex-1 gap-2"
               onClick={handleToggle}
-              disabled={!hasConfig || isStopping}
-              aria-label={
-                hasConfig
-                  ? isStopping
-                    ? 'Server is stopping'
-                    : isRunning
-                      ? 'Stop server'
-                      : 'Run configuration in terminal'
-                  : 'Link a configuration first to enable Play'
-              }
-              title={
-                hasConfig
-                  ? isStopping
-                    ? 'Server is stopping'
-                    : isRunning
-                      ? 'Stop server'
-                      : 'Run configuration in terminal'
-                  : 'Link a configuration first to enable Play'
-              }
+              disabled={!hasConfig}
+              aria-label={hasConfig ? (hasSession ? 'Stop server' : 'Start server') : 'Link a configuration first to enable Play'}
+              title={hasConfig ? (hasSession ? 'Stop server' : 'Start server') : 'Link a configuration first to enable Play'}
             >
-              {isStopping ? (
-                <>
-                  <Square className="h-4 w-4" />
-                  Stopping...
-                </>
-              ) : isRunning ? (
+              {hasSession ? (
                 <>
                   <Square className="h-4 w-4" />
                   Stop

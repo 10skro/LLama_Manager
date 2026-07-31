@@ -137,6 +137,16 @@ export interface VersionOverride {
   mmproj_path: string | null;
 }
 
+// Server terminal status — single source of truth for all terminal states
+// Adding a new status: add to this union + update serverStatusTransitions
+export type ServerStatus = 'stopped' | 'starting' | 'running' | 'stopping' | 'error';
+
+// Terminal session tracked per installed version
+export interface TerminalSession {
+  sessionId: string;
+  status: ServerStatus;
+}
+
 // Clipboard data for copy/paste card settings between dashboard cards
 export interface CardClipboardData {
   sourceVersionId: number;

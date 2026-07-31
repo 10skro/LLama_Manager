@@ -204,9 +204,9 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
   }, [sessionId]);
 
   const handleClose = useCallback(() => {
-    invoke('kill_terminal', { sessionId }).catch((err) => {
-      console.error('Failed to kill terminal:', err);
-    });
+    // Delegate to parent (TerminalWidget.handleClose) which sets 'stopping' status
+    // before killing. This avoids double-killing and ensures the main app's
+    // terminal-exit handler sees 'stopping' → clean removal (no error badge).
     onClose(sessionId);
   }, [sessionId, onClose]);
 
