@@ -3,7 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import '@xterm/xterm/css/xterm.css';
+// xterm.css already imported globally in main.tsx
 import { useAppStore } from '@/store/useAppStore';
 import { getThemeById } from '@/themes';
 import type { ITheme } from '@xterm/xterm';
@@ -99,67 +99,92 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
 
     terminalRef.current.style.backgroundColor = xtermTheme.background || '';
 
-    const term = new Terminal({
-      cursorBlink: true,
-      cursorStyle: 'bar',
-      fontSize: 12,
-      fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      lineHeight: 1,
-      rows: 20,
-      cols: 80,
-      allowProposedApi: true,
-      theme: xtermTheme,
-    });
+    // Wait for fonts to load before initializing the canvas, otherwise xterm.js
+    // measures character dimensions with the wrong font and lines overlap.
+    const initTerminal = () => {
+      const container = terminalRef.current;
+      if (!container) return null;
 
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(terminalRef.current);
+      const term = new Terminal({
+        cursorBlink: true,
+        cursorStyle: 'bar',
+        fontSize: 12,
+        fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        lineHeight: 1,
+        rows: 20,
+        cols: 80,
+        allowProposedApi: true,
+        theme: xtermTheme,
+      });
 
-    xtermRef.current = term;
-    fitAddonRef.current = fitAddon;
+      const fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(container);
 
-    const fitTerminal = () => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
-      }
+      xtermRef.current = term;
+      fitAddonRef.current = fitAddon;
+
+      const fitTerminal = () => {
+        if (fitAddonRef.current) {
+          fitAddonRef.current.fit();
+        }
+      };
+
+      // Delay initial fit to let the Tauri DOM layout stabilize in production builds.
+      setTimeout(() => {
+        fitTerminal();
+      }, 50);
+
+      const resizeObserver = new ResizeObserver(() => {
+        fitTerminal();
+      });
+      resizeObserver.observe(container);
+
+      invoke<string>('get_terminal_buffer', { sessionId })
+        .then((buffer) => {
+          if (buffer && xtermRef.current) {
+            xtermRef.current.write(buffer);
+          }
+        })
+        .catch(() => {});
+
+      const unlistenOutput = listen<{ sessionId: string; text: string }>(
+        'terminal-output',
+        (event) => {
+          if (event.payload.sessionId === sessionId && xtermRef.current) {
+            xtermRef.current.write(event.payload.text);
+          }
+        }
+      );
+
+      const unlistenExit = listen<string>('terminal-exit', (event) => {
+        if (event.payload === sessionId && xtermRef.current) {
+          xtermRef.current.write('\r\n[Process exited]\r\n');
+        }
+      });
+
+      return { term, resizeObserver, unlistenOutput, unlistenExit };
     };
-    fitTerminal();
 
-    const resizeObserver = new ResizeObserver(() => {
-      fitTerminal();
-    });
-    resizeObserver.observe(terminalRef.current);
+    let resources: ReturnType<typeof initTerminal> = null;
 
-    invoke<string>('get_terminal_buffer', { sessionId })
-      .then((buffer) => {
-        if (buffer && xtermRef.current) {
-          xtermRef.current.write(buffer);
-        }
-      })
-      .catch(() => {});
-
-    const unlistenOutput = listen<{ sessionId: string; text: string }>(
-      'terminal-output',
-      (event) => {
-        if (event.payload.sessionId === sessionId && xtermRef.current) {
-          xtermRef.current.write(event.payload.text);
-        }
-      }
-    );
-
-    const unlistenExit = listen<string>('terminal-exit', (event) => {
-      if (event.payload === sessionId && xtermRef.current) {
-        xtermRef.current.write('\r\n[Process exited]\r\n');
-      }
-    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        resources = initTerminal();
+      });
+    } else {
+      resources = initTerminal();
+    }
 
     return () => {
-      resizeObserver.disconnect();
-      unlistenOutput.then((u) => u());
-      unlistenExit.then((u) => u());
-      term.dispose();
+      if (!resources) return;
+      resources.resizeObserver.disconnect();
+      resources.unlistenOutput.then((u) => u());
+      resources.unlistenExit.then((u) => u());
+      resources.term.dispose();
       xtermRef.current = null;
       fitAddonRef.current = null;
+      resources = null;
     };
     // activeTheme excluded: theme updates handled by separate useEffect (line 82)
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -189,7 +214,7 @@ export function TerminalSessionItem({ sessionId, cardTitle, onClose }: TerminalS
           ✕
         </button>
       </div>
-      <div ref={terminalRef} className="flex-1 p-1 overflow-hidden min-h-0" />
+      <div ref={terminalRef} className="flex-1 overflow-hidden min-h-0" />
     </div>
   );
 }
