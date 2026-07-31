@@ -1,6 +1,6 @@
 {
   "productName": "Llama Manager",
-  "version": "0.7.10",
+  "version": "0.7.40",
   "identifier": "llama-manager",
   "build": {
     "beforeDevCommand": "npm run dev",
