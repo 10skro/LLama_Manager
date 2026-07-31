@@ -73,6 +73,7 @@ export const catppuccinMocha: Theme = {
     '--maroon': hexToHSL(catppuccinMochaColors.maroon),
     '--peach': hexToHSL(catppuccinMochaColors.peach),
     '--yellow': hexToHSL(catppuccinMochaColors.yellow),
+    '--amber': hexToHSL(catppuccinMochaColors.peach),
     '--green': hexToHSL(catppuccinMochaColors.green),
     '--teal': hexToHSL(catppuccinMochaColors.teal),
     '--sky': hexToHSL(catppuccinMochaColors.sky),

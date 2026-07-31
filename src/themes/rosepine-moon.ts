@@ -57,6 +57,7 @@ export const rosepineMoon: Theme = {
     // Rosé Pine Moon native colors as CSS variables
     '--love': hexToHSL(rosepineMoonColors.love),
     '--gold': hexToHSL(rosepineMoonColors.gold),
+    '--amber': hexToHSL(rosepineMoonColors.gold),
     '--yellow': hexToHSL(rosepineMoonColors.gold),
     '--rose': hexToHSL(rosepineMoonColors.rose),
     '--pine': hexToHSL(rosepineMoonColors.pine),

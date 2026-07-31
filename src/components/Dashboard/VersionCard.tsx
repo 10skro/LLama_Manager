@@ -396,7 +396,7 @@ export function VersionCard({ version, actions, dragHandleProps }: VersionCardPr
             }`}
           >
             <span
-              className={`inline-block h-1.5 w-1.5 rounded-full animate-pulse ${
+              className={`block h-1.5 w-1.5 rounded-full animate-pulse shrink-0 ${
                 serverStatus === 'running'
                   ? 'bg-green'
                   : serverStatus === 'stopping'
