@@ -13,37 +13,64 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const syncRunningTerminals = useAppStore((state) => state.syncRunningTerminals);
-  const removeRunningTerminalBySessionId = useAppStore(
-    (state) => state.removeRunningTerminalBySessionId
-  );
+  const syncTerminalSessions = useAppStore((state) => state.syncTerminalSessions);
+  const updateTerminalStatus = useAppStore((state) => state.updateTerminalStatus);
+  const clearTerminalSession = useAppStore((state) => state.clearTerminalSession);
 
-  // On mount: sync running terminals from backend
+  // On mount: sync terminal sessions from backend
   useEffect(() => {
     async function sync() {
       try {
         const sessions: { sessionId: string; versionId: number }[] =
           await invoke('list_active_terminals');
-        syncRunningTerminals(sessions);
+        syncTerminalSessions(sessions);
       } catch (err) {
         console.error('Failed to sync running terminals:', err);
       }
     }
     sync();
-  }, [syncRunningTerminals]);
+  }, [syncTerminalSessions]);
 
-  // Global listener for terminal-exit events (handles background terminal exits)
+  // Global listener for terminal-exit events — reason field from Rust payload
+  // distinguishes intentional stops ("killed") from unexpected crashes ("exited").
+  // Single-event approach eliminates the race condition of the former two-event pattern.
   useEffect(() => {
-    const unlisten = listen<string>('terminal-exit', (event) => {
-      const sessionId = event.payload;
-      // Remove from running terminals tracking
-      removeRunningTerminalBySessionId(sessionId);
-    });
+    const unlistenExit = listen<{ sessionId: string; reason: 'killed' | 'exited' }>(
+      'terminal-exit',
+      (event) => {
+        const { sessionId, reason } = event.payload;
+
+        // Find which version this session belongs to
+        let foundVersionId: number | undefined;
+        for (const [vidStr, session] of Object.entries(useAppStore.getState().terminalSessions)) {
+          if (session.sessionId === sessionId) {
+            foundVersionId = Number(vidStr);
+            break;
+          }
+        }
+        if (foundVersionId === undefined) return;
+
+        const currentSession = useAppStore.getState().terminalSessions[foundVersionId];
+        if (!currentSession) return;
+
+        if (reason === 'killed') {
+          // Intentional stop (user clicked Stop or X in terminal window) — clean up.
+          clearTerminalSession(foundVersionId);
+        } else if (currentSession.status === 'error') {
+          // Process already in error state and has now fully exited — just remove.
+          clearTerminalSession(foundVersionId);
+        } else {
+          // Unexpected crash (was 'starting' or 'running') — show persistent error badge.
+          // The terminal instance still exists, user can check logs then click Stop to kill it.
+          updateTerminalStatus(foundVersionId, 'error', sessionId);
+        }
+      },
+    );
 
     return () => {
-      unlisten.then((u) => u());
+      unlistenExit.then((u) => u());
     };
-  }, [removeRunningTerminalBySessionId]);
+  }, [clearTerminalSession, updateTerminalStatus]);
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">

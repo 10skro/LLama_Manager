@@ -49,6 +49,26 @@ pub struct TerminalOutputEvent {
     pub text: String,
 }
 
+/// Reason a terminal session ended, carried in the "terminal-exit" event payload.
+/// "killed" = user-initiated stop; "exited" = unexpected process termination (crash).
+#[derive(Clone, Copy, serde::Serialize)]
+pub enum TerminalExitReason {
+    #[serde(rename = "killed")]
+    Killed,
+    #[serde(rename = "exited")]
+    Exited,
+}
+
+/// Payload emitted on the "terminal-exit" Tauri event.
+/// Carries both the session ID and the exit reason so the frontend can distinguish
+/// intentional stops from unexpected crashes without relying on a second event.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalExitEvent {
+    pub session_id: String,
+    pub reason: TerminalExitReason,
+}
+
 /// Circular buffer that keeps the last ~4 KB of terminal output.
 /// Shared between the reader thread and the command thread.
 pub struct OutputBuffer {
@@ -273,6 +293,10 @@ impl TerminalManager {
         spawn_stdio_reader(stdout, "stdout".to_string(), session_id.clone(), app.clone(), buffer_arc.clone());
         spawn_stdio_reader(stderr, "stderr".to_string(), session_id.clone(), app.clone(), buffer_arc);
 
+        // Emit 'server-ready' so the frontend can transition from 'starting' → 'running'.
+        // The process is confirmed alive at this point (spawn succeeded, pipes captured).
+        let _ = app.emit("server-ready", session_id.clone());
+
         // Spawn process monitor: detect when process exits
         let app_handle = app.clone();
         let sid = session_id.clone();
@@ -290,7 +314,10 @@ impl TerminalManager {
                 };
                 if !alive {
                     log::info!("[TERMINAL] process exited for {}", sid);
-                    let _ = app_handle.emit("terminal-exit", sid.clone());
+                    let _ = app_handle.emit("terminal-exit", TerminalExitEvent {
+                        session_id: sid.clone(),
+                        reason: TerminalExitReason::Exited,
+                    });
                     break;
                 }
             }
@@ -309,43 +336,57 @@ impl TerminalManager {
     /// thread, so blocking briefly for taskkill does not freeze the UI. This avoids
     /// panics when the Tokio runtime has been dropped (e.g. during app shutdown).
     pub fn kill(&self, app: tauri::AppHandle, session_id: &str) -> Result<String, String> {
-        let session = {
+        let (config_id, pid, process) = {
             let mut sessions = self
                 .sessions
                 .lock()
                 .map_err(|e| format!("Mutex poisoned: {}", e))?;
 
-            sessions
+            let session = sessions
                 .remove(session_id)
-                .ok_or_else(|| format!("Session not found: {}", session_id))?
+                .ok_or_else(|| format!("Session not found: {}", session_id))?;
+
+            (session.config_id.clone(), session.pid, session.process)
         };
 
-        let config_id = session.config_id.clone();
-        let pid = session.pid;
+        // Check if the process is still alive before attempting taskkill.
+        // If the process already exited (e.g. server crashed, user closed terminal),
+        // skip taskkill to avoid "process not found" warnings.
+        let is_alive = {
+            let mut proc = process.lock().unwrap();
+            proc.0.try_wait().map(|r| r.is_none()).unwrap_or(false)
+        };
 
-        log::info!("[TERMINAL] Killing process tree: session={} | pid={}", session_id, pid);
+        if is_alive {
+            log::info!("[TERMINAL] Killing process tree: session={} | pid={}", session_id, pid);
 
-        match std::process::Command::new("taskkill")
-            .args(["/T", "/F", "/PID", &pid.to_string()])
-            .output()
-        {
-            Ok(output) if output.status.success() => {
-                log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", session_id, pid);
+            match std::process::Command::new("taskkill")
+                .args(["/T", "/F", "/PID", &pid.to_string()])
+                .output()
+            {
+                Ok(output) if output.status.success() => {
+                    log::info!("[TERMINAL] Process tree killed successfully: session={} | pid={}", session_id, pid);
+                }
+                Ok(output) => {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
+                        session_id, pid, stderr);
+                }
+                Err(e) => {
+                    log::warn!("[TERMINAL] Failed to execute taskkill for PID {}: {} (process may have already exited)", pid, e);
+                }
             }
-            Ok(output) => {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                log::warn!("[TERMINAL] taskkill returned non-zero: session={} | pid={} | stderr={}",
-                    session_id, pid, stderr);
-            }
-            Err(e) => {
-                // Process may have already exited — not a critical error
-                log::warn!("[TERMINAL] Failed to execute taskkill for PID {}: {} (process may have already exited)", pid, e);
-            }
+        } else {
+            log::info!("[TERMINAL] Process already exited: session={} | pid={} — skipping taskkill", session_id, pid);
         }
 
-        // taskkill /F /T is synchronous — it returns only after the process tree is dead.
-        // No sleep needed. Emit terminal-exit so the frontend clears "Stopping..." status.
-        let _ = app.emit("terminal-exit", session_id.to_string());
+        // Session removed from HashMap, process killed or already dead.
+        // Emit terminal-exit with "killed" reason so the frontend knows this
+        // was an intentional stop and skips the error badge.
+        let _ = app.emit("terminal-exit", TerminalExitEvent {
+            session_id: session_id.to_string(),
+            reason: TerminalExitReason::Killed,
+        });
 
         Ok(config_id)
     }

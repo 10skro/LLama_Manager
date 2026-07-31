@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { emit } from '@tauri-apps/api/event';
 import { Grid, LayoutList } from 'lucide-react';
+import { useAppStore } from '@/store/useAppStore';
 import { useTerminalSessions } from '@/hooks/useTerminalSessions';
 import { useCardTitleMap } from '@/hooks/useCardTitleMap';
 import { TerminalSessionList } from './TerminalSessionList';
@@ -38,7 +40,17 @@ export function TerminalWidget() {
     }
   }, [sessions]);
 
+  const updateTerminalStatus = useAppStore((state) => state.updateTerminalStatus);
+
   const handleClose = async (sessionId: string) => {
+    const session = sessions.find((s) => s.sessionId === sessionId);
+    if (session) {
+      updateTerminalStatus(session.versionId, 'stopping', sessionId);
+      emit('terminal-sessions-update', null).catch(() => {});
+    }
+
+    // kill_terminal emits terminal-exit with reason="killed", so AppShell
+    // will clean up the session without showing an error badge.
     await invoke('kill_terminal', { sessionId }).catch((err) => {
       console.error('Failed to kill terminal:', err);
     });

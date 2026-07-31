@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, useGetRunningSessionId, useGetStoppingSessionId } from '@/store/useAppStore';
+import { useAppStore } from '@/store/useAppStore';
 import { emit, listen } from '@tauri-apps/api/event';
 import type { InstalledVersion, ConfigEntry, VersionConfigLink, VersionOverride } from '@/types';
+import { useServerStatus } from './useServerStatus';
 
 /**
  * Replace or inject a flag (-m or --mmproj) in a command line string.
@@ -84,40 +85,67 @@ export function useTerminalLaunch({
   override,
   onError,
 }: UseTerminalLaunchParams) {
-  const setRunningTerminal = useAppStore((state) => state.setRunningTerminal);
-  const removeRunningTerminal = useAppStore((state) => state.removeRunningTerminal);
-  const setStoppingTerminal = useAppStore((state) => state.setStoppingTerminal);
-  const removeStoppingTerminal = useAppStore((state) => state.removeStoppingTerminal);
+  const updateTerminalStatus = useAppStore((state) => state.updateTerminalStatus);
+  const clearTerminalSession = useAppStore((state) => state.clearTerminalSession);
   const injectingRef = useRef(false);
 
-  // Check if this version's terminal is currently running
-  // IMPORTANT: Hook must be called unconditionally (Rules of Hooks)
-  // Tracking by version_id so multiple cards with the SAME config can run independently
-  const runningSessionId = useGetRunningSessionId(version.id);
-  const stoppingSessionId = useGetStoppingSessionId(version.id);
-  const isRunning = !!runningSessionId && configLink !== null;
-  const isStopping = !!stoppingSessionId;
+  // Reactive session selector — drives re-renders when session/status changes.
+  // This is the single source of truth for both the button toggle and the server-ready effect.
+  const session = useAppStore((state) => state.terminalSessions[version.id]);
 
-  // Listen for terminal-exit events to clear stopping state
+  // IMPORTANT: Hook must be called unconditionally (Rules of Hooks)
+  useServerStatus(version.id);
+
+  // Button toggle: any active terminal session (including error) shows Stop.
+  // An error session still has a live terminal instance — the error status is
+  // informational only (server failed to start), so the user must Stop first
+  // to kill the zombie process before playing again.
+  const hasSession = !!session;
+
+  // Server-ready detection: transition 'starting' → 'running' when llama_server
+  // outputs "listening on". Falls back to 'error' after 60s timeout.
+  // Key fix: this effect depends on `session` (reactive selector), so it re-runs
+  // whenever the session is created or its status changes — not just at mount.
   useEffect(() => {
-    let unlisten: (() => void) | null = null;
-    listen<string>('terminal-exit', (event) => {
-      // Check if this exit event matches a stopping terminal for this version
-      const currentStoppingId = useAppStore.getState().stoppingTerminals[version.id];
-      if (currentStoppingId === event.payload) {
-        removeStoppingTerminal(version.id);
+    if (!session || session.status !== 'starting') {
+      return;
+    }
+
+    const sessionId = session.sessionId;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let unlistenOutput: (() => void) | null = null;
+
+    listen<{ sessionId: string; text: string }>('terminal-output', (event) => {
+      const current = useAppStore.getState().terminalSessions[version.id];
+      if (!current || current.sessionId !== sessionId) return;
+      if (current.status !== 'starting') return;
+
+      if (/listening on/i.test(event.payload.text)) {
+        updateTerminalStatus(version.id, 'running', sessionId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
       }
     })
       .then((u) => {
-        unlisten = u;
+        unlistenOutput = u;
       })
       .catch(() => {});
 
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, [version.id, removeStoppingTerminal]);
+    // Timeout: if server doesn't output "listening on" within 60s, mark as error
+    timeoutId = setTimeout(() => {
+      const current = useAppStore.getState().terminalSessions[version.id];
+      if (current && current.sessionId === sessionId && current.status === 'starting') {
+        updateTerminalStatus(version.id, 'error', sessionId);
+      }
+    }, 60_000);
 
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (unlistenOutput) unlistenOutput();
+    };
+  }, [version.id, session, updateTerminalStatus]);
   const handlePlay = useCallback(async () => {
     // Guard: no config link or already injecting
     if (!configLink || injectingRef.current) return;
@@ -185,9 +213,12 @@ export function useTerminalLaunch({
         startupCommand: singleLine || null,
       });
 
-      // Track this running terminal by version_id (not config_id!)
-      // so multiple cards sharing the same config can run independently
-      setRunningTerminal(version.id, sessionId);
+      // Track this terminal by version_id (not config_id!) so multiple cards
+      // sharing the same config can run independently. Start in 'starting' status;
+      // a separate useEffect listens for "listening on" in terminal-output to
+      // transition to 'running', with a 60s timeout fallback to 'error'.
+      updateTerminalStatus(version.id, 'starting', sessionId);
+
       // Notify floating terminal window of session changes
       emit('terminal-sessions-update', null).catch(() => {});
     } catch (err) {
@@ -195,56 +226,47 @@ export function useTerminalLaunch({
     } finally {
       injectingRef.current = false;
     }
-  }, [version, configLink, configs, override, setRunningTerminal, onError]);
+  }, [version, configLink, configs, override, updateTerminalStatus, onError]);
 
   const handleStop = useCallback(async () => {
     if (!configLink || injectingRef.current) return;
-    // Read current state at call time to avoid stale closure
-    // Track by version_id so each card is independent
-    const sessionId = useAppStore.getState().runningTerminals[version.id];
-    if (!sessionId) return;
+    const current = useAppStore.getState().terminalSessions[version.id];
+    if (!current) return;
 
     injectingRef.current = true;
     try {
-      // Immediately move from running → stopping (UI shows "Stopping...")
-      removeRunningTerminal(version.id);
-      setStoppingTerminal(version.id, sessionId);
+      updateTerminalStatus(version.id, 'stopping', current.sessionId);
+
+      // kill_terminal emits terminal-exit with reason="killed", so AppShell
+      // will clean up the session without showing an error badge.
 
       // Kill is async (non-blocking) — returns immediately, taskkill runs on a blocking thread.
       // A "terminal-exit" event is emitted when the process tree is confirmed dead.
       await invoke<string>('kill_terminal', {
-        sessionId: sessionId,
+        sessionId: current.sessionId,
       });
 
       // Notify floating terminal window of session changes
       emit('terminal-sessions-update', null).catch(() => {});
     } catch (err) {
-      onError?.(`Failed to stop server: ${String(err)}`);
-      // On error, clear stopping state so the UI recovers
-      removeStoppingTerminal(version.id);
+      // Process may already be dead (user closed terminal via X button).
+      // In that case, just clean up the session silently — no error toast needed.
+      clearTerminalSession(version.id);
+      emit('terminal-sessions-update', null).catch(() => {});
     } finally {
       injectingRef.current = false;
     }
-  }, [
-    configLink,
-    onError,
-    version.id,
-    removeRunningTerminal,
-    setStoppingTerminal,
-    removeStoppingTerminal,
-  ]);
+  }, [configLink, version.id, updateTerminalStatus, clearTerminalSession]);
 
-  // Toggle: if running → stop, else → start
-  // Read current state at call time to avoid stale closure issues
+  // Toggle: any active session → stop, no session → play.
+  // Error sessions still have a live terminal instance, so Stop kills the
+  // zombie process. The user must explicitly Stop before playing again.
   const handleToggle = useCallback(async () => {
     if (!configLink || injectingRef.current) return;
-    // Track by version_id so each card is independent
-    const currentSessionId = useAppStore.getState().runningTerminals[version.id];
-    if (currentSessionId) {
-      // Currently running → stop (reuse handleStop for consistent stopping flow)
+    const current = useAppStore.getState().terminalSessions[version.id];
+    if (current) {
       await handleStop();
     } else {
-      // Not running → play (reuse handlePlay)
       await handlePlay();
     }
   }, [configLink, handlePlay, handleStop, version.id]);
@@ -252,11 +274,8 @@ export function useTerminalLaunch({
   const hasConfig = configLink !== null;
 
   return {
-    handlePlay,
-    handleStop,
     handleToggle,
-    isRunning,
-    isStopping,
+    hasSession,
     hasConfig,
   };
 }
