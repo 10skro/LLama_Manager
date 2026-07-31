@@ -1,11 +1,11 @@
 {
-  "version": "v0.6.98",
-  "notes": "## Changes\n\n### Bug Fixes\n- Fix terminal text lines overlapping in production build caused by CSP nonce blocking xterm.js inline styles\n- Align character measurement line-height with terminal configuration to prevent vertical rendering corruption",
+  "version": "v0.7.10",
+  "notes": "## Changes\n\n### Features\n\n- Add server status machine with transition validation and reactive `useServerStatus` hook\n\n### Bug Fixes\n\n- Eliminate error badge flash on intentional server stop — unify terminal-exit event with reason payload to prevent IPC race condition\n- Replace Radix ScrollArea with native overflow in ChangelogModal, add global scrollbar styling",
   "pub_date": "2026-07-31T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.6.98/Llama.Manager_0.6.98_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTZCM0FFbXVNelhBUWkvU1d3RE5Tc2NNYUlUd3V0SXlYeWR1UFBuSVRXVTVsS21YQVVWakcvcUY3aFNhQ1lyTHhFSkplKzdiaDBNRVpocnd5RjBoalFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NDYyODYzCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjYuOThfeDY0LXNldHVwLmV4ZQpwSmZjYTJmRVU2bzFZaG9UUGQ0Y2lLbGN3ZFlEMW41K2hyZW84SWtUR3NnczFaMThjWldrZWtSUjBMMUk5d1RnaEF0MEZIeVd1ZWNZZHRDMU9uVmNBZz09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.7.10/Llama.Manager_0.7.10_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVTN3MGVKd3ZFK2M0dThyYVFMNTJqVDVjeGFnRzRtUUxaZzJ2SVU5dHdDZ1BWcG5jRDZiNG9zZFl6N2ExelFQNDFIK1FPQkM0VjRZLzcvRXhLM04wSWdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NTE1NDk5CWZpbGU6TGxhbWEgTWFuYWdlcl8wLjcuMTBfeDY0LXNldHVwLmV4ZQpjUlJSQUt6U0U2dEo1QWQxN2RJR0Z6d21OMWZxT25WYURNb1UwQVNYeXFwcTdqU0FvL1ptNU8yd1lFaGIveXF5YUhwNGpqeDMzSFZWL2VjbFBYVEFBUT09Cg=="
     }
   }
 }
