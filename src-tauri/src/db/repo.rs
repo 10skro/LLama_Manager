@@ -484,6 +484,31 @@ pub fn custom_command_exists(conn: &Connection, id: &str) -> Result<bool, AppErr
     Ok(exists)
 }
 
+/// Get a single custom command by its ID.
+pub fn get_custom_command_by_id(
+    conn: &Connection,
+    id: &str,
+) -> Result<Option<CustomCommand>, AppError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, command, description, color, created_at, updated_at FROM custom_commands WHERE id = ?1",
+    )?;
+
+    let mut rows = stmt.query(params![id])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(CustomCommand {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            command: row.get(2)?,
+            description: row.get(3)?,
+            color: row.get(4).unwrap_or_else(|_| String::new()),
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
 // ─── Version Config Links ───────────────────────────────────────────────
 
 pub fn get_version_config_link(conn: &Connection, version_id: i64) -> Result<Option<VersionConfigLink>, AppError> {

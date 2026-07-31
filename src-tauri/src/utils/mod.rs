@@ -43,7 +43,7 @@ mod tests {
 
 /// Create required application directories under the app data folder.
 pub fn setup_directories(base: &Path) -> Result<(), AppError> {
-    let dirs = ["versions", "database", "downloads", "logs"];
+    let dirs = ["versions", "database", "downloads", "logs", "config"];
     for dir in &dirs {
         let path = base.join(dir);
         std::fs::create_dir_all(&path)?;

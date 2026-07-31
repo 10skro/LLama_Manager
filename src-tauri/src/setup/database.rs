@@ -1,7 +1,8 @@
 //! Database initialization: tables, default settings, GitHub token, ETag,
-//! old downloads cleanup, and saved theme retrieval.
+//! old downloads cleanup, saved theme retrieval, and config file migration.
 
 use crate::config::settings::SettingsManager;
+use crate::custom_command::file_export;
 use crate::db::connection::DbManager;
 use crate::db::repo;
 use crate::models::types::AppError;
@@ -23,6 +24,16 @@ pub fn init(app_dir: &std::path::Path) -> Result<DatabaseSetupResult, AppError> 
     db.init_tables()?;
 
     SettingsManager::init_defaults(&db)?;
+
+    // Migrate existing custom commands to JSON config files (idempotent)
+    {
+        let conn = db.lock_conn()?;
+        let commands = repo::get_all_custom_commands(&conn)?;
+        let config_dir = app_dir.join("config");
+        if let Err(e) = file_export::migrate_existing_commands(&commands, &config_dir) {
+            log::warn!("[CONFIG-MIGRATION] Partial migration failure: {}", e);
+        }
+    }
 
     // Load GitHub token from settings table
     let github_token = {
