@@ -21,7 +21,7 @@ export function TerminalSessionGrid({ sessions, cardTitleMap, onClose }: Termina
 
   return (
     <div
-      className="flex-1 grid gap-1 p-1 bg-background overflow-hidden"
+      className="grid h-full gap-[1px] p-1 bg-border/30 overflow-hidden"
       style={{
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`,
@@ -30,7 +30,7 @@ export function TerminalSessionGrid({ sessions, cardTitleMap, onClose }: Termina
       {sessions.map((session) => (
         <div
           key={session.sessionId}
-          className="flex flex-col min-h-0 rounded overflow-hidden border border-border/10"
+          className="flex flex-col h-full min-h-0 rounded overflow-hidden border-2 border-border bg-background"
         >
           <TerminalSessionItem
             sessionId={session.sessionId}
