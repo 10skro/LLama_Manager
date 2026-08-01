@@ -1,11 +1,11 @@
 {
-  "version": "0.7.41",
-  "notes": "## Changes\n\n### Bug Fixes\n\n- Fix missing blue and amber color variants in the theme\n- Fix status badge dot alignment\n\n### Refactoring\n\n- Reorganize hooks into feature-based directories for better maintainability\n- Reorganize component tree structure for improved consistency\n- Modularize Settings page into reusable components and hooks\n\n### Maintenance\n\n- Remove stale build artifact files",
+  "version": "0.8.0",
+  "notes": "## Changes\n\n### Bug Fixes\n\n- Fix terminal grid view not displaying content (collapsed layout)\n- Fix missing title for newly launched servers in terminal widget\n\n### UI / UX Improvements\n\n- Add themed separator lines between grid terminals\n- Add visible border frame around each terminal cell",
   "pub_date": "2026-08-01T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.7.41/Llama.Manager_0.7.41_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVXoxVC9XVFY2MnV2Z2QvL01HOVFTSlNrdEpTTFAzemM0N0l1b2dFUVhYTGphZ1JOU0RPckprRUNCOWcvd1FSbFhGRkJnUTE2VHRZT3J5Z1B6R2h5ZHdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NTQwNTExCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjcuNDFfeDY0LXNldHVwLmV4ZQpmS2tKaWt5cHhKSjZHa3htdjhVUmdNVSt2d2Q0NlZONWhZMGIvL29EL1dIZU1YYjJleWtteFhlVi9vdlozYlc0U09qKzNBTnVzOUtWR2ZFUVNzTGZBQT09Cg=="
+      "url": "https://github.com/10skro/LLama_Manager/releases/download/v0.8.0/Llama.Manager_0.8.0_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeU5jclNiZThJVSsyUEV0QXA5dTJQakt0WkR2eVlkSVQ4WUJGdC9SQ2I5RkhSZWdBcTFJR3VnbWdsSTRFSmxsN3oxL3JHTDh0UEhndTBHTkpGejUwRE9FTTRnZlRyYUEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NTQ3NzAxCWZpbGU6TGxhbWEgTWFuYWdlcl8wLjguMF94NjQtc2V0dXAuZXhlCnRhZUNKU1NobkpwN0s0VXA4bmhpYWlkOE1UQzdSNWNpK3d1WjlzYlJnV004YmNhaHpnc2c0YlVVRThGT05DUXVUYzFPYnlHQ3JkLzVsWlFTL2tITUNnPT0K"
     }
   }
 }
