@@ -28,13 +28,20 @@ export function useCardTitleMap() {
     loadTitles();
 
     // Listen for card customization changes from the main window
-    const unlisten = listen('card-customizations-update', () => {
+    const unlistenCustom = listen('card-customizations-update', () => {
+      loadTitles();
+    });
+
+    // Reload titles when terminal sessions change (new server may have a version
+    // not yet in the title map)
+    const unlistenSessions = listen('terminal-sessions-update', () => {
       loadTitles();
     });
 
     return () => {
       cancelledRef.current = true;
-      unlisten.then((u) => u());
+      unlistenCustom.then((u) => u());
+      unlistenSessions.then((u) => u());
     };
   }, [loadTitles]);
 
