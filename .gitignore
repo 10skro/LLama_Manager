@@ -10,6 +10,9 @@ src-tauri/gen/
 .cargo/
 *.pdb
 
+# Rust debug dumps (cargo tree, etc.)
+src-tauri/debug.txt
+
 # Logs
 *.log
 npm-debug.log*
