@@ -102,7 +102,8 @@ Create and manage custom startup commands to launch llama.cpp servers.
 
 ### Terminals
 
-<img width="1288" height="478" alt="image" src="https://github.com/user-attachments/assets/bd44a574-0136-48dd-b599-c2ed20a8521a" />
+<img width="2066" height="898" alt="image" src="https://github.com/user-attachments/assets/68df734b-9bd7-46c2-8deb-7718718c0775" />
+
 
 
 A floating window dedicated to managing running llama.cpp servers.
